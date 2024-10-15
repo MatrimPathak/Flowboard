@@ -21,18 +21,13 @@ import {
 	FormItem,
 	FormMessage,
 } from "@/components/ui/form";
-
-const formSchema = z.object({
-	name: z.string().trim().min(1, "Required"),
-	email: z.string().email(),
-	password: z
-		.string()
-		.min(8, "Password must contain at least 8 character(s)"),
-});
+import { registerSchema } from "../schemas";
+import { useRegister } from "../api/use-register";
 
 export const SignUpCard = () => {
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
+	const { mutate } = useRegister();
+	const form = useForm<z.infer<typeof registerSchema>>({
+		resolver: zodResolver(registerSchema),
 		defaultValues: {
 			name: "",
 			email: "",
@@ -40,9 +35,10 @@ export const SignUpCard = () => {
 		},
 	});
 
-	const onSubmit = (values: z.infer<typeof formSchema>) => {
-		console.log({ values });
+	const onSubmit = (values: z.infer<typeof registerSchema>) => {
+		mutate({ json: values });
 	};
+
 	return (
 		<Card className="w-full h-full md:w-[487px] border-none shadow-none">
 			<CardHeader className="flex items-center justify-center text-center p-7">
@@ -145,7 +141,7 @@ export const SignUpCard = () => {
 					Login with Github
 				</Button>
 			</CardContent>
-      <div className="px-7">
+			<div className="px-7">
 				<DottedSeperator />
 			</div>
 			<CardContent className="p-7 flex items-center justify-center">
