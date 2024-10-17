@@ -50,7 +50,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 		);
 	};
 
-	const hnadleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
 			form.setValue("image", file);
@@ -129,7 +129,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 													accept=".jpg, .png, .jpeg, .svg"
 													ref={inoutRef}
 													disabled={isPending}
-													onChange={hnadleImageChange}
+													onChange={handleImageChange}
 												/>
 												<Button
 													type="button"
