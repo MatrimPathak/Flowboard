@@ -98,11 +98,6 @@ const app = new Hono()
 				workspaceId,
 				userId: user.$id,
 			});
-			const workspace = await databases.getDocument(
-				DATABASE_ID,
-				WORKSPACES_ID,
-				workspaceId
-			);
 			if (!member || member.role !== MemberRole.ADMIN) {
 				return c.json({ error: "Unauthorized" }, 401);
 			}
@@ -132,7 +127,7 @@ const app = new Hono()
 					image: uploadImageUrl,
 				}
 			);
-			return c.json({ data: workspace });
+			return c.json({ data: updatedWorkspace });
 		}
 	)
 	.delete("/:workspaceId", sessionMiddleware, async (c) => {
