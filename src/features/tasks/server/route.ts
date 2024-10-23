@@ -118,7 +118,7 @@ const app = new Hono()
 		}
 	)
 	.post(
-		"/tasks",
+		"/",
 		sessionMiddleware,
 		zValidator("json", createTaskSchema),
 		async (c) => {
