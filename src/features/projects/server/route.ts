@@ -76,7 +76,7 @@ const app = new Hono()
 				ID.unique(),
 				{
 					name,
-					image: uploadImageUrl,
+					imageUrl: uploadImageUrl,
 					workspaceId,
 				}
 			);
