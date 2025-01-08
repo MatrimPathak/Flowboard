@@ -66,7 +66,7 @@ const app = new Hono()
 				{
 					name,
 					userId: user.$id,
-					image: uploadImageUrl,
+					imageUrl: uploadImageUrl,
 					inviteCode: generateInviteCode(10),
 				}
 			);
@@ -77,7 +77,7 @@ const app = new Hono()
 				{
 					userId: user.$id,
 					workspaceId: workspace.$id,
-					role: MemberRole.ADMIN,
+					memberRole: MemberRole.ADMIN,
 				}
 			);
 			return c.json({ data: workspace });

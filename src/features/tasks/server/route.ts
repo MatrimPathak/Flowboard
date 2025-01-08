@@ -7,7 +7,6 @@ import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID } from "@/config";
 import { ID, Query } from "node-appwrite";
 import { z } from "zod";
 import { TaskStatus } from "../types";
-import { log } from "util";
 import { Project } from "@/features/projects/types";
 import { createAdminClient } from "@/lib/appwrite";
 
@@ -81,7 +80,7 @@ const app = new Hono()
 				DATABASE_ID,
 				PROJECTS_ID,
 				projectIds.length > 0
-					? [Query.contains("projectId", projectIds)]
+					? [Query.contains("$id", projectIds)]
 					: []
 			);
 			const members = await databases.listDocuments(
