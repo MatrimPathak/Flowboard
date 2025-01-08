@@ -4,8 +4,8 @@ import { DottedSeperator } from "@/components/dotted-seperator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader, PlusIcon } from "lucide-react";
-import { useCreatetaskModal } from "../hooks/use-create-task-modal";
-import { useGetTasks } from "../api/use-get-task";
+import { useCreateTaskModal } from "../hooks/use-create-task-modal";
+import { useGetTasks } from "../api/use-get-tasks";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useQueryState } from "nuqs";
 import { DataFilters } from "./data-filters";
@@ -26,7 +26,7 @@ export const TaskViewSwitcher = () => {
 		assigneeId,
 		dueDate,
 	});
-	const { open } = useCreatetaskModal();
+	const { open } = useCreateTaskModal();
 	return (
 		<Tabs
 			defaultValue={view}
