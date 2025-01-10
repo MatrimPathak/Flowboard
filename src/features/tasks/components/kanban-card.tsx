@@ -5,8 +5,6 @@ import { DottedSeperator } from "@/components/dotted-seperator";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "./task-date";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
-import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { useRouter } from "next/router";
 
 interface KanbanCardProps {
 	task: Task;

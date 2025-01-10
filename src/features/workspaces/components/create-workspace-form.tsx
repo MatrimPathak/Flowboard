@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCreateWorkspace } from "../api/use-create-workspace";
-import { use, useRef } from "react";
+import { useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
@@ -40,7 +40,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 	const onSubmit = (values: z.infer<typeof createWorkspaceSchema>) => {
 		const finalValues = {
 			...values,
-			image: values.image instanceof File ? values.image : "",
+			image: values.imageUrl instanceof File ? values.imageUrl : "",
 		};
 		mutate(
 			{ form: finalValues },
@@ -56,7 +56,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
-			form.setValue("image", file);
+			form.setValue("imageUrl", file);
 		}
 	};
 
@@ -92,7 +92,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 							/>
 							<FormField
 								control={form.control}
-								name="image"
+								name="imageUrl"
 								render={({ field }) => (
 									<div className="flex flex-col gap-y-2">
 										<div className="flex items-center gap-x-5">

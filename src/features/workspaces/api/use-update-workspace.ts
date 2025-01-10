@@ -30,7 +30,7 @@ export const useUpdateWorkspace = () => {
 				queryKey: ["workspace", data.$id],
 			});
 		},
-		onError: (error) => {
+		onError: () => {
 			toast.error("Failed to update workspace");
 		},
 	});

@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateTask } from "../api/use-create-task";
@@ -45,9 +43,7 @@ export const CreateTaskForm = ({
 	memberOptions,
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
-	const router = useRouter();
 	const { mutate, isPending } = useCreateTask();
-	const inputRef = useRef<HTMLInputElement>(null);
 	const form = useForm<z.infer<typeof createTaskSchema>>({
 		resolver: zodResolver(createTaskSchema.omit({ workspaceId: true })),
 		defaultValues: { workspaceId },
@@ -57,7 +53,7 @@ export const CreateTaskForm = ({
 		mutate(
 			{ json: { ...values, workspaceId } },
 			{
-				onSuccess: ({ data }) => {
+				onSuccess: () => {
 					form.reset();
 					onCancel?.();
 					// TODO: Redirect to the new task

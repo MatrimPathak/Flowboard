@@ -30,7 +30,7 @@ export const useResetInviteCode = () => {
 				queryKey: ["workspace", data.$id],
 			});
 		},
-		onError: (error) => {
+		onError: () => {
 			toast.error("Failed to reset invite code");
 		},
 	});
