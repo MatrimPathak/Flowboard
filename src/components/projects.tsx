@@ -36,7 +36,7 @@ export const Projects = () => {
 							)}
 						>
 							<ProjectAvatar
-								image={project.image}
+								imageUrl={project.image}
 								name={project.name}
 							/>
 							<span className="truncate">{project.name}</span>

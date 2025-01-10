@@ -40,7 +40,7 @@ export const TaskBreadcrumbs = ({ project, task }: TaskBreadcrumbsProps) => {
 			<ConfirmDialog />
 			<ProjectAvatar
 				name={project.name}
-				image={project.image}
+				imageUrl={project.image}
 				className="size-6 lg:size-8"
 			/>
 			<Link href={`/workspaces/${workspaceId}/projects/${project.$id}`}>

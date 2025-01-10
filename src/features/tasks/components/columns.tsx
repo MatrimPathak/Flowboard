@@ -101,7 +101,7 @@ export const columns: ColumnDef<Task>[] = [
 					<ProjectAvatar
 						className="size-6"
 						name={project.name}
-						image={project.imageUrl}
+						imageUrl={project.imageUrl}
 					/>
 					<p className="line-clamp-1">{project.name}</p>
 				</div>
