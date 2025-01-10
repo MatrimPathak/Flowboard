@@ -21,7 +21,6 @@ const app = new Hono()
 		);
 		setCookie(c, AUTH_COOKIE, session.secret, {
 			path: "/",
-			httpOnly: true,
 			secure: true,
 			sameSite: "strict",
 			maxAge: 60 * 60 * 24 * 30,
@@ -38,7 +37,6 @@ const app = new Hono()
 		);
 		setCookie(c, AUTH_COOKIE, session.secret, {
 			path: "/",
-			httpOnly: true,
 			secure: true,
 			sameSite: "strict",
 			maxAge: 60 * 60 * 24 * 30,
