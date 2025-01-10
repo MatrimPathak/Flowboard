@@ -15,10 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { createTaskSchema } from "../schemas";
 import { DatePicker } from "@/components/date-picker";
 import {
@@ -46,10 +43,7 @@ export const EditTaskForm = ({
 	memberOptions,
 	initalValues: initialValues,
 }: EditTaskFormProps) => {
-	const workspaceId = useWorkspaceId();
-	const router = useRouter();
 	const { mutate, isPending } = useUpdateTask();
-	const inputRef = useRef<HTMLInputElement>(null);
 	const form = useForm<z.infer<typeof createTaskSchema>>({
 		resolver: zodResolver(
 			createTaskSchema.omit({ workspaceId: true, description: true })
@@ -66,7 +60,7 @@ export const EditTaskForm = ({
 		mutate(
 			{ json: values, param: { taskId: initialValues.$id } },
 			{
-				onSuccess: ({ data }) => {
+				onSuccess: () => {
 					form.reset();
 					onCancel?.();
 					// TODO: Redirect to the new task

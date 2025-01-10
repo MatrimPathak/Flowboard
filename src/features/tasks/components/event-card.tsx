@@ -6,11 +6,12 @@ import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useRouter } from "next/navigation";
 import React from "react";
+import { Member } from "@/features/members/types";
 
 interface EventCardProps {
 	id: string;
 	title: string;
-	assignee: any;
+	assignee: Member;
 	project: Project;
 	status: TaskStatus;
 }

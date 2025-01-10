@@ -30,7 +30,7 @@ export const useJoinWorkspace = () => {
 				queryKey: ["workspace", data.$id],
 			});
 		},
-		onError: (error) => {
+		onError: () => {
 			toast.error("Failed to join workspace");
 		},
 	});
