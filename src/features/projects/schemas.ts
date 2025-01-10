@@ -13,7 +13,7 @@ export const createProjectSchema = z.object({
 
 export const updateProjectSchema = z.object({
 	name: z.string().trim().min(1, "Minimum 1 character required").optional(),
-	image: z
+	imageUrl: z
 		.union([
 			z.instanceof(File),
 			z.string().transform((value) => (value === "" ? undefined : value)),

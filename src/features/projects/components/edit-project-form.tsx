@@ -49,7 +49,10 @@ export const EditProjectForm = ({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const form = useForm<z.infer<typeof updateProjectSchema>>({
 		resolver: zodResolver(updateProjectSchema),
-		defaultValues: { ...initialValues, image: initialValues.image ?? "" },
+		defaultValues: {
+			...initialValues,
+			imageUrl: initialValues.imageUrl ?? "",
+		},
 	});
 	const handleDelete = async () => {
 		const ok = await confirmDelete();
@@ -69,22 +72,17 @@ export const EditProjectForm = ({
 	const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
 		const finalValues = {
 			...values,
-			image: values.image instanceof File ? values.image : "",
+			imageUrl: values.imageUrl instanceof File ? values.imageUrl : "",
 		};
 		mutate(
 			{ form: finalValues, param: { projectId: initialValues.$id } },
-			{
-				onSuccess: ({ data }) => {
-					form.reset();
-				},
-			}
 		);
 	};
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
-			form.setValue("image", file);
+			form.setValue("imageUrl", file);
 		}
 	};
 
@@ -137,7 +135,7 @@ export const EditProjectForm = ({
 								/>
 								<FormField
 									control={form.control}
-									name="image"
+									name="imageUrl"
 									render={({ field }) => (
 										<div className="flex flex-col gap-y-2">
 											<div className="flex items-center gap-x-5">
