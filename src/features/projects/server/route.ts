@@ -83,6 +83,25 @@ const app = new Hono()
 			return c.json({ data: project });
 		}
 	)
+	.get("/:projectId", sessionMiddleware, async (c) => {
+		const user = c.get("user");
+		const databases = c.get("databases");
+		const { projectId } = c.req.param();
+		const project = await databases.getDocument<Project>(
+			DATABASE_ID,
+			PROJECTS_ID,
+			projectId
+		);
+		const member = await getMember({
+			databases,
+			workspaceId: project.workspaceId,
+			userId: user.$id,
+		});
+		if (!member) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
+		return c.json({ data: project });
+	})
 	.patch(
 		"/:projectId",
 		sessionMiddleware,
@@ -91,7 +110,7 @@ const app = new Hono()
 			const databases = c.get("databases");
 			const storage = c.get("storage");
 			const user = c.get("user");
-			const { name, image } = c.req.valid("form");
+			const { name, imageUrl } = c.req.valid("form");
 			const { projectId } = c.req.param();
 			const existingProject = await databases.getDocument<Project>(
 				DATABASE_ID,
@@ -107,11 +126,11 @@ const app = new Hono()
 				return c.json({ error: "Unauthorized" }, 401);
 			}
 			let uploadImageUrl: string | undefined;
-			if (image instanceof File) {
+			if (imageUrl instanceof File) {
 				const file = await storage.createFile(
 					IMAGES_BUCKET_ID,
 					ID.unique(),
-					image
+					imageUrl
 				);
 				const arraybuffer = await storage.getFilePreview(
 					IMAGES_BUCKET_ID,
@@ -121,7 +140,7 @@ const app = new Hono()
 					arraybuffer
 				).toString("base64")}`;
 			} else {
-				uploadImageUrl = image;
+				uploadImageUrl = imageUrl;
 			}
 			const updatedProject = await databases.updateDocument(
 				DATABASE_ID,

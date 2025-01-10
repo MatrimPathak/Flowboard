@@ -15,8 +15,11 @@ const StandaloneLayout = ({ children }: StandaloneLayoutProps) => {
 						<Image
 							src="/logo.svg"
 							alt="Logo"
-							height={56}
-							width={152}
+							width={0}
+							height={0}
+							sizes="100vw"
+							style={{ width: "100%", height: "40px" }}
+							className="object-cover w-fit h-12 -ml-4"
 						/>
 					</Link>
 					<UserButton />

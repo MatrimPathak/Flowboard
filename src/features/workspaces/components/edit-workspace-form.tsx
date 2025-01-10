@@ -57,7 +57,10 @@ export const EditWorkspaceForm = ({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const form = useForm<z.infer<typeof updateWorkspaceSchema>>({
 		resolver: zodResolver(updateWorkspaceSchema),
-		defaultValues: { ...initialValues, image: initialValues.image ?? "" },
+		defaultValues: {
+			...initialValues,
+			imageUrl: initialValues.imageUrl ?? "",
+		},
 	});
 	const handleDelete = async () => {
 		const ok = await confirmDelete();
@@ -91,22 +94,18 @@ export const EditWorkspaceForm = ({
 	const onSubmit = (values: z.infer<typeof updateWorkspaceSchema>) => {
 		const finalValues = {
 			...values,
-			image: values.image instanceof File ? values.image : "",
+			imageUrl: values.imageUrl instanceof File ? values.imageUrl : "",
 		};
-		mutate(
-			{ form: finalValues, param: { workspaceId: initialValues.$id } },
-			{
-				onSuccess: ({ data }) => {
-					form.reset();
-				},
-			}
-		);
+		mutate({
+			form: finalValues,
+			param: { workspaceId: initialValues.$id },
+		});
 	};
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
-			form.setValue("image", file);
+			form.setValue("imageUrl", file);
 		}
 	};
 	const fullInviteLink = `${window.location.origin}/workspaces/${initialValues.$id}/join/${initialValues.inviteCode}`;
@@ -168,7 +167,7 @@ export const EditWorkspaceForm = ({
 								/>
 								<FormField
 									control={form.control}
-									name="image"
+									name="imageUrl"
 									render={({ field }) => (
 										<div className="flex flex-col gap-y-2">
 											<div className="flex items-center gap-x-5">
