@@ -4,14 +4,14 @@ import { AvatarImage } from "@radix-ui/react-avatar";
 import Image from "next/image";
 
 interface ProjectAvatarProps {
-	image?: string;
+	imageUrl?: string;
 	name: string;
 	className?: string;
 	fallbackClassName?: string;
 }
 
 export const ProjectAvatar = ({
-	image,
+	imageUrl,
 	name,
 	className,
 	fallbackClassName,
@@ -32,9 +32,9 @@ export const ProjectAvatar = ({
 		<div className="">
 			{/* <Image src={image!} alt={name} fill className="object-cover" /> */}
 			<Avatar className={cn("size-5 rounded-md", className)}>
-				{image ? (
+				{imageUrl ? (
 					<AvatarImage
-						src={image}
+						src={imageUrl}
 						alt={name}
 						className="object-cover"
 					/>

@@ -28,7 +28,7 @@ export const ProjectIdClient = () => {
 				<div className="flex items-center gap-x-2">
 					<ProjectAvatar
 						name={project.name}
-						image={project.image}
+						imageUrl={project.image}
 						className="size-8"
 					/>
 					<p className="text-lg font-semibold">{project.name}</p>

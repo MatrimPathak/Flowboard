@@ -33,7 +33,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
 			<div className="flex items-center gap-x-1.5">
 				<ProjectAvatar
 					name={task.project.name}
-					image={task.project.imageUrl}
+					imageUrl={task.project.imageUrl}
 					fallbackClassName="text-[10px]"
 				/>
 				<span className="text-xs font-medium">{task.project.name}</span>
