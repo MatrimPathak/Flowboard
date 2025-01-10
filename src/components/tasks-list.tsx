@@ -21,7 +21,11 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 			<div className="bg-white border rounded-lg p-4">
 				<div className="flex items-center justify-between">
 					<p className="text-lg font-semibold">Tasks ({total})</p>
-					<Button variant="secondary" size="icon" onClick={createTask}>
+					<Button
+						variant="secondary"
+						size="icon"
+						onClick={createTask}
+					>
 						<PlusIcon className="size-4 text-neutral-400" />
 					</Button>
 				</div>
@@ -30,7 +34,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 					{data.map((task) => (
 						<li key={task.id}>
 							<Link
-								href={`/workspaces/${workspaceId}/tasks/${task.id}`}
+								href={`/workspaces/${workspaceId}/tasks/${task.$id}`}
 							>
 								<Card className="shadow-none rounded-lg hover:opacity-75 transition">
 									<CardContent className="p-4">
