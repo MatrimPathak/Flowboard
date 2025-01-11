@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateTask } from "../api/use-create-task";
 import { createTaskSchema } from "../schemas";
@@ -33,7 +33,7 @@ import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
 interface CreateTaskFormProps {
 	onCancel?: () => void;
-	projectOptions: { id: string; name: string; image: string }[];
+	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
 }
 
@@ -160,84 +160,67 @@ export const CreateTaskForm = ({
 											</FormControl>
 											<FormMessage />
 											<SelectContent>
-												<SelectItem
-													value={TaskStatus.TODO}
-												>
-													To Do
-												</SelectItem>
-												<SelectItem
-													value={
-														TaskStatus.IN_PROGRESS
-													}
-												>
-													In Progress
-												</SelectItem>
-												<SelectItem
-													value={
-														TaskStatus.UNDER_REVIEW
-													}
-												>
-													Under Review
-												</SelectItem>
-												<SelectItem
-													value={TaskStatus.DONE}
-												>
-													Done
-												</SelectItem>
-												<SelectItem
-													value={TaskStatus.BACKLOG}
-												>
-													Backlog
-												</SelectItem>
+												{Object.values(TaskStatus).map(
+													(status) => (
+														<SelectItem
+															key={status}
+															value={status}
+														>
+															{snakeCaseToTitleCase(
+																status
+															)}
+														</SelectItem>
+													)
+												)}
 											</SelectContent>
 										</Select>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-							<FormField
-								control={form.control}
-								name="projectId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Project</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select Project" />
-												</SelectTrigger>
-											</FormControl>
-											<FormMessage />
-											<SelectContent>
-												{projectOptions.map(
-													(project) => (
-														<SelectItem
-															key={project.id}
+								<FormField
+									control={form.control}
+									name="projectId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Project</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Project" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{projectOptions.map(
+														(project) => (
+															<SelectItem
+																key={project.id}
 															value={project.id}
-														>
-															<div className="flex items-center gap-x-2">
-																<ProjectAvatar
-																	className="size-6"
-																	imageUrl={
-																		project.image
-																	}
-																	name={
-																		project.name
-																	}
-																/>
+															>
+																<div className="flex items-center gap-x-2">
+																	<ProjectAvatar
+																		className="size-6"
+																		imageUrl={
+																			project.imageUrl
+																		}
+																		name={
+																			project.name
+																		}
+																	/>
 																{project.name}
-															</div>
-														</SelectItem>
-													)
-												)}
-											</SelectContent>
-										</Select>
-									</FormItem>
-								)}
-							/>
+																</div>
+															</SelectItem>
+														)
+													)}
+												</SelectContent>
+											</Select>
+										</FormItem>
+									)}
+								/>
 						</div>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">

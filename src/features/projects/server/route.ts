@@ -48,7 +48,7 @@ const app = new Hono()
 			const databases = c.get("databases");
 			const storage = c.get("storage");
 			const user = c.get("user");
-			const { name, image, workspaceId } = c.req.valid("form");
+			const { name, imageUrl, workspaceId } = c.req.valid("form");
 			const member = await getMember({
 				databases,
 				workspaceId,
@@ -58,11 +58,11 @@ const app = new Hono()
 				return c.json({ error: "Unauthorized" }, 401);
 			}
 			let uploadImageUrl: string | undefined;
-			if (image instanceof File) {
+			if (imageUrl instanceof File) {
 				const file = await storage.createFile(
 					IMAGES_BUCKET_ID,
 					ID.unique(),
-					image
+					imageUrl
 				);
 				const arraybuffer = await storage.getFilePreview(
 					IMAGES_BUCKET_ID,
@@ -331,7 +331,7 @@ const app = new Hono()
 				projectId,
 				{
 					name,
-					image: uploadImageUrl,
+					imageUrl: uploadImageUrl,
 				}
 			);
 			return c.json({ data: updatedProject });

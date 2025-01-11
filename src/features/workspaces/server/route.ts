@@ -338,7 +338,7 @@ const app = new Hono()
 				workspaceId,
 				{
 					name,
-					image: uploadImageUrl,
+					imageUrl: uploadImageUrl,
 				}
 			);
 			return c.json({ data: updatedWorkspace });
