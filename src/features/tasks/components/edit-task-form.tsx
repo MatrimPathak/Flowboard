@@ -32,7 +32,7 @@ import { useUpdateTask } from "../api/use-update-task";
 
 interface EditTaskFormProps {
 	onCancel?: () => void;
-	projectOptions: { id: string; name: string; image: string }[];
+	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
 	initalValues: Task;
 }
@@ -229,7 +229,7 @@ export const EditTaskForm = ({
 																<ProjectAvatar
 																	className="size-6"
 																	imageUrl={
-																		project.image
+																		project.imageUrl
 																	}
 																	name={
 																		project.name

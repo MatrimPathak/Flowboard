@@ -3,25 +3,28 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface WorkspaceAvatarProps {
-	image?: string;
+	imageUrl?: string;
 	name: string;
 	className?: string;
 }
 
 export const WorkspaceAvatar = ({
-	image,
+	imageUrl,
 	name,
 	className,
 }: WorkspaceAvatarProps) => {
-	if (image) {
+	if (imageUrl) {
 		return (
 			<div
-				className={cn(
-					"size-10 relative rounded-md overflow-hidden",
-					className
-				)}
+				className={cn("relative rounded-md overflow-hidden", className)}
 			>
-				<Image src={image} alt={name} fill className="object-cover" />
+				<Image
+					src={imageUrl}
+					alt={name}
+					width={40}
+					height={40}
+					className="object-cover"
+				/>
 			</div>
 		);
 	}

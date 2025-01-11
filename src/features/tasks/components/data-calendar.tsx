@@ -1,6 +1,13 @@
 import { Task } from "../types";
 import { enUS } from "date-fns/locale";
-import { format, getDay, parse, startOfWeek, subMonths } from "date-fns";
+import {
+	addMonths,
+	format,
+	getDay,
+	parse,
+	startOfWeek,
+	subMonths,
+} from "date-fns";
 import { useState } from "react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -74,7 +81,7 @@ export const DataCalender = ({ data }: DataCalenderProps) => {
 		if (action === "PREV") {
 			setValue(subMonths(value, 1));
 		} else if (action === "NEXT") {
-			setValue(subMonths(value, 1));
+			setValue(addMonths(value, 1));
 		} else if (action === "TODAY") {
 			setValue(new Date());
 		}

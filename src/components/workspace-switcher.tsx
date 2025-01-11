@@ -40,9 +40,9 @@ export const WorkspaceSwitcher = () => {
 								key={workspace.$id}
 								value={workspace.$id}
 							>
-								<div className="flex justify-start items-center gap-3 font-medium">
+								<div className="flex justify-center items-center gap-3 font-medium">
 									<WorkspaceAvatar
-										image={workspace.image}
+										imageUrl={workspace.imageUrl}
 										name={workspace.name}
 									/>
 									<span className="truncate">

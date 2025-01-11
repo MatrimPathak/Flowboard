@@ -43,7 +43,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
 		const finalValues = {
 			...values,
 			workspaceId,
-			image: values.image instanceof File ? values.image : "",
+			imageUrl: values.imageUrl instanceof File ? values.imageUrl : "",
 		};
 		mutate(
 			{ form: finalValues },
@@ -61,7 +61,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
-			form.setValue("image", file);
+			form.setValue("imageUrl", file);
 		}
 	};
 
@@ -97,7 +97,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
 							/>
 							<FormField
 								control={form.control}
-								name="image"
+								name="imageUrl"
 								render={({ field }) => (
 									<div className="flex flex-col gap-y-2">
 										<div className="flex items-center gap-x-5">
