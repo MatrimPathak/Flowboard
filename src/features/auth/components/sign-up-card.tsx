@@ -10,8 +10,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { FcGoogle } from "react-icons/fc";
-import { FaGithub } from "react-icons/fa";
 import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -25,7 +23,6 @@ import {
 } from "@/components/ui/form";
 import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
-import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
 export const SignUpCard = () => {
 	const { mutate, isPending } = useRegister();
@@ -124,31 +121,6 @@ export const SignUpCard = () => {
 						</Button>
 					</form>
 				</Form>
-			</CardContent>
-			<div className="px-7">
-				<DottedSeperator />
-			</div>
-			<CardContent className="p-7 flex flex-col gap-y-4">
-				<Button
-					onClick={() => signUpWithGoogle()}
-					variant="secondary"
-					size="lg"
-					disabled={isPending}
-					className="w-full"
-				>
-					<FcGoogle className="mr-2 size-5" />
-					Login with Google
-				</Button>
-				<Button
-					onClick={() => signUpWithGithub()}
-					variant="secondary"
-					size="lg"
-					disabled={isPending}
-					className="w-full"
-				>
-					<FaGithub className="mr-2 size-5" />
-					Login with Github
-				</Button>
 			</CardContent>
 			<div className="px-7">
 				<DottedSeperator />

@@ -11,8 +11,8 @@ import { Member } from "@/features/members/types";
 interface EventCardProps {
 	id: string;
 	title: string;
-	assignee: Member;
-	project: Project;
+	assignee?: Member | null;
+	project?: Project | null;
 	status: TaskStatus;
 }
 
@@ -48,10 +48,10 @@ export const EventCard = ({
 			>
 				<p>{title}</p>
 				<div className="flex items-center gap-x-1">
-					<MemberAvatar name={assignee?.name} />
+					<MemberAvatar name={assignee?.name || "Unknown"} />
 					<div className="size-1 rounded-full bg-neutral-300" />
 					<ProjectAvatar
-						name={project?.name}
+						name={project?.name || "Unknown"}
 						imageUrl={project?.imageUrl}
 					/>
 				</div>

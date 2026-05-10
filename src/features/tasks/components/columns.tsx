@@ -17,6 +17,7 @@ export const columns: ColumnDef<Task>[] = [
 			return (
 				<Button
 					variant="ghost"
+					className="w-full justify-start -ml-4"
 					onClick={() =>
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
@@ -37,6 +38,7 @@ export const columns: ColumnDef<Task>[] = [
 			return (
 				<Button
 					variant="ghost"
+					className="w-full justify-start -ml-4"
 					onClick={() =>
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
@@ -59,6 +61,7 @@ export const columns: ColumnDef<Task>[] = [
 			return (
 				<Button
 					variant="ghost"
+					className="w-full justify-start -ml-4"
 					onClick={() =>
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
@@ -73,8 +76,8 @@ export const columns: ColumnDef<Task>[] = [
 			const assignee = row.original.assignee;
 			return (
 				<div className="flex items-center gap-x-2 text-sm font-medium">
-					<MemberAvatar className="size-6" name={assignee.name} />
-					<p className="line-clamp-1">{assignee.name}</p>
+					<MemberAvatar className="size-6" name={assignee?.name || "Unknown"} />
+					<p className="line-clamp-1">{assignee?.name || "Unknown"}</p>
 				</div>
 			);
 		},
@@ -84,6 +87,7 @@ export const columns: ColumnDef<Task>[] = [
 			return (
 				<Button
 					variant="ghost"
+					className="w-full justify-start -ml-4"
 					onClick={() =>
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
@@ -100,10 +104,10 @@ export const columns: ColumnDef<Task>[] = [
 				<div className="flex items-center gap-x-2 text-sm font-medium">
 					<ProjectAvatar
 						className="size-6"
-						name={project.name}
-						imageUrl={project.imageUrl}
+						name={project?.name || "Unknown"}
+						imageUrl={project?.imageUrl}
 					/>
-					<p className="line-clamp-1">{project.name}</p>
+					<p className="line-clamp-1">{project?.name || "Unknown Project"}</p>
 				</div>
 			);
 		},
@@ -113,6 +117,7 @@ export const columns: ColumnDef<Task>[] = [
 			return (
 				<Button
 					variant="ghost"
+					className="w-full justify-start -ml-4"
 					onClick={() =>
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
