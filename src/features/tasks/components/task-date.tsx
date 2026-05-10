@@ -11,6 +11,10 @@ export const TaskDate = ({ value, className }: TaskDateProps) => {
 	const endDate = new Date(value);
 	const diffInDays = differenceInDays(endDate, today);
 
+	if (isNaN(endDate.getTime())) {
+		return <span className={className}>No date</span>;
+	}
+
 	let textColor = "text-muted-foreground";
 	if (diffInDays <= 3) {
 		textColor = "text-red-500";
@@ -23,7 +27,7 @@ export const TaskDate = ({ value, className }: TaskDateProps) => {
 	return (
 		<div className={textColor}>
 			<span className={cn("truncate", className)}>
-				{format(value, "PPP")}
+				{format(endDate, "PPP")}
 			</span>
 		</div>
 	);

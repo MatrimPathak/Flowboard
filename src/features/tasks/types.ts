@@ -1,4 +1,5 @@
-import { Models } from "node-appwrite";
+import { Project } from "@/features/projects/types";
+import { Member } from "@/features/members/types";
 
 export enum TaskStatus {
 	BACKLOG = "BACKLOG",
@@ -8,7 +9,9 @@ export enum TaskStatus {
 	DONE = "DONE",
 }
 
-export type Task = Models.Document & {
+export type Task = {
+	$id: string;
+	$createdAt: string;
 	name: string;
 	status: TaskStatus;
 	workspaceId: string;
@@ -17,4 +20,6 @@ export type Task = Models.Document & {
 	dueDate: string;
 	position: number;
 	description?: string;
+	project?: Project | null;
+	assignee?: Member | null;
 };

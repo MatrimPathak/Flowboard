@@ -32,7 +32,7 @@ export const WorkspaceIdClient = () => {
 		isLoadingMembers;
 	if (isLoading) return <PageLoader />;
 	if (!analytics || !tasks || !projects || !members)
-		return <PageError message="Failed to load workspace aata" />;
+		return <PageError message="Failed to load workspace data" />;
 	return (
 		<div className="h-full flex flex-col space-y-4">
 			<Analytics data={analytics} />

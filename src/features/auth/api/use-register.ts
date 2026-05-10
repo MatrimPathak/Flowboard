@@ -16,7 +16,8 @@ export const useRegister = () => {
 		mutationFn: async ({ json }) => {
 			const response = await client.api.auth.register["$post"]({ json });
 			if (!response.ok) {
-				throw new Error("Failed to register");
+				const errorData = await response.json().catch(() => null);
+				throw new Error((errorData as any)?.error || "Failed to register");
 			}
 			return response.json();
 		},
@@ -25,8 +26,8 @@ export const useRegister = () => {
 			router.refresh();
 			queryClient.invalidateQueries({ queryKey: ["current"] });
 		},
-		onError: () => {
-			toast.error("Failed to register");
+		onError: (err) => {
+			toast.error(err.message || "Failed to register");
 		},
 	});
 	return mutation;

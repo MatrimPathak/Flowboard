@@ -1,7 +1,7 @@
 "use client";
 
 import { useCurrent } from "../api/use-current";
-import { Loader, LogOut } from "lucide-react";
+import { Loader, LogOut, Key } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -11,10 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DottedSeperator } from "@/components/dotted-seperator";
 import { useLogout } from "../api/use-logout";
+import { useGenerateToken } from "@/features/tokens/api/use-generate-token";
 
 export const UserButton = () => {
 	const { data: user, isLoading } = useCurrent();
 	const { mutate: logout } = useLogout();
+	const { mutate: generateToken } = useGenerateToken();
 
 	if (isLoading) {
 		return (
@@ -63,6 +65,13 @@ export const UserButton = () => {
 					</div>
 				</div>
 				<DottedSeperator className="mb-1" />
+				<DropdownMenuItem
+					onClick={() => generateToken()}
+					className="h-10 flex items-center justify-center font-medium cursor-pointer"
+				>
+					<Key className="size-4 mr-2" />
+					Generate Agent Token
+				</DropdownMenuItem>
 				<DropdownMenuItem
 					onClick={() => logout()}
 					className="h-10 flex items-center justify-center text-amber-700 font-medium cursor-pointer"

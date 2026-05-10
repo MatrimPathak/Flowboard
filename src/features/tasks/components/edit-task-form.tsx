@@ -88,7 +88,7 @@ export const EditTaskForm = ({
 								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Project Name</FormLabel>
+										<FormLabel>Task Title</FormLabel>
 										<FormControl>
 											<Input
 												{...field}
