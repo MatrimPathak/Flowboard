@@ -284,29 +284,34 @@ const app = new Hono()
 		}
 	)
 	.delete("/:workspaceId", sessionMiddleware, async (c) => {
-		const databases = c.get("databases");
-		const user = c.get("user");
 		const { workspaceId } = c.req.param();
-		const member = await getMember({
-			databases,
-			workspaceId,
-			userId: user.$id,
-		});
-		if (!member || member.role !== MemberRole.ADMIN) {
-			return c.json({ error: "Unauthorized" }, 401);
+		try {
+			const databases = c.get("databases");
+			const user = c.get("user");
+			const member = await getMember({
+				databases,
+				workspaceId,
+				userId: user.$id,
+			});
+			if (!member || member.role !== MemberRole.ADMIN) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+			// Recursively delete workspace and all subcollections (projects, tasks)
+			await databases.recursiveDelete(databases.collection("workspaces").doc(workspaceId));
+			
+			// Also clean up members referencing this workspace
+			const membersSnapshot = await databases.collection("members").where("workspaceId", "==", workspaceId).get();
+			if (!membersSnapshot.empty) {
+				const batch = databases.batch();
+				membersSnapshot.docs.forEach((doc: FirebaseFirestore.DocumentSnapshot) => batch.delete(doc.ref));
+				await batch.commit();
+			}
+			
+			return c.json({ data: { $id: workspaceId } });
+		} catch (error) {
+			console.error(`[WORKSPACE_DELETE_ERROR] Workspace ID: ${workspaceId}`, error);
+			return c.json({ error: "Internal Server Error" }, 500);
 		}
-		// Recursively delete workspace and all subcollections (projects, tasks)
-		await databases.recursiveDelete(databases.collection("workspaces").doc(workspaceId));
-		
-		// Also clean up members referencing this workspace
-		const membersSnapshot = await databases.collection("members").where("workspaceId", "==", workspaceId).get();
-		if (!membersSnapshot.empty) {
-			const batch = databases.batch();
-			membersSnapshot.docs.forEach((doc: FirebaseFirestore.DocumentSnapshot) => batch.delete(doc.ref));
-			await batch.commit();
-		}
-		
-		return c.json({ data: { $id: workspaceId } });
 	})
 	.post("/:workspaceId/reset-invite-code", sessionMiddleware, async (c) => {
 		const databases = c.get("databases");

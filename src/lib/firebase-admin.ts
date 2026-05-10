@@ -49,20 +49,23 @@ export const getAdminStorage = () => {
 export const adminDb = new Proxy({} as admin.firestore.Firestore, {
   get(_, prop) {
     const db = getAdminDb();
-    return (db as any)[prop];
+    const value = (db as any)[prop];
+    return typeof value === "function" ? value.bind(db) : value;
   }
 });
 
 export const adminAuth = new Proxy({} as admin.auth.Auth, {
   get(_, prop) {
     const auth = getAdminAuth();
-    return (auth as any)[prop];
+    const value = (auth as any)[prop];
+    return typeof value === "function" ? value.bind(auth) : value;
   }
 });
 
 export const adminStorage = new Proxy({} as admin.storage.Storage, {
   get(_, prop) {
     const storage = getAdminStorage();
-    return (storage as any)[prop];
+    const value = (storage as any)[prop];
+    return typeof value === "function" ? value.bind(storage) : value;
   }
 });

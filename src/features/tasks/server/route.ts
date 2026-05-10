@@ -241,7 +241,7 @@ const app = new Hono()
 			} = c.req.valid("json");
 			const member = await getMember({
 				databases,
-				workspaceId,
+workspaceId,
 				userId: user.$id,
 			});
 			if (!member) {
@@ -253,12 +253,15 @@ const app = new Hono()
 				.collection("projects")
 				.doc(projectId)
 				.collection("tasks")
-				.where("status", "==", status)
+				.orderBy("position", "desc")
+				.limit(1)
 				.get();
-			// Since we sort in memory to avoid missing index errors:
-			const highestPositionTask = highestPositionSnapshot.docs.map((doc: any) => doc.data()).sort((a: any, b: any) => b.position - a.position)[0];
+
+			const lastPosition = highestPositionSnapshot.empty
+				? 0
+				: (highestPositionSnapshot.docs[0].data().position as number);
 			
-			const newPosition = highestPositionTask ? highestPositionTask.position + 1000 : 1000;
+			const newPosition = Number.isFinite(lastPosition) ? lastPosition + 1000 : 1000;
 			
 			const taskRef = await databases
 				.collection("workspaces")
@@ -302,8 +305,7 @@ const app = new Hono()
 							.number()
 							.int()
 							.positive()
-							.min(1000)
-							.max(1_000_000),
+							.min(1000),
 					})
 				),
 			})
