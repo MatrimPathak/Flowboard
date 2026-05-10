@@ -68,7 +68,6 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .collection("projects")
           .doc(args.projectId)
           .collection("tasks")
-          .where("status", "==", args.status)
           .orderBy("position", "desc")
           .limit(1)
           .get();
@@ -450,6 +449,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
   {
     basePath: "/api/mcp",
     verboseLogs: true,
+    redisUrl: process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_URL,
+    maxDuration: 60,
   }
 );
 
