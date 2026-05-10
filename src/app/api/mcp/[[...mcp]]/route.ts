@@ -68,7 +68,6 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .collection("projects")
           .doc(args.projectId)
           .collection("tasks")
-          .where("status", "==", args.status)
           .orderBy("position", "desc")
           .limit(1)
           .get();
