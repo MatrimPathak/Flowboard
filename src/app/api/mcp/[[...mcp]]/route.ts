@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { TaskStatus } from "@/features/tasks/types";
@@ -509,16 +510,33 @@ function normalizeRequestUrl(req: Request): Request {
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
+  console.log("MCP GET request received", { url: req.url });
   const userId = await authenticateAndGetUserId(req);
+  console.log("MCP Auth result", { userId });
   if (!userId) return new Response("Unauthorized", { 
     status: 401,
     headers: { "Access-Control-Allow-Origin": "*" }
   });
   
   const relativeReq = normalizeRequestUrl(req);
+  console.log("Calling MCP handler");
 
   const response = await mcpContext.run({ userId }, () => handler(relativeReq));
+  console.log("MCP handler returned response", { status: response.status });
   
+  // If it's a 404 or other non-SSE response from the handler, just return it
+  if (response.status !== 200 || !response.headers.get("content-type")?.includes("text/event-stream")) {
+    const newResponse = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: {
+        ...Object.fromEntries(response.headers.entries()),
+        "Access-Control-Allow-Origin": "*",
+      }
+    });
+    return newResponse;
+  }
+
   // Create a new Response to ensure headers are properly applied and mutable
   // This is critical for SSE streaming to bypass Vercel buffering
   return new Response(response.body, {
