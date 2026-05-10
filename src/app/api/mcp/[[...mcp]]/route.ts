@@ -506,6 +506,8 @@ function normalizeRequestUrl(req: Request): Request {
   } as any);
 }
 
+export const runtime = "nodejs";
+
 export async function GET(req: Request) {
   const userId = await authenticateAndGetUserId(req);
   if (!userId) return new Response("Unauthorized", { 
@@ -517,14 +519,20 @@ export async function GET(req: Request) {
 
   const response = await mcpContext.run({ userId }, () => handler(relativeReq));
   
-  // Critical headers for SSE streaming on Vercel/Next.js
-  response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set("Cache-Control", "no-cache, no-transform");
-  response.headers.set("Content-Type", "text/event-stream");
-  response.headers.set("Connection", "keep-alive");
-  response.headers.set("X-Accel-Buffering", "no");
-  
-  return response;
+  // Create a new Response to ensure headers are properly applied and mutable
+  // This is critical for SSE streaming to bypass Vercel buffering
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: {
+      ...Object.fromEntries(response.headers.entries()),
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "no-cache, no-transform",
+      "Content-Type": "text/event-stream",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    }
+  });
 }
 
 export async function POST(req: Request) {
