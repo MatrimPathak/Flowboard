@@ -328,7 +328,15 @@ const app = new Hono()
 			return c.json({ error: "Unauthorized" }, 401);
 		}
 		// Recursively delete project and all subcollections (tasks)
-		await databases.recursiveDelete(projectDoc.ref);
+		try {
+			await databases.recursiveDelete(projectDoc.ref);
+		} catch (error) {
+			console.error(
+				`Failed to delete project: projectId=${projectId}, existingProjectId=${existingProject.$id}, error=`,
+				error
+			);
+			throw error;
+		}
 		return c.json({ data: { $id: existingProject.$id } });
 	});
 
