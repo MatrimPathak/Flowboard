@@ -296,40 +296,45 @@ const app = new Hono()
 		}
 	)
 	.delete("/:projectId", sessionMiddleware, async (c) => {
-		const databases = c.get("databases");
-		const user = c.get("user");
-		const { projectId } = c.req.param();
-		const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
-		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-		
-		let projectDoc = null;
-		for (const wId of workspaceIds) {
-			const pDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(projectId).get();
-			if (pDoc.exists) {
-				projectDoc = pDoc;
-				break;
+		try {
+			const databases = c.get("databases");
+			const user = c.get("user");
+			const { projectId } = c.req.param();
+			const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
+			const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+			
+			let projectDoc = null;
+			for (const wId of workspaceIds) {
+				const pDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(projectId).get();
+				if (pDoc.exists) {
+					projectDoc = pDoc;
+					break;
+				}
 			}
+			
+			if (!projectDoc) return c.json({ error: "Not found" }, 404);
+			const pData = projectDoc.data();
+			const existingProject = { 
+				...pData,
+				$id: projectDoc.id, 
+				$createdAt: normalizeDate(pData),
+			} as Project;
+			
+			const member = await getMember({
+				databases,
+				workspaceId: existingProject.workspaceId,
+				userId: user.$id,
+			});
+			if (!member) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+			// Recursively delete project and all subcollections (tasks)
+			await databases.recursiveDelete(projectDoc.ref);
+			return c.json({ data: { $id: existingProject.$id } });
+		} catch (error) {
+			console.error("PROJECT_DELETE_ERROR:", error);
+			return c.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, 500);
 		}
-		
-		if (!projectDoc) return c.json({ error: "Not found" }, 404);
-		const pData = projectDoc.data();
-		const existingProject = { 
-			...pData,
-			$id: projectDoc.id, 
-			$createdAt: normalizeDate(pData),
-		} as Project;
-		
-		const member = await getMember({
-			databases,
-			workspaceId: existingProject.workspaceId,
-			userId: user.$id,
-		});
-		if (!member) {
-			return c.json({ error: "Unauthorized" }, 401);
-		}
-		// Recursively delete project and all subcollections (tasks)
-		await databases.recursiveDelete(projectDoc.ref);
-		return c.json({ data: { $id: existingProject.$id } });
 	});
 
 export default app;
