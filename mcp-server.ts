@@ -174,6 +174,23 @@ server.registerTool(
 );
 
 server.registerTool(
+  "get_members",
+  {
+    description: "List members within a specific workspace (useful to find assigneeId)",
+    inputSchema: z.object({ workspaceId: z.string() }) as any
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const snapshot = await getAdminDb().collection("members")
+      .where("workspaceId", "==", args.workspaceId)
+      .limit(100)
+      .get();
+    const members = snapshot.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() }));
+    return { content: [{ type: "text" as const, text: JSON.stringify(members, null, 2) }] };
+  }
+);
+
+server.registerTool(
   "create_workspace",
   {
     description: "Create a new workspace",
@@ -236,8 +253,23 @@ server.registerTool(
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
-    await getAdminDb().recursiveDelete(getAdminDb().collection("workspaces").doc(args.workspaceId));
-    return { content: [{ type: "text" as const, text: `Workspace ${args.workspaceId} deleted successfully` }] };
+    const adminDb = getAdminDb();
+    
+    // 1. Delete all membership records for this workspace
+    const membersSnapshot = await adminDb.collection("members")
+      .where("workspaceId", "==", args.workspaceId)
+      .get();
+    
+    const batch = adminDb.batch();
+    membersSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // 2. Recursively delete the workspace and its projects/tasks
+    await adminDb.recursiveDelete(adminDb.collection("workspaces").doc(args.workspaceId));
+    
+    return { content: [{ type: "text" as const, text: `Workspace ${args.workspaceId} and associated members deleted successfully` }] };
   }
 );
 

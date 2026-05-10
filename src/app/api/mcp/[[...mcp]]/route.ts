@@ -328,7 +328,20 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        await adminDb.collection("workspaces").doc(args.workspaceId).delete();
+		
+		// 1. Delete all membership records for this workspace
+		const membersSnapshot = await adminDb.collection("members")
+			.where("workspaceId", "==", args.workspaceId)
+			.get();
+		
+		const batch = adminDb.batch();
+		membersSnapshot.docs.forEach((doc) => {
+			batch.delete(doc.ref);
+		});
+		await batch.commit();
+
+		// 2. Recursively delete the workspace and its projects/tasks
+		await adminDb.recursiveDelete(adminDb.collection("workspaces").doc(args.workspaceId));
         return { content: [{ type: "text" as const, text: `Workspace ${args.workspaceId} deleted successfully` }] };
       }
     );
@@ -422,7 +435,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         if (!projectDoc) throw new Error("Project not found");
         await verifyWorkspaceAccess(projectDoc.data()!.workspaceId);
         
-        await projectDoc.ref.delete();
+        await adminDb.recursiveDelete(projectDoc.ref);
         return { content: [{ type: "text" as const, text: `Project ${args.projectId} deleted successfully` }] };
       }
     );
@@ -441,11 +454,13 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
 
 if (process.env.NODE_ENV !== "production") globalForMcp.mcpHandler = handler;
 
-async function authenticateAndGetUserId(req: Request): Promise<string | null> {
+async function authenticateAndGetUserId(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
   
-  const token = authHeader.substring(7);
+  const token = authHeader.split(" ")[1];
   
   // Local development override
   if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && token === process.env.MCP_SECRET) {
@@ -455,17 +470,19 @@ async function authenticateAndGetUserId(req: Request): Promise<string | null> {
   // Hash the token
   const hash = crypto.createHash("sha256").update(token).digest("hex");
   
-  const snapshot = await adminDb.collection("personal_access_tokens").where("tokenHash", "==", hash).get();
+  // Use a targeted query to find the token and ensure it's not revoked
+  const snapshot = await adminDb.collection("personal_access_tokens")
+    .where("tokenHash", "==", hash)
+    .where("revoked", "==", false)
+    .limit(1)
+    .get();
+
   if (snapshot.empty) {
-    console.error("MCP Auth Failed: Token hash not found in Firestore", { hash });
+    console.error("MCP Auth Failed: Token hash not found or revoked", { hash });
     return null;
   }
-  
+
   const tokenData = snapshot.docs[0].data();
-  if (tokenData.revoked === true) {
-    console.error("MCP Auth Failed: Token revoked", { hash });
-    return null;
-  }
   
   if (tokenData.expiresAt && new Date(tokenData.expiresAt).getTime() < Date.now()) {
     console.error("MCP Auth Failed: Token expired", { hash });

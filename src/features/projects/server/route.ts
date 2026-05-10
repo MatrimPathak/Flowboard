@@ -7,6 +7,7 @@ import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { TaskStatus } from "@/features/tasks/types";
+import { MemberRole } from "@/features/members/types";
 
 const normalizeDate = (data: Record<string, unknown> | undefined) => {
 	const candidate = (data?.$createdAt ?? data?.createdAt) as
@@ -296,48 +297,44 @@ const app = new Hono()
 		}
 	)
 	.delete("/:projectId", sessionMiddleware, async (c) => {
-		const databases = c.get("databases");
 		const user = c.get("user");
+		const databases = c.get("databases");
 		const { projectId } = c.req.param();
-		const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
-		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-		
-		let projectDoc = null;
-		for (const wId of workspaceIds) {
-			const pDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(projectId).get();
-			if (pDoc.exists) {
-				projectDoc = pDoc;
-				break;
-			}
-		}
-		
-		if (!projectDoc) return c.json({ error: "Not found" }, 404);
-		const pData = projectDoc.data();
-		const existingProject = { 
-			...pData,
-			$id: projectDoc.id, 
-			$createdAt: normalizeDate(pData),
-		} as Project;
-		
-		const member = await getMember({
-			databases,
-			workspaceId: existingProject.workspaceId,
-			userId: user.$id,
-		});
-		if (!member) {
-			return c.json({ error: "Unauthorized" }, 401);
-		}
-		// Recursively delete project and all subcollections (tasks)
+
 		try {
+			const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
+			const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+			
+			let projectDoc = null;
+			for (const wId of workspaceIds) {
+				const pDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(projectId).get();
+				if (pDoc.exists) {
+					projectDoc = pDoc;
+					break;
+				}
+			}
+			
+			if (!projectDoc) return c.json({ error: "Not found" }, 404);
+			const workspaceId = projectDoc.data()?.workspaceId;
+
+			const member = await getMember({
+				databases,
+				workspaceId,
+				userId: user.$id,
+			});
+
+			if (!member || member.role !== MemberRole.ADMIN) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			// Recursively delete project and all subcollections (tasks)
 			await databases.recursiveDelete(projectDoc.ref);
+			return c.json({ data: { $id: projectId } });
 		} catch (error) {
-			console.error(
-				`Failed to delete project: projectId=${projectId}, existingProjectId=${existingProject.$id}, error=`,
-				error
-			);
-			throw error;
+			console.error(`[PROJECT_DELETE_ERROR] Project ID: ${projectId}`, error);
+			return c.json({ error: "Internal Server Error" }, 500);
 		}
-		return c.json({ data: { $id: existingProject.$id } });
-	});
+		}
+	);
 
 export default app;
