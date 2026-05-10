@@ -492,6 +492,20 @@ async function authenticateAndGetUserId(req: Request) {
   return tokenData.userId;
 }
 
+/**
+ * Normalizes the incoming request for the MCP handler.
+ * Using the full absolute URL ensures compliance with the Fetch specification.
+ */
+function normalizeRequestUrl(req: Request): Request {
+  const url = new URL(req.url);
+  return new Request(url.toString(), {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+    duplex: "half",
+  } as any);
+}
+
 export async function GET(req: Request) {
   const userId = await authenticateAndGetUserId(req);
   if (!userId) return new Response("Unauthorized", { 
@@ -499,10 +513,17 @@ export async function GET(req: Request) {
     headers: { "Access-Control-Allow-Origin": "*" }
   });
   
-  const response = await mcpContext.run({ userId }, () => handler(req));
+  const relativeReq = normalizeRequestUrl(req);
+
+  const response = await mcpContext.run({ userId }, () => handler(relativeReq));
+  
+  // Critical headers for SSE streaming on Vercel/Next.js
   response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set("Cache-Control", "no-cache");
+  response.headers.set("Cache-Control", "no-cache, no-transform");
+  response.headers.set("Content-Type", "text/event-stream");
   response.headers.set("Connection", "keep-alive");
+  response.headers.set("X-Accel-Buffering", "no");
+  
   return response;
 }
 
@@ -513,7 +534,9 @@ export async function POST(req: Request) {
     headers: { "Access-Control-Allow-Origin": "*" }
   });
   
-  const response = await mcpContext.run({ userId }, () => handler(req));
+  const relativeReq = normalizeRequestUrl(req);
+
+  const response = await mcpContext.run({ userId }, () => handler(relativeReq));
   response.headers.set("Access-Control-Allow-Origin", "*");
   response.headers.set("Cache-Control", "no-cache");
   return response;
