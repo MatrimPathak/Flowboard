@@ -28,7 +28,7 @@ async function verifyWorkspaceAccess(workspaceId: string) {
     .where("workspaceId", "==", workspaceId)
     .where("userId", "==", userId)
     .get();
-    
+
   if (memberSnapshot.empty) {
     throw new Error(`Unauthorized: You do not have access to workspace ${workspaceId}`);
   }
@@ -68,12 +68,13 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .collection("projects")
           .doc(args.projectId)
           .collection("tasks")
+          .where("status", "==", args.status)
           .orderBy("position", "desc")
           .limit(1)
           .get();
-        
+
         const highestPositionTask = highestPositionSnapshot.docs[0]?.data();
-        
+
         const newPosition = highestPositionTask ? highestPositionTask.position + 1000 : 1000;
 
         const taskRef = await adminDb
@@ -116,7 +117,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         // Fetch all projects in the workspace first to avoid collectionGroup index
         const projectsSnapshot = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").get();
         const projectIds = projectsSnapshot.docs.map((doc: any) => doc.id);
-        
+
         const allTasks: any[] = [];
         for (const pId of projectIds) {
           if (args.projectId && pId !== args.projectId) continue;
@@ -129,14 +130,14 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             .get();
           allTasks.push(...tasksSnapshot.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() })));
         }
-        
+
         let tasks = allTasks;
 
         if (args.assigneeId) tasks = tasks.filter((task: any) => task.assigneeId === args.assigneeId);
         if (args.status) tasks = tasks.filter((task: any) => task.status === args.status);
-        
+
         tasks.sort((a: any, b: any) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime());
-        
+
         if (args.search) {
           const lowerSearch = args.search.toLowerCase();
           tasks = tasks.filter((task: any) => task.name.toLowerCase().includes(lowerSearch));
@@ -171,11 +172,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         const { workspaceId, projectId, taskId, ...updates } = args;
         await verifyWorkspaceAccess(workspaceId);
-        
+
         const taskRef = adminDb.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
         const taskDoc = await taskRef.get();
         if (!taskDoc.exists) throw new Error("Task not found");
-        
+
         await taskRef.update(updates);
         const updatedTaskDoc = await taskRef.get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updatedTaskDoc.id, ...updatedTaskDoc.data() }, null, 2) }] };
@@ -198,7 +199,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const taskRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("tasks").doc(args.taskId);
         const taskDoc = await taskRef.get();
         if (!taskDoc.exists) throw new Error("Task not found");
-        
+
         await taskRef.delete();
         return { content: [{ type: "text" as const, text: `Ticket ${args.taskId} deleted successfully` }] };
       }
@@ -215,7 +216,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-        
+
         const workspaces = [];
         for (const wId of workspaceIds) {
           // Only get the workspace itself
@@ -328,20 +329,20 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-		
-		// 1. Delete all membership records for this workspace
-		const membersSnapshot = await adminDb.collection("members")
-			.where("workspaceId", "==", args.workspaceId)
-			.get();
-		
-		const batch = adminDb.batch();
-		membersSnapshot.docs.forEach((doc) => {
-			batch.delete(doc.ref);
-		});
-		await batch.commit();
 
-		// 2. Recursively delete the workspace and its projects/tasks
-		await adminDb.recursiveDelete(adminDb.collection("workspaces").doc(args.workspaceId));
+        // 1. Delete all membership records for this workspace
+        const membersSnapshot = await adminDb.collection("members")
+          .where("workspaceId", "==", args.workspaceId)
+          .get();
+
+        const batch = adminDb.batch();
+        membersSnapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        // 2. Recursively delete the workspace and its projects/tasks
+        await adminDb.recursiveDelete(adminDb.collection("workspaces").doc(args.workspaceId));
         return { content: [{ type: "text" as const, text: `Workspace ${args.workspaceId} deleted successfully` }] };
       }
     );
@@ -390,7 +391,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-        
+
         let projectDoc = null;
         for (const wId of workspaceIds) {
           const pDoc = await adminDb.collection("workspaces").doc(wId).collection("projects").doc(projectId).get();
@@ -399,10 +400,10 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             break;
           }
         }
-        
+
         if (!projectDoc) throw new Error("Project not found");
         await verifyWorkspaceAccess(projectDoc.data()!.workspaceId);
-        
+
         await projectDoc.ref.update(updates);
         const updatedDoc = await projectDoc.ref.get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updatedDoc.id, ...updatedDoc.data() }, null, 2) }] };
@@ -422,7 +423,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-        
+
         let projectDoc = null;
         for (const wId of workspaceIds) {
           const pDoc = await adminDb.collection("workspaces").doc(wId).collection("projects").doc(args.projectId).get();
@@ -431,10 +432,10 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             break;
           }
         }
-        
+
         if (!projectDoc) throw new Error("Project not found");
         await verifyWorkspaceAccess(projectDoc.data()!.workspaceId);
-        
+
         await adminDb.recursiveDelete(projectDoc.ref);
         return { content: [{ type: "text" as const, text: `Project ${args.projectId} deleted successfully` }] };
       }
@@ -449,8 +450,6 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
   {
     basePath: "/api/mcp",
     verboseLogs: true,
-    redisUrl: process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_URL,
-    maxDuration: 60,
   }
 );
 
@@ -461,9 +460,9 @@ async function authenticateAndGetUserId(req: Request) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
-  
+
   const token = authHeader.split(" ")[1];
-  
+
   // Local development override
   if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && token === process.env.MCP_SECRET) {
     return process.env.MCP_USER_ID || "local-dev-user-id";
@@ -471,7 +470,7 @@ async function authenticateAndGetUserId(req: Request) {
 
   // Hash the token
   const hash = crypto.createHash("sha256").update(token).digest("hex");
-  
+
   // Use a targeted query to find the token and ensure it's not revoked
   const snapshot = await adminDb.collection("personal_access_tokens")
     .where("tokenHash", "==", hash)
@@ -485,12 +484,12 @@ async function authenticateAndGetUserId(req: Request) {
   }
 
   const tokenData = snapshot.docs[0].data();
-  
+
   if (tokenData.expiresAt && new Date(tokenData.expiresAt).getTime() < Date.now()) {
     console.error("MCP Auth Failed: Token expired", { hash });
     return null;
   }
-  
+
   return tokenData.userId;
 }
 
@@ -514,17 +513,17 @@ export async function GET(req: Request) {
   console.log("MCP GET request received", { url: req.url });
   const userId = await authenticateAndGetUserId(req);
   console.log("MCP Auth result", { userId });
-  if (!userId) return new Response("Unauthorized", { 
+  if (!userId) return new Response("Unauthorized", {
     status: 401,
     headers: { "Access-Control-Allow-Origin": "*" }
   });
-  
+
   const relativeReq = normalizeRequestUrl(req);
   console.log("Calling MCP handler");
 
   const response = await mcpContext.run({ userId }, () => handler(relativeReq));
   console.log("MCP handler returned response", { status: response.status });
-  
+
   // If it's a 404 or other non-SSE response from the handler, just return it
   if (response.status !== 200 || !response.headers.get("content-type")?.includes("text/event-stream")) {
     const newResponse = new Response(response.body, {
@@ -556,11 +555,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const userId = await authenticateAndGetUserId(req);
-  if (!userId) return new Response("Unauthorized", { 
+  if (!userId) return new Response("Unauthorized", {
     status: 401,
     headers: { "Access-Control-Allow-Origin": "*" }
   });
-  
+
   const relativeReq = normalizeRequestUrl(req);
 
   const response = await mcpContext.run({ userId }, () => handler(relativeReq));
