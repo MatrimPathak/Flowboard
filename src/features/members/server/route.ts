@@ -62,6 +62,7 @@ const app = new Hono()
 					...member,
 					name: memberUser.displayName || memberUser.email,
 					email: memberUser.email,
+					imageUrl: (memberUser as any).photoURL,
 					role: member.role,
 				};
 			});

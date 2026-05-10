@@ -9,6 +9,14 @@ export enum TaskStatus {
 	DONE = "DONE",
 }
 
+export enum TaskType {
+	EPIC = "EPIC",
+	STORY = "STORY",
+	TASK = "TASK",
+	BUG = "BUG",
+	SPIKE = "SPIKE",
+}
+
 export type Task = {
 	$id: string;
 	$createdAt: string;
@@ -20,6 +28,24 @@ export type Task = {
 	dueDate: string;
 	position: number;
 	description?: string;
+	taskType?: TaskType;
+	epicId?: string;
+	storyId?: string;
+	releaseId?: string;
+	acceptanceCriteria?: string;
+	spikeDocument?: string;
+	release?: {
+		$id: string;
+		name: string;
+	};
+	epic?: {
+		$id: string;
+		name: string;
+	};
+	story?: {
+		$id: string;
+		name: string;
+	};
 	project?: Project | null;
 	assignee?: Member | null;
 };

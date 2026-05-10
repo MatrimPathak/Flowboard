@@ -33,7 +33,14 @@ export const ProjectIdClient = () => {
 					/>
 					<p className="text-lg font-semibold">{project.name}</p>
 				</div>
-				<div className="">
+				<div className="flex items-center gap-x-2">
+					<Button variant="secondary" size="sm" asChild>
+						<Link
+							href={`/workspaces/${project.workspaceId}/projects/${project.$id}/releases`}
+						>
+							Releases
+						</Link>
+					</Button>
 					<Button variant="secondary" size="sm" asChild>
 						<Link
 							href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`}

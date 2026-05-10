@@ -28,19 +28,23 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import { TaskStatus } from "../types";
+import { IssueType, TaskPriority, TaskStatus } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
 interface CreateTaskFormProps {
 	onCancel?: () => void;
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
+	sprintOptions?: { id: string; name: string }[];
+	versionOptions?: { id: string; name: string }[];
 }
 
 export const CreateTaskForm = ({
 	onCancel,
 	projectOptions,
 	memberOptions,
+	sprintOptions = [],
+	versionOptions = [],
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
 	const { mutate, isPending } = useCreateTask();
@@ -178,6 +182,60 @@ export const CreateTaskForm = ({
 									</FormItem>
 								)}
 							/>
+							<FormField
+								control={form.control}
+								name="issueType"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Issue Type</FormLabel>
+										<Select
+											defaultValue={field.value}
+											onValueChange={field.onChange}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select Issue Type" />
+												</SelectTrigger>
+											</FormControl>
+											<FormMessage />
+											<SelectContent>
+												{Object.values(IssueType).map((type) => (
+													<SelectItem key={type} value={type}>
+														{snakeCaseToTitleCase(type)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="priority"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Priority</FormLabel>
+										<Select
+											defaultValue={field.value}
+											onValueChange={field.onChange}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select Priority" />
+												</SelectTrigger>
+											</FormControl>
+											<FormMessage />
+											<SelectContent>
+												{Object.values(TaskPriority).map((p) => (
+													<SelectItem key={p} value={p}>
+														{snakeCaseToTitleCase(p)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</FormItem>
+								)}
+							/>
 								<FormField
 									control={form.control}
 									name="projectId"
@@ -221,6 +279,87 @@ export const CreateTaskForm = ({
 										</FormItem>
 									)}
 								/>
+								{sprintOptions.length > 0 && (
+									<FormField
+										control={form.control}
+										name="sprintId"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Sprint (optional)</FormLabel>
+												<Select
+													defaultValue={field.value ?? undefined}
+													onValueChange={field.onChange}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select Sprint" />
+														</SelectTrigger>
+													</FormControl>
+													<FormMessage />
+													<SelectContent>
+														{sprintOptions.map((sprint) => (
+															<SelectItem key={sprint.id} value={sprint.id}>
+																{sprint.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</FormItem>
+										)}
+									/>
+								)}
+								<FormField
+									control={form.control}
+									name="storyPoints"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Story Points (optional)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min={0}
+													placeholder="e.g. 3"
+													value={field.value ?? ""}
+													onChange={(e) => {
+														const val = e.target.value === "" ? undefined : Number(e.target.value);
+														field.onChange(isNaN(val as number) ? field.value : val);
+													}}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								{versionOptions.length > 0 && (
+									<FormField
+										control={form.control}
+										name="fixVersionId"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Version (optional)</FormLabel>
+												<Select
+													defaultValue={field.value ?? undefined}
+													onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select Version" />
+														</SelectTrigger>
+													</FormControl>
+													<FormMessage />
+													<SelectContent>
+														<SelectItem value="none">No version</SelectItem>
+														{versionOptions.map((v) => (
+															<SelectItem key={v.id} value={v.id}>
+																{v.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</FormItem>
+										)}
+									/>
+								)}
 						</div>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">

@@ -11,4 +11,5 @@ export type Member = {
 	role: MemberRole;
 	name?: string;
 	email?: string;
+	imageUrl?: string;
 };

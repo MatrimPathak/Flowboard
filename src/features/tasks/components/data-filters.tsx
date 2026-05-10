@@ -9,10 +9,12 @@ import {
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { FolderIcon, ListCheckIcon, Loader, UserIcon } from "lucide-react";
-import { TaskStatus } from "../types";
+import { FolderIcon, LayersIcon, ListCheckIcon, Loader, TagIcon, UserIcon } from "lucide-react";
+import { TaskStatus, TaskType } from "../types";
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { DatePicker } from "@/components/date-picker";
+import { useGetReleases } from "@/features/releases/api/use-get-releases";
+import { snakeCaseToTitleCase } from "@/lib/utils";
 
 interface DataFiltersProps {
 	hideProjectFilter?: boolean;
@@ -26,7 +28,6 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 	const { data: members, isLoading: isLoadingMembers } = useGetMembers({
 		workspaceId,
 	});
-	const isLoading = isLoadingProjects || isLoadingMembers;
 	const projectOptions = projects?.documents.map((project) => ({
 		label: project.name,
 		value: project.$id,
@@ -35,8 +36,19 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 		label: member.name,
 		value: member.$id,
 	}));
-	const [{ status, assigneeId, projectId, dueDate }, setFilters] =
+	const [{ status, assigneeId, projectId, dueDate, taskType, releaseId }, setFilters] =
 		useTaskFilters();
+	const { data: releases, isLoading: isLoadingReleases } = useGetReleases({
+		workspaceId,
+		projectId: projectId ?? undefined,
+	});
+	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingReleases;
+	
+	const releaseOptions = releases?.documents.map((release) => ({
+		label: release.name,
+		value: release.$id,
+	}));
+
 	const onStatusChange = (value: string) => {
 		setFilters({ status: value === "all" ? null : (value as TaskStatus) });
 	};
@@ -132,6 +144,46 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 					setFilters({ dueDate: date ? date.toISOString() : null });
 				}}
 			></DatePicker>
+			<Select
+				defaultValue={taskType ?? undefined}
+				onValueChange={(value) => setFilters({ taskType: value === "all" ? null : (value as TaskType) })}
+			>
+				<SelectTrigger className="w-full lg:w-auto h-8">
+					<div className="flex items-center pr-2">
+						<LayersIcon className="size-4 mr-2" />
+						<SelectValue placeholder="All Types" />
+					</div>
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="all">All Types</SelectItem>
+					<SelectSeparator />
+					{Object.values(TaskType).map((type) => (
+						<SelectItem key={type} value={type}>
+							{snakeCaseToTitleCase(type)}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<Select
+				defaultValue={releaseId ?? undefined}
+				onValueChange={(value) => setFilters({ releaseId: value === "all" ? null : value })}
+			>
+				<SelectTrigger className="w-full lg:w-auto h-8">
+					<div className="flex items-center pr-2">
+						<TagIcon className="size-4 mr-2" />
+						<SelectValue placeholder="All Releases" />
+					</div>
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="all">All Releases</SelectItem>
+					<SelectSeparator />
+					{releaseOptions?.map((release) => (
+						<SelectItem key={release.value} value={release.value}>
+							{release.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 		</div>
 	);
 };

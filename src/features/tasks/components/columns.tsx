@@ -10,6 +10,8 @@ import { TaskDate } from "./task-date";
 import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { TaskActions } from "./task-actions";
+import Link from "next/link";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 export const columns: ColumnDef<Task>[] = [
 	{
@@ -29,8 +31,16 @@ export const columns: ColumnDef<Task>[] = [
 		},
 		accessorKey: "name",
 		cell: ({ row }) => {
+			const workspaceId = useWorkspaceId();
+			const id = row.original.$id;
 			const name = row.original.name;
-			return <p className="line-clamp-1">{name}</p>;
+			return (
+				<Link href={`/workspaces/${workspaceId}/tasks/${id}`}>
+					<p className="line-clamp-1 font-medium hover:opacity-75 transition">
+						{name}
+					</p>
+				</Link>
+			);
 		},
 	},
 	{
@@ -66,6 +76,29 @@ export const columns: ColumnDef<Task>[] = [
 						column.toggleSorting(column.getIsSorted() === "asc")
 					}
 				>
+					Type
+					<ArrowUpDown className="ml-2 h-4 w-4" />
+				</Button>
+			);
+		},
+		accessorKey: "taskType",
+		cell: ({ row }) => {
+			const type = row.original.taskType;
+			return (
+				<Badge variant="outline">{type ? snakeCaseToTitleCase(type) : "Task"}</Badge>
+			);
+		},
+	},
+	{
+		header: ({ column }) => {
+			return (
+				<Button
+					variant="ghost"
+					className="w-full justify-start -ml-4"
+					onClick={() =>
+						column.toggleSorting(column.getIsSorted() === "asc")
+					}
+				>
 					Assignee
 					<ArrowUpDown className="ml-2 h-4 w-4" />
 				</Button>
@@ -76,7 +109,11 @@ export const columns: ColumnDef<Task>[] = [
 			const assignee = row.original.assignee;
 			return (
 				<div className="flex items-center gap-x-2 text-sm font-medium">
-					<MemberAvatar className="size-6" name={assignee?.name || "Unknown"} />
+					<MemberAvatar
+						className="size-6"
+						name={assignee?.name || "Unknown"}
+						imageUrl={assignee?.imageUrl}
+					/>
 					<p className="line-clamp-1">{assignee?.name || "Unknown"}</p>
 				</div>
 			);
@@ -108,6 +145,31 @@ export const columns: ColumnDef<Task>[] = [
 						imageUrl={project?.imageUrl}
 					/>
 					<p className="line-clamp-1">{project?.name || "Unknown Project"}</p>
+				</div>
+			);
+		},
+	},
+	{
+		header: ({ column }) => {
+			return (
+				<Button
+					variant="ghost"
+					className="w-full justify-start -ml-4"
+					onClick={() =>
+						column.toggleSorting(column.getIsSorted() === "asc")
+					}
+				>
+					Release
+					<ArrowUpDown className="ml-2 h-4 w-4" />
+				</Button>
+			);
+		},
+		accessorKey: "release",
+		cell: ({ row }) => {
+			const release = row.original.release;
+			return (
+				<div className="flex items-center gap-x-2 text-sm font-medium">
+					<p className="line-clamp-1 text-muted-foreground">{release?.name || "None"}</p>
 				</div>
 			);
 		},

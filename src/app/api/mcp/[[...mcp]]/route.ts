@@ -68,7 +68,6 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .collection("projects")
           .doc(args.projectId)
           .collection("tasks")
-          .where("status", "==", args.status)
           .orderBy("position", "desc")
           .limit(1)
           .get();
@@ -461,18 +460,30 @@ async function authenticateAndGetUserId(req: Request) {
     return null;
   }
 
-  const token = authHeader.split(" ")[1];
+  const tokenWithMemberId = authHeader.split(" ")[1];
 
   // Local development override
-  if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && token === process.env.MCP_SECRET) {
+  if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && tokenWithMemberId === process.env.MCP_SECRET) {
     return process.env.MCP_USER_ID || "local-dev-user-id";
   }
 
-  // Hash the token
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
+  // Parse memberId and raw token
+  const [memberId, token] = tokenWithMemberId.includes(":") 
+    ? tokenWithMemberId.split(":") 
+    : [null, tokenWithMemberId];
 
-  // Use a targeted query to find the token and ensure it's not revoked
-  const snapshot = await adminDb.collection("personal_access_tokens")
+  if (!memberId) {
+    console.error("MCP Auth Failed: Legacy token format or missing memberId");
+    return null;
+  }
+
+  // Hash the token
+  const hash = crypto.createHash("sha256").update(tokenWithMemberId).digest("hex");
+
+  // Query the specific subcollection directly (no index needed for subcollection query on single field)
+  const snapshot = await adminDb.collection("members")
+    .doc(memberId)
+    .collection("personal_access_tokens")
     .where("tokenHash", "==", hash)
     .where("revoked", "==", false)
     .limit(1)

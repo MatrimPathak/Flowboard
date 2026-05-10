@@ -5,6 +5,9 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
 import { useGetTask } from "../api/use-get-task";
 import { EditTaskForm } from "./edit-task-form";
+import { useGetTasks } from "../api/use-get-tasks";
+import { useGetReleases } from "@/features/releases/api/use-get-releases";
+import { TaskType } from "../types";
 
 interface EditTaskFormWrapperProps {
 	onCancel: () => void;
@@ -34,7 +37,26 @@ export const EditTaskFormWrapper = ({
 		id: member.$id,
 		name: member.name,
 	}));
-	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask;
+	const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
+		workspaceId,
+	});
+	const { data: releases, isLoading: isLoadingReleases } = useGetReleases({
+		workspaceId,
+	});
+	const epicOptions = tasks?.documents
+		?.filter((task) => task.taskType === TaskType.EPIC)
+		.map((task) => ({ id: task.$id, name: task.name }));
+	const storyOptions = tasks?.documents
+		?.filter((task) => task.taskType === TaskType.STORY)
+		.map((task) => ({ id: task.$id, name: task.name }));
+	const releaseOptions = releases?.documents
+		?.filter((release) => release.status === "ACTIVE" || release.$id === initialValues?.releaseId)
+		.map((release) => ({
+			id: release.$id,
+			name: release.name,
+		}));
+	
+	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask || isLoadingTasks || isLoadingReleases;
 	if (isLoading) {
 		return (
 			<Card className="w-full h-[714px] border-none shadow-none">
@@ -53,6 +75,9 @@ export const EditTaskFormWrapper = ({
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memeberOptions ?? []}
+			epicOptions={epicOptions ?? []}
+			storyOptions={storyOptions ?? []}
+			releaseOptions={releaseOptions ?? []}
 		/>
 	);
 };

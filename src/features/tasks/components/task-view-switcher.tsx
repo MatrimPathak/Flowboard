@@ -18,14 +18,24 @@ import { TaskStatus } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { DataCalender } from "./data-calendar";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { useRouter } from "next/navigation";
 
 interface TaskViewSwitcherProps {
 	hideProjectFilter?: boolean;
+	releaseId?: string;
+	taskType?: string;
+	epicId?: string;
+	storyId?: string;
 }
 
 export const TaskViewSwitcher = ({
 	hideProjectFilter,
+	releaseId,
+	taskType,
+	epicId,
+	storyId,
 }: TaskViewSwitcherProps) => {
+	const router = useRouter();
 	const paramProjectId = useProjectId();
 	const [{ status, assigneeId, projectId, dueDate }] = useTaskFilters();
 	const [view, setView] = useQueryState("task-view", {
@@ -38,6 +48,10 @@ export const TaskViewSwitcher = ({
 		status,
 		assigneeId,
 		dueDate,
+		releaseId,
+		taskType,
+		epicId,
+		storyId,
 	});
 	const { open } = useCreateTaskModal();
 	const { mutate: bulkUpdate } = useBulkUpdateTasks();
@@ -78,7 +92,7 @@ export const TaskViewSwitcher = ({
 					<Button
 						className="w-full lg:w-auto"
 						size="sm"
-						onClick={open}
+						onClick={() => open()}
 					>
 						<PlusIcon className="size-4 mr-2" />
 						New
@@ -97,6 +111,7 @@ export const TaskViewSwitcher = ({
 							<DataTable
 								columns={columns}
 								data={tasks?.documents ?? []}
+								onRowClick={(task: any) => router.push(`/workspaces/${workspaceId}/tasks/${task.$id}`)}
 							/>
 						</TabsContent>
 						<TabsContent className="mt-0" value="kanban">

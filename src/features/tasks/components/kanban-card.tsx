@@ -5,16 +5,23 @@ import { DottedSeperator } from "@/components/dotted-seperator";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "./task-date";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import Link from "next/link";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 interface KanbanCardProps {
 	task: Task;
 }
 
 export const KanbanCard = ({ task }: KanbanCardProps) => {
+	const workspaceId = useWorkspaceId();
 	return (
 		<div className="bg-white p-2.5 mb-1.5 rounded shadow-sm space-y-3">
 			<div className="flex items-start justify-between gap-x-2">
-				<p className="text-sm line-clamp-2">{task.name}</p>
+				<Link href={`/workspaces/${workspaceId}/tasks/${task.$id}`} className="flex-1">
+					<p className="text-sm line-clamp-2 font-medium hover:opacity-75 transition">
+						{task.name}
+					</p>
+				</Link>
 				<TaskActions id={task.$id} projectId={task.projectId}>
 					<MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
 				</TaskActions>
@@ -23,6 +30,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
 			<div className="flex items-center gap-x-1.5">
 				<MemberAvatar
 					name={task.assignee?.name || "Unknown"}
+					imageUrl={task.assignee?.imageUrl}
 					fallbackClassName="text-[10px]"
 				/>
 				<div className="size-1 rounded-full bg-neutral-300" />

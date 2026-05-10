@@ -10,6 +10,10 @@ const pathnameMap = {
 		title: "My Project",
 		desciption: "View tasks of your project here.",
 	},
+	epics: { title: "Epics", desciption: "View all your epics here." },
+	stories: { title: "Stories", desciption: "View all your stories here." },
+	bugs: { title: "Bugs", desciption: "View all your bugs here." },
+	releases: { title: "Releases", desciption: "View all your releases here." },
 };
 
 const defaultMap = {
@@ -21,7 +25,14 @@ export const Navbar = () => {
 	const pathname = usePathname();
 	const pathnameParts = pathname.split("/");
 	const pathnameKey = pathnameParts[3] as keyof typeof pathnameMap;
-	const { title, desciption } = pathnameMap[pathnameKey] || defaultMap;
+	
+	let { title, desciption } = pathnameMap[pathnameKey] || defaultMap;
+	
+	// If viewing a specific task (e.g. /workspaces/wsId/tasks/taskId)
+	if (pathnameKey === "tasks" && pathnameParts.length > 4) {
+		title = "Details";
+		desciption = "View detailed information and linked items.";
+	}
 	return (
 		<nav className="pt-4 px-6 flex items-center justify-between">
 			<div className="flex-col hidden lg:flex">

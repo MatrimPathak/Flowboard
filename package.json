@@ -31,6 +31,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "file-type": "^22.0.1",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.9.0",
     "hono": "^4.6.4",

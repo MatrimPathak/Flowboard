@@ -3,6 +3,8 @@ import { Sidebar } from "@/components/sidebar";
 import { CreateProjectModal } from "@/features/projects/components/create-project-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-model";
 import { EditTaskModal } from "@/features/tasks/components/edit-task-model";
+import { CreateReleaseModal } from "@/features/releases/components/create-release-modal";
+import { EditReleaseModal } from "@/features/releases/components/edit-release-modal";
 import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
 
 
@@ -17,6 +19,8 @@ const DashBoardLayout = ({ children }: DashBoardLayoutProps) => {
 			<CreateProjectModal />
 			<CreateTaskModal />
 			<EditTaskModal />
+			<CreateReleaseModal />
+			<EditReleaseModal />
 			<div className="flex w-full h-full">
 				<div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
 					<Sidebar />

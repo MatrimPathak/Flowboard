@@ -51,7 +51,7 @@ export const KanbanColumnHeader = ({
 				</div>
 			</div>
 			<Button
-				onClick={open}
+				onClick={() => open()}
 				variant="ghost"
 				size="icon"
 				className="size-5"

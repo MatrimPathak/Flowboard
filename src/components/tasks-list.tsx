@@ -24,7 +24,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 					<Button
 						variant="secondary"
 						size="icon"
-						onClick={createTask}
+						onClick={() => createTask()}
 					>
 						<PlusIcon className="size-4 text-neutral-400" />
 					</Button>
