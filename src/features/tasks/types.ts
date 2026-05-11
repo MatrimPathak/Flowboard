@@ -40,6 +40,9 @@ export type Task = {
 	priority?: TaskPriority;
 	parentId?: string;
 	labels?: string[];
+	sprintId?: string | null;
+	storyPoints?: number;
+	epicId?: string;
 	project?: Project | null;
 	assignee?: Member | null;
 };

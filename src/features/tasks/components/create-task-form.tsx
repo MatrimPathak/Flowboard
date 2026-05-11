@@ -35,12 +35,14 @@ interface CreateTaskFormProps {
 	onCancel?: () => void;
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
+	sprintOptions?: { id: string; name: string }[];
 }
 
 export const CreateTaskForm = ({
 	onCancel,
 	projectOptions,
 	memberOptions,
+	sprintOptions = [],
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
 	const { mutate, isPending } = useCreateTask();
@@ -272,6 +274,60 @@ export const CreateTaskForm = ({
 													)}
 												</SelectContent>
 											</Select>
+										</FormItem>
+									)}
+								/>
+								{sprintOptions.length > 0 && (
+									<FormField
+										control={form.control}
+										name="sprintId"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Sprint (optional)</FormLabel>
+												<Select
+													defaultValue={field.value ?? undefined}
+													onValueChange={field.onChange}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select Sprint" />
+														</SelectTrigger>
+													</FormControl>
+													<FormMessage />
+													<SelectContent>
+														{sprintOptions.map((sprint) => (
+															<SelectItem key={sprint.id} value={sprint.id}>
+																{sprint.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</FormItem>
+										)}
+									/>
+								)}
+								<FormField
+									control={form.control}
+									name="storyPoints"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Story Points (optional)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min={0}
+													placeholder="e.g. 3"
+													value={field.value ?? ""}
+													onChange={(e) =>
+														field.onChange(
+															e.target.value === ""
+																? undefined
+																: Number(e.target.value)
+														)
+													}
+												/>
+											</FormControl>
+											<FormMessage />
 										</FormItem>
 									)}
 								/>
