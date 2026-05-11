@@ -7,7 +7,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { getAdminDb } from "./src/lib/firebase-admin";
-import { TaskStatus } from "./src/features/tasks/types";
+import { TaskStatus, IssueType, TaskPriority } from "./src/features/tasks/types";
+import { SprintStatus } from "./src/features/sprints/types";
+import { VersionStatus } from "./src/features/versions/types";
 import { MemberRole } from "./src/features/members/types";
 import { generateInviteCode } from "./src/lib/utils";
 
@@ -52,6 +54,16 @@ server.registerTool(
       dueDate: z.string(),
       assigneeId: z.string(),
       description: z.string().optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+      parentId: z.string().optional().describe("Parent task ID for subtasks"),
+      epicId: z.string().optional().describe("Epic task ID this belongs to"),
+      sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
+      fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
+      storyPoints: z.number().optional(),
+      originalEstimate: z.number().optional().describe("In minutes"),
+      remainingEstimate: z.number().optional().describe("In minutes"),
+      labels: z.array(z.string()).optional(),
     }) as any
   },
   async (args: any) => {
@@ -102,6 +114,11 @@ server.registerTool(
         TaskStatus.DONE,
       ]).optional(),
       search: z.string().optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+      sprintId: z.string().nullable().optional().describe("Filter by sprint ID, or null for backlog items"),
+      epicId: z.string().optional().describe("Filter by epic ID"),
+      fixVersionId: z.string().optional().describe("Filter by version/release ID"),
     }) as any
   },
   async (args: any) => {
@@ -125,9 +142,20 @@ server.registerTool(
     let tasks = allTasks;
     if (args.assigneeId) tasks = tasks.filter((task: any) => task.assigneeId === args.assigneeId);
     if (args.status) tasks = tasks.filter((task: any) => task.status === args.status);
-    
+    if (args.issueType) tasks = tasks.filter((task: any) => task.issueType === args.issueType);
+    if (args.priority) tasks = tasks.filter((task: any) => task.priority === args.priority);
+    if (args.epicId) tasks = tasks.filter((task: any) => task.epicId === args.epicId);
+    if (args.fixVersionId) tasks = tasks.filter((task: any) => task.fixVersionId === args.fixVersionId);
+    if ("sprintId" in args) {
+      if (args.sprintId === null) {
+        tasks = tasks.filter((task: any) => task.sprintId == null);
+      } else if (args.sprintId !== undefined) {
+        tasks = tasks.filter((task: any) => task.sprintId === args.sprintId);
+      }
+    }
+
     tasks.sort((a: any, b: any) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime());
-    
+
     if (args.search) {
       const lowerSearch = args.search.toLowerCase();
       tasks = tasks.filter((task: any) => task.name.toLowerCase().includes(lowerSearch));
@@ -378,6 +406,16 @@ server.registerTool(
       dueDate: z.string().optional(),
       assigneeId: z.string().optional(),
       description: z.string().optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+      parentId: z.string().optional(),
+      epicId: z.string().optional(),
+      sprintId: z.string().nullable().optional(),
+      fixVersionId: z.string().optional(),
+      storyPoints: z.number().optional(),
+      originalEstimate: z.number().optional().describe("In minutes"),
+      remainingEstimate: z.number().optional().describe("In minutes"),
+      labels: z.array(z.string()).optional(),
     }) as any
   },
   async (args: any) => {
@@ -388,6 +426,16 @@ server.registerTool(
     if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
     if (args.assigneeId !== undefined) updates.assigneeId = args.assigneeId;
     if (args.description !== undefined) updates.description = args.description;
+    if (args.issueType !== undefined) updates.issueType = args.issueType;
+    if (args.priority !== undefined) updates.priority = args.priority;
+    if (args.parentId !== undefined) updates.parentId = args.parentId;
+    if (args.epicId !== undefined) updates.epicId = args.epicId;
+    if ("sprintId" in args) updates.sprintId = args.sprintId;
+    if (args.fixVersionId !== undefined) updates.fixVersionId = args.fixVersionId;
+    if (args.storyPoints !== undefined) updates.storyPoints = args.storyPoints;
+    if (args.originalEstimate !== undefined) updates.originalEstimate = args.originalEstimate;
+    if (args.remainingEstimate !== undefined) updates.remainingEstimate = args.remainingEstimate;
+    if (args.labels !== undefined) updates.labels = args.labels;
     
     await getAdminDb()
       .collection("workspaces")
@@ -433,6 +481,328 @@ server.registerTool(
       .delete();
       
     return { content: [{ type: "text" as const, text: `Ticket ${args.taskId} deleted successfully` }] };
+  }
+);
+
+// ── Sprint Tools ──────────────────────────────────────────────────────────────
+
+server.registerTool(
+  "get_sprints",
+  {
+    description: "List sprints in a workspace, optionally filtered by project",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const projectsSnapshot = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").get();
+    const allSprints: any[] = [];
+    for (const pDoc of projectsSnapshot.docs) {
+      if (args.projectId && pDoc.id !== args.projectId) continue;
+      const sprintsSnapshot = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(pDoc.id).collection("sprints").get();
+      allSprints.push(...sprintsSnapshot.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() })));
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify(allSprints, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "create_sprint",
+  {
+    description: "Create a new sprint in a project",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      name: z.string(),
+      goal: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const sprintRef = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").add({
+      name: args.name,
+      goal: args.goal || null,
+      startDate: args.startDate || null,
+      endDate: args.endDate || null,
+      status: SprintStatus.PLANNED,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      $createdAt: new Date().toISOString(),
+    });
+    const doc = await sprintRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_sprint",
+  {
+    description: "Update an existing sprint",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      sprintId: z.string(),
+      name: z.string().optional(),
+      goal: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    const { workspaceId, projectId, sprintId, ...updates } = args;
+    await verifyWorkspaceAccess(workspaceId);
+    const sprintRef = getAdminDb().collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("sprints").doc(sprintId);
+    const sprintDoc = await sprintRef.get();
+    if (!sprintDoc.exists) throw new Error("Sprint not found");
+    await sprintRef.update(updates);
+    const updated = await sprintRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "start_sprint",
+  {
+    description: "Start a planned sprint, setting its status to ACTIVE",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      sprintId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const sprintRef = getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").doc(args.sprintId);
+    const sprintDoc = await sprintRef.get();
+    if (!sprintDoc.exists) throw new Error("Sprint not found");
+    await sprintRef.update({ status: SprintStatus.ACTIVE });
+    const updated = await sprintRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "complete_sprint",
+  {
+    description: "Complete an active sprint. Incomplete tasks (not DONE) are moved to the backlog (sprintId set to null).",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      sprintId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const adminDb = getAdminDb();
+    const sprintRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").doc(args.sprintId);
+    const sprintDoc = await sprintRef.get();
+    if (!sprintDoc.exists) throw new Error("Sprint not found");
+
+    const sprintTasks = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("tasks")
+      .where("sprintId", "==", args.sprintId)
+      .get();
+
+    const batch = adminDb.batch();
+    sprintTasks.docs.forEach((doc: any) => {
+      if (doc.data().status !== TaskStatus.DONE) {
+        batch.update(doc.ref, { sprintId: null });
+      }
+    });
+    batch.update(sprintRef, { status: SprintStatus.COMPLETED });
+    await batch.commit();
+
+    const updated = await sprintRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "delete_sprint",
+  {
+    description: "Delete a sprint (only PLANNED sprints can be deleted)",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      sprintId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const adminDb = getAdminDb();
+    const sprintRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").doc(args.sprintId);
+    const sprintDoc = await sprintRef.get();
+    if (!sprintDoc.exists) throw new Error("Sprint not found");
+    if (sprintDoc.data()!.status !== SprintStatus.PLANNED) throw new Error("Only PLANNED sprints can be deleted");
+
+    const affectedTasks = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("tasks")
+      .where("sprintId", "==", args.sprintId)
+      .get();
+
+    const batch = adminDb.batch();
+    affectedTasks.docs.forEach((doc: any) => {
+      batch.update(doc.ref, { sprintId: null });
+    });
+    batch.delete(sprintRef);
+    await batch.commit();
+    return { content: [{ type: "text" as const, text: `Sprint ${args.sprintId} deleted successfully` }] };
+  }
+);
+
+// ── Version / Release Tools ───────────────────────────────────────────────────
+
+server.registerTool(
+  "get_versions",
+  {
+    description: "List versions (releases) in a workspace, optionally filtered by project",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const projectsSnapshot = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").get();
+    const allVersions: any[] = [];
+    for (const pDoc of projectsSnapshot.docs) {
+      if (args.projectId && pDoc.id !== args.projectId) continue;
+      const versionsSnapshot = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(pDoc.id).collection("versions").get();
+      allVersions.push(...versionsSnapshot.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() })));
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify(allVersions, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "create_version",
+  {
+    description: "Create a new version (release) in a project",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      name: z.string(),
+      description: z.string().optional(),
+      startDate: z.string().optional(),
+      releaseDate: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const versionRef = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").add({
+      name: args.name,
+      description: args.description || null,
+      startDate: args.startDate || null,
+      releaseDate: args.releaseDate || null,
+      status: VersionStatus.UNRELEASED,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      $createdAt: new Date().toISOString(),
+    });
+    const doc = await versionRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_version",
+  {
+    description: "Update an existing version (release)",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      versionId: z.string(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      startDate: z.string().optional(),
+      releaseDate: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    const { workspaceId, projectId, versionId, ...updates } = args;
+    await verifyWorkspaceAccess(workspaceId);
+    const versionRef = getAdminDb().collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("versions").doc(versionId);
+    const versionDoc = await versionRef.get();
+    if (!versionDoc.exists) throw new Error("Version not found");
+    await versionRef.update(updates);
+    const updated = await versionRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "release_version",
+  {
+    description: "Mark a version as released",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      versionId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const versionRef = getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").doc(args.versionId);
+    const versionDoc = await versionRef.get();
+    if (!versionDoc.exists) throw new Error("Version not found");
+    await versionRef.update({ status: VersionStatus.RELEASED });
+    const updated = await versionRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "archive_version",
+  {
+    description: "Archive a version",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      versionId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const versionRef = getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").doc(args.versionId);
+    const versionDoc = await versionRef.get();
+    if (!versionDoc.exists) throw new Error("Version not found");
+    await versionRef.update({ status: VersionStatus.ARCHIVED });
+    const updated = await versionRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "delete_version",
+  {
+    description: "Delete a version and clear its fixVersionId from all associated tasks",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      versionId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const adminDb = getAdminDb();
+    const versionRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").doc(args.versionId);
+    const versionDoc = await versionRef.get();
+    if (!versionDoc.exists) throw new Error("Version not found");
+
+    const affectedTasks = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("tasks")
+      .where("fixVersionId", "==", args.versionId)
+      .get();
+
+    const batch = adminDb.batch();
+    affectedTasks.docs.forEach((doc: any) => {
+      batch.update(doc.ref, { fixVersionId: null });
+    });
+    batch.delete(versionRef);
+    await batch.commit();
+
+    return { content: [{ type: "text" as const, text: `Version ${args.versionId} deleted successfully` }] };
   }
 );
 
