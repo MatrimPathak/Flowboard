@@ -8,6 +8,7 @@ import { TaskDate } from "./task-date";
 import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
+import { TaskPriority } from "../types";
 
 interface TaskOverviewProps {
 	task: Task;
@@ -51,6 +52,31 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							{snakeCaseToTitleCase(task.status)}
 						</Badge>
 					</OverviewProperty>
+					{task.issueType && (
+						<OverviewProperty label="Issue Type">
+							<Badge variant="outline">
+								{snakeCaseToTitleCase(task.issueType)}
+							</Badge>
+						</OverviewProperty>
+					)}
+					{task.priority && (
+						<OverviewProperty label="Priority">
+							<Badge variant={task.priority as TaskPriority}>
+								{snakeCaseToTitleCase(task.priority)}
+							</Badge>
+						</OverviewProperty>
+					)}
+					{task.labels && task.labels.length > 0 && (
+						<OverviewProperty label="Labels">
+							<div className="flex flex-wrap gap-1">
+								{task.labels.map((label, index) => (
+									<Badge key={`${label}-${index}`} variant="secondary">
+										{label}
+									</Badge>
+								))}
+							</div>
+						</OverviewProperty>
+					)}
 				</div>
 			</div>
 		</div>

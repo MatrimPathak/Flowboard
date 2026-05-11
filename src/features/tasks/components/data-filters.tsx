@@ -9,8 +9,8 @@ import {
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { FolderIcon, ListCheckIcon, Loader, UserIcon } from "lucide-react";
-import { TaskStatus } from "../types";
+import { FolderIcon, ListCheckIcon, Loader, TagIcon, UserIcon } from "lucide-react";
+import { IssueType, TaskPriority, TaskStatus } from "../types";
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { DatePicker } from "@/components/date-picker";
 
@@ -35,7 +35,7 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 		label: member.name,
 		value: member.$id,
 	}));
-	const [{ status, assigneeId, projectId, dueDate }, setFilters] =
+	const [{ status, assigneeId, projectId, dueDate, priority, issueType }, setFilters] =
 		useTaskFilters();
 	const onStatusChange = (value: string) => {
 		setFilters({ status: value === "all" ? null : (value as TaskStatus) });
@@ -45,6 +45,12 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 	};
 	const onProjectChange = (value: string) => {
 		setFilters({ projectId: value === "all" ? null : (value as string) });
+	};
+	const onPriorityChange = (value: string) => {
+		setFilters({ priority: value === "all" ? null : (value as TaskPriority) });
+	};
+	const onIssueTypeChange = (value: string) => {
+		setFilters({ issueType: value === "all" ? null : (value as IssueType) });
 	};
 	if (isLoading) {
 		return (
@@ -124,6 +130,46 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 					</SelectContent>
 				</Select>
 			)}
+			<Select
+				defaultValue={priority ?? undefined}
+				onValueChange={(value) => onPriorityChange(value)}
+			>
+				<SelectTrigger className="w-full lg:w-auto h-8">
+					<div className="flex items-center pr-2">
+						<TagIcon className="size-4 mr-2" />
+						<SelectValue placeholder="All Priorities" />
+					</div>
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="all">All Priorities</SelectItem>
+					<SelectSeparator />
+					{Object.values(TaskPriority).map((p) => (
+						<SelectItem key={p} value={p}>
+							{p.charAt(0) + p.slice(1).toLowerCase()}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<Select
+				defaultValue={issueType ?? undefined}
+				onValueChange={(value) => onIssueTypeChange(value)}
+			>
+				<SelectTrigger className="w-full lg:w-auto h-8">
+					<div className="flex items-center pr-2">
+						<ListCheckIcon className="size-4 mr-2" />
+						<SelectValue placeholder="All Types" />
+					</div>
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="all">All Types</SelectItem>
+					<SelectSeparator />
+					{Object.values(IssueType).map((t) => (
+						<SelectItem key={t} value={t}>
+							{t.charAt(0) + t.slice(1).toLowerCase()}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 			<DatePicker
 				className="h-8 w-full lg:w-auto"
 				placeholder="Due Date"

@@ -7,6 +7,7 @@ import { useGetTask } from "@/features/tasks/api/use-get-task";
 import { TaskBreadcrumbs } from "@/features/tasks/components/task-breadcrumbs";
 import { TaskDescription } from "@/features/tasks/components/task-description";
 import { TaskOverview } from "@/features/tasks/components/task-overview";
+import { TaskComments } from "@/features/tasks/components/task-comments";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
 
 export const TaskIdClient = () => {
@@ -22,6 +23,8 @@ export const TaskIdClient = () => {
 				<TaskOverview task={data} />
 				<TaskDescription task={data} />
 			</div>
+			<DottedSeperator className="my-6" />
+			<TaskComments taskId={data.$id} />
 		</div>
 	);
 };

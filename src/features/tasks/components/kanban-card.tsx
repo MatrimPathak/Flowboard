@@ -1,10 +1,12 @@
 import { MoreHorizontalIcon } from "lucide-react";
-import { Task } from "../types";
+import { Task, TaskPriority } from "../types";
 import { TaskActions } from "./task-actions";
 import { DottedSeperator } from "@/components/dotted-seperator";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "./task-date";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { Badge } from "@/components/ui/badge";
+import { snakeCaseToTitleCase } from "@/lib/utils";
 
 interface KanbanCardProps {
 	task: Task;
@@ -19,6 +21,20 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
 					<MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
 				</TaskActions>
 			</div>
+			{(task.priority || task.issueType) && (
+				<div className="flex items-center gap-x-1 flex-wrap">
+					{task.issueType && (
+						<Badge variant="outline" className="text-[10px] px-1 py-0">
+							{snakeCaseToTitleCase(task.issueType)}
+						</Badge>
+					)}
+					{task.priority && (
+						<Badge variant={task.priority as TaskPriority} className="text-[10px] px-1 py-0">
+							{snakeCaseToTitleCase(task.priority)}
+						</Badge>
+					)}
+				</div>
+			)}
 			<DottedSeperator />
 			<div className="flex items-center gap-x-1.5">
 				<MemberAvatar

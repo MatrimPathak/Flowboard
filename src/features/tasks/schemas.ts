@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TaskStatus } from "./types";
+import { IssueType, TaskPriority, TaskStatus } from "./types";
 
 export const createTaskSchema = z.object({
 	name: z.string().trim().min(1, "Required"),
@@ -9,4 +9,12 @@ export const createTaskSchema = z.object({
 	dueDate: z.coerce.date(),
 	assigneeId: z.string().trim().min(1, "Required"),
 	description: z.string().optional(),
+	issueType: z.nativeEnum(IssueType).optional(),
+	priority: z.nativeEnum(TaskPriority).optional(),
+	parentId: z.string().trim().min(1).optional(),
+	labels: z.array(z.string().trim().min(1)).optional(),
+});
+
+export const createCommentSchema = z.object({
+	content: z.string().trim().min(1, "Required"),
 });

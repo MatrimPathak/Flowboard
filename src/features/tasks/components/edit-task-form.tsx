@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 import { createTaskSchema } from "../schemas";
 import { DatePicker } from "@/components/date-picker";
 import {
@@ -26,7 +26,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import { Task, TaskStatus } from "../types";
+import { IssueType, Task, TaskPriority, TaskStatus } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { useUpdateTask } from "../api/use-update-task";
 
@@ -199,6 +199,60 @@ export const EditTaskForm = ({
 											</SelectContent>
 										</Select>
 										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="issueType"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Issue Type</FormLabel>
+										<Select
+											defaultValue={field.value}
+											onValueChange={field.onChange}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select Issue Type" />
+												</SelectTrigger>
+											</FormControl>
+											<FormMessage />
+											<SelectContent>
+												{Object.values(IssueType).map((type) => (
+													<SelectItem key={type} value={type}>
+														{snakeCaseToTitleCase(type)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="priority"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Priority</FormLabel>
+										<Select
+											defaultValue={field.value}
+											onValueChange={field.onChange}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select Priority" />
+												</SelectTrigger>
+											</FormControl>
+											<FormMessage />
+											<SelectContent>
+												{Object.values(TaskPriority).map((p) => (
+													<SelectItem key={p} value={p}>
+														{snakeCaseToTitleCase(p)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</FormItem>
 								)}
 							/>
