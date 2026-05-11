@@ -36,6 +36,7 @@ interface EditTaskFormProps {
 	memberOptions: { id: string; name: string }[];
 	initalValues: Task;
 	sprintOptions?: { id: string; name: string }[];
+	versionOptions?: { id: string; name: string }[];
 }
 
 export const EditTaskForm = ({
@@ -44,6 +45,7 @@ export const EditTaskForm = ({
 	memberOptions,
 	initalValues: initialValues,
 	sprintOptions = [],
+	versionOptions = [],
 }: EditTaskFormProps) => {
 	const { mutate, isPending } = useUpdateTask();
 	const form = useForm<z.infer<typeof createTaskSchema>>({
@@ -352,6 +354,35 @@ export const EditTaskForm = ({
 									</FormItem>
 								)}
 							/>
+							{versionOptions.length > 0 && (
+								<FormField
+									control={form.control}
+									name="fixVersionId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Version (optional)</FormLabel>
+											<Select
+												defaultValue={field.value ?? undefined}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Version" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{versionOptions.map((v) => (
+														<SelectItem key={v.id} value={v.id}>
+															{v.name}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FormItem>
+									)}
+								/>
+							)}
 						</div>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">

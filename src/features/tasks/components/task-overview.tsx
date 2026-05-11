@@ -14,6 +14,7 @@ import { TaskPriority } from "../types";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { TaskWatchers } from "./task-watchers";
+import { useGetVersions } from "@/features/versions/api/use-get-versions";
 
 interface TaskOverviewProps {
 	task: Task;
@@ -23,10 +24,18 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 	const { open } = useEditTaskModal();
 	const { data: currentUser } = useCurrent();
 	const { data: membersData } = useGetMembers({ workspaceId: task.workspaceId });
+	const { data: versionsData } = useGetVersions({
+		workspaceId: task.workspaceId,
+		projectId: task.projectId,
+		enabled: !!task.fixVersionId,
+	});
 	const currentMember = membersData?.documents?.find(
 		(m) => m.userId === currentUser?.$id
 	);
 	const currentMemberId = currentMember?.$id ?? "";
+	const fixVersionName = task.fixVersionId
+		? versionsData?.documents?.find((v) => v.$id === task.fixVersionId)?.name
+		: undefined;
 	return (
 		<div className="flex flex-col gap-y-4 col-span-1">
 			<div className="bg-muted rounded-lg p-4">
@@ -74,6 +83,13 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 						<OverviewProperty label="Priority">
 							<Badge variant={task.priority as TaskPriority}>
 								{snakeCaseToTitleCase(task.priority)}
+							</Badge>
+						</OverviewProperty>
+					)}
+					{task.fixVersionId && (
+						<OverviewProperty label="Version">
+							<Badge variant="outline">
+								{fixVersionName ?? task.fixVersionId}
 							</Badge>
 						</OverviewProperty>
 					)}

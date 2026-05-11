@@ -5,6 +5,8 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
 import { useGetTask } from "../api/use-get-task";
 import { EditTaskForm } from "./edit-task-form";
+import { useGetVersions } from "@/features/versions/api/use-get-versions";
+import { VersionStatus } from "@/features/versions/types";
 
 interface EditTaskFormWrapperProps {
 	onCancel: () => void;
@@ -25,6 +27,12 @@ export const EditTaskFormWrapper = ({
 	const { data: members, isLoading: isLoadingMembers } = useGetMembers({
 		workspaceId,
 	});
+	const projectId = initialValues?.projectId ?? "";
+	const { data: versions, isLoading: isLoadingVersions } = useGetVersions({
+		workspaceId,
+		projectId,
+		enabled: !!projectId,
+	});
 	const projectOptions = projects?.documents.map((project) => ({
 		id: project.$id,
 		name: project.name,
@@ -34,7 +42,10 @@ export const EditTaskFormWrapper = ({
 		id: member.$id,
 		name: member.name,
 	}));
-	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask;
+	const versionOptions = (versions?.documents ?? [])
+		.filter((v) => v.status === VersionStatus.UNRELEASED || v.$id === initialValues?.fixVersionId)
+		.map((v) => ({ id: v.$id, name: v.name }));
+	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask || (!!projectId && isLoadingVersions);
 	if (isLoading) {
 		return (
 			<Card className="w-full h-[714px] border-none shadow-none">
@@ -53,6 +64,7 @@ export const EditTaskFormWrapper = ({
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memeberOptions ?? []}
+			versionOptions={versionOptions}
 		/>
 	);
 };
