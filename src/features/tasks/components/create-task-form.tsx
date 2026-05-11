@@ -36,6 +36,7 @@ interface CreateTaskFormProps {
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
 	sprintOptions?: { id: string; name: string }[];
+	versionOptions?: { id: string; name: string }[];
 }
 
 export const CreateTaskForm = ({
@@ -43,6 +44,7 @@ export const CreateTaskForm = ({
 	projectOptions,
 	memberOptions,
 	sprintOptions = [],
+	versionOptions = [],
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
 	const { mutate, isPending } = useCreateTask();
@@ -328,6 +330,36 @@ export const CreateTaskForm = ({
 										</FormItem>
 									)}
 								/>
+								{versionOptions.length > 0 && (
+									<FormField
+										control={form.control}
+										name="fixVersionId"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Version (optional)</FormLabel>
+												<Select
+													defaultValue={field.value ?? undefined}
+													onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select Version" />
+														</SelectTrigger>
+													</FormControl>
+													<FormMessage />
+													<SelectContent>
+														<SelectItem value="none">No version</SelectItem>
+														{versionOptions.map((v) => (
+															<SelectItem key={v.id} value={v.id}>
+																{v.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</FormItem>
+										)}
+									/>
+								)}
 						</div>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">

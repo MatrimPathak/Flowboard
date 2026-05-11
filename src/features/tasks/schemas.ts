@@ -16,6 +16,9 @@ export const createTaskSchema = z.object({
 	sprintId: z.string().trim().min(1).nullable().optional(),
 	storyPoints: z.number().int().min(0).optional(),
 	epicId: z.string().trim().min(1).optional(),
+	fixVersionId: z.string().trim().min(1).optional(),
+	originalEstimate: z.number().int().min(0).optional(),
+	remainingEstimate: z.number().int().min(0).optional(),
 });
 
 export const createCommentSchema = z.object({
@@ -50,6 +53,14 @@ export const addAttachmentSchema = z.object({
 });
 
 export const watchTaskSchema = z.object({
+	workspaceId: z.string().trim().min(1, "Required"),
+	projectId: z.string().trim().min(1, "Required"),
+});
+
+export const logWorkSchema = z.object({
+	timeSpent: z.number().int().min(1, "Must be at least 1 minute"),
+	date: z.coerce.date(),
+	description: z.string().optional(),
 	workspaceId: z.string().trim().min(1, "Required"),
 	projectId: z.string().trim().min(1, "Required"),
 });

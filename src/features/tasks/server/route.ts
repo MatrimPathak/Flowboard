@@ -1,13 +1,30 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { addAttachmentSchema, addLinkSchema, createCommentSchema, createTaskSchema, watchTaskSchema } from "../schemas";
+import { addLinkSchema, createCommentSchema, createTaskSchema, logWorkSchema, watchTaskSchema } from "../schemas";
 import { getMember } from "@/features/members/utils";
 import { z } from "zod";
 import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types";
 import { Project } from "@/features/projects/types";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminStorage } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { fileTypeFromBuffer } from "file-type";
+
+const ALLOWED_MIME_TYPES = new Set([
+	"image/jpeg",
+	"image/png",
+	"image/gif",
+	"image/webp",
+	"image/svg+xml",
+	"application/pdf",
+	"text/plain",
+	"application/zip",
+	"application/x-zip-compressed",
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	"application/msword",
+]);
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const BACKLOG_SPRINT_SENTINEL = "backlog";
 
@@ -271,6 +288,9 @@ const app = new Hono()
 				sprintId,
 				storyPoints,
 				epicId,
+				fixVersionId,
+				originalEstimate,
+				remainingEstimate,
 			} = c.req.valid("json");
 			const member = await getMember({
 				databases,
@@ -318,6 +338,9 @@ workspaceId,
 					...(sprintId !== undefined ? { sprintId } : {}),
 					...(storyPoints !== undefined ? { storyPoints } : {}),
 					...(epicId !== undefined ? { epicId } : {}),
+					...(fixVersionId !== undefined ? { fixVersionId } : {}),
+					...(originalEstimate !== undefined ? { originalEstimate } : {}),
+					...(remainingEstimate !== undefined ? { remainingEstimate } : {}),
 				});
 			const doc = await taskRef.get();
 			const data = doc.data();
@@ -436,6 +459,9 @@ workspaceId,
 				sprintId,
 				storyPoints,
 				epicId,
+				fixVersionId,
+				originalEstimate,
+				remainingEstimate,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
 			
@@ -525,6 +551,9 @@ workspaceId,
 				...(sprintId !== undefined ? { sprintId } : {}),
 				...(storyPoints !== undefined ? { storyPoints } : {}),
 				...(epicId !== undefined ? { epicId } : {}),
+				...(fixVersionId !== undefined ? { fixVersionId } : {}),
+				...(originalEstimate !== undefined ? { originalEstimate } : {}),
+				...(remainingEstimate !== undefined ? { remainingEstimate } : {}),
 			});
 
 			// Write activity entries after main update
@@ -1002,12 +1031,43 @@ workspaceId,
 	.post(
 		"/:taskId/attachments",
 		sessionMiddleware,
-		zValidator("json", addAttachmentSchema),
 		async (c) => {
 			const { taskId } = c.req.param();
 			const currentUser = c.get("user");
 			const databases = c.get("databases");
-			const { url, name, workspaceId, projectId } = c.req.valid("json");
+
+			let formData: FormData;
+			try {
+				formData = await c.req.formData();
+			} catch {
+				return c.json({ error: "Expected multipart/form-data" }, 400);
+			}
+
+			const file = formData.get("file") as File | null;
+			const workspaceId = formData.get("workspaceId") as string | null;
+			const projectId = formData.get("projectId") as string | null;
+
+			if (!file || !(file instanceof File)) {
+				return c.json({ error: "file is required" }, 400);
+			}
+			if (!workspaceId || !projectId) {
+				return c.json({ error: "workspaceId and projectId are required" }, 400);
+			}
+			if (file.size > MAX_FILE_SIZE) {
+				return c.json({ error: "File exceeds 10 MB limit" }, 400);
+			}
+			if (file.size === 0) {
+				return c.json({ error: "File is empty" }, 400);
+			}
+
+			const arrayBuffer = await file.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+
+			const fileTypeResult = await fileTypeFromBuffer(buffer);
+			const detectedMime = fileTypeResult?.mime;
+			if (!detectedMime || !ALLOWED_MIME_TYPES.has(detectedMime)) {
+				return c.json({ error: `File type ${detectedMime ?? "unknown"} is not allowed` }, 400);
+			}
 
 			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -1016,11 +1076,32 @@ workspaceId,
 			const taskDoc = await taskRef.get();
 			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
 
+			const timestamp = Date.now();
+			const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+			const storagePath = `attachments/${workspaceId}/${taskId}/${timestamp}-${safeName}`;
+
+			const bucket = adminStorage.bucket();
+			const fileRef = bucket.file(storagePath);
+
+			await fileRef.save(buffer, {
+				metadata: { contentType: detectedMime },
+			});
+
+			const expiresAt = new Date();
+			expiresAt.setDate(expiresAt.getDate() + 7);
+			const [signedUrl] = await fileRef.getSignedUrl({
+				action: "read",
+				expires: expiresAt,
+			});
+
 			const memberName = await resolveMemberName(currentUser.$id);
 			const attachRef = await taskRef.collection("attachments").add({
 				taskId,
-				url,
-				name,
+				url: signedUrl,
+				name: file.name,
+				fileType: detectedMime,
+				fileSize: buffer.length,
+				storagePath,
 				uploadedByMemberId: member.$id,
 				$createdAt: new Date().toISOString(),
 			});
@@ -1030,7 +1111,7 @@ workspaceId,
 				memberId: member.$id,
 				memberName,
 				type: "ATTACHMENT_ADDED",
-				newValue: name,
+				newValue: file.name,
 				$createdAt: new Date().toISOString(),
 			});
 
@@ -1069,7 +1150,17 @@ workspaceId,
 			return c.json({ error: "Forbidden" }, 403);
 		}
 		const attachName = attachDoc.data()?.name ?? attachmentId;
+		const storagePath = attachDoc.data()?.storagePath;
 		const memberName = await resolveMemberName(currentUser.$id);
+
+		// Delete from Firebase Storage if a path is recorded
+		if (storagePath) {
+			try {
+				await adminStorage.bucket().file(storagePath).delete();
+			} catch {
+				// Non-fatal: file may have already been deleted
+			}
+		}
 
 		await taskRef.collection("attachments").doc(attachmentId).delete();
 		await taskRef.collection("activity").add({
@@ -1143,6 +1234,151 @@ workspaceId,
 
 			return c.json({ data: { memberId: member.$id } });
 		}
-	);
+	)
+	// ── Worklogs ──────────────────────────────────────────────────────────────
+	.get("/:taskId/worklogs", sessionMiddleware, async (c) => {
+		const { taskId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef) return c.json({ error: "Not found" }, 404);
+
+		const worklogsSnapshot = await taskRef.collection("worklogs").get();
+		const documents = worklogsSnapshot.docs
+			.map((doc: any) => {
+				const data = doc.data();
+				return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
+			})
+			.sort((a: any, b: any) => {
+				const aTime = a.$createdAt ? new Date(a.$createdAt).getTime() : 0;
+				const bTime = b.$createdAt ? new Date(b.$createdAt).getTime() : 0;
+				return bTime - aTime;
+			});
+
+		return c.json({ data: { documents, total: documents.length } });
+	})
+	.post(
+		"/:taskId/worklogs",
+		sessionMiddleware,
+		zValidator("json", logWorkSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { timeSpent, date, description, workspaceId, projectId } = c.req.valid("json");
+
+			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
+			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const taskRef = databases.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
+			const taskDoc = await taskRef.get();
+			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
+
+			const taskData = taskDoc.data();
+			const currentTimeSpent = taskData?.timeSpent ?? 0;
+			const currentRemaining = taskData?.remainingEstimate ?? null;
+
+			const memberName = await resolveMemberName(currentUser.$id);
+			const worklogRef = await taskRef.collection("worklogs").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				timeSpent,
+				date: date.toISOString(),
+				$createdAt: new Date().toISOString(),
+				...(description !== undefined ? { description } : {}),
+			});
+
+			const newTimeSpent = currentTimeSpent + timeSpent;
+			const updates: Record<string, unknown> = { timeSpent: newTimeSpent };
+			if (currentRemaining !== null) {
+				updates.remainingEstimate = Math.max(0, currentRemaining - timeSpent);
+			}
+			await taskRef.update(updates);
+
+			await taskRef.collection("activity").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				type: "WORK_LOGGED",
+				newValue: String(timeSpent),
+				$createdAt: new Date().toISOString(),
+			});
+
+			const worklogDoc = await worklogRef.get();
+			const data = worklogDoc.data();
+			return c.json({ data: { ...data, $id: worklogDoc.id, $createdAt: normalizeDate(data) } });
+		}
+	)
+	.delete("/:taskId/worklogs/:worklogId", sessionMiddleware, async (c) => {
+		const { taskId, worklogId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		let foundWorkspaceId: string | null = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; foundWorkspaceId = wId; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef || !foundWorkspaceId) return c.json({ error: "Not found" }, 404);
+
+		const member = await getMember({ databases, workspaceId: foundWorkspaceId, userId: currentUser.$id });
+		if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+		const worklogDoc = await taskRef.collection("worklogs").doc(worklogId).get();
+		if (!worklogDoc.exists) return c.json({ error: "Not found" }, 404);
+
+		const worklogData = worklogDoc.data();
+		const worklogMemberId = worklogData?.memberId;
+		const deletedTimeSpent = worklogData?.timeSpent ?? 0;
+		if (worklogMemberId && worklogMemberId !== member.$id && member.role !== "ADMIN") {
+			return c.json({ error: "Forbidden" }, 403);
+		}
+
+		const memberName = await resolveMemberName(currentUser.$id);
+		await taskRef.collection("worklogs").doc(worklogId).delete();
+
+		const taskDoc = await taskRef.get();
+		const taskData = taskDoc.data();
+		const currentTimeSpent = taskData?.timeSpent ?? 0;
+		const currentRemaining = taskData?.remainingEstimate ?? null;
+		const newTimeSpent = Math.max(0, currentTimeSpent - deletedTimeSpent);
+		const updates: Record<string, unknown> = { timeSpent: newTimeSpent };
+		if (currentRemaining !== null) {
+			updates.remainingEstimate = currentRemaining + deletedTimeSpent;
+		}
+		await taskRef.update(updates);
+
+		await taskRef.collection("activity").add({
+			taskId,
+			memberId: member.$id,
+			memberName,
+			type: "WORKLOG_DELETED",
+			oldValue: worklogId,
+			$createdAt: new Date().toISOString(),
+		});
+
+		return c.json({ data: { worklogId } });
+	});
 
 export default app;

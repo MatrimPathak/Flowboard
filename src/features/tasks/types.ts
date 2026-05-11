@@ -43,6 +43,10 @@ export type Task = {
 	sprintId?: string | null;
 	storyPoints?: number;
 	epicId?: string;
+	fixVersionId?: string;
+	originalEstimate?: number;  // minutes
+	remainingEstimate?: number; // minutes
+	timeSpent?: number;         // computed from worklogs (for display)
 	project?: Project | null;
 	assignee?: Member | null;
 	watcherIds?: string[];
@@ -83,7 +87,21 @@ export type TaskAttachment = {
 	taskId: string;
 	url: string;
 	name: string;
+	fileType?: string;
+	fileSize?: number;
+	storagePath?: string;
 	uploadedByMemberId: string;
+};
+
+export type WorkLog = {
+	$id: string;
+	$createdAt: string;
+	taskId: string;
+	memberId: string;
+	memberName: string;
+	timeSpent: number;  // minutes
+	date: string;       // ISO date
+	description?: string;
 };
 
 export type TaskActivity = {
@@ -100,7 +118,9 @@ export type TaskActivity = {
 		| "WATCHER_ADDED"
 		| "WATCHER_REMOVED"
 		| "LINK_ADDED"
-		| "LINK_REMOVED";
+		| "LINK_REMOVED"
+		| "WORK_LOGGED"
+		| "WORKLOG_DELETED";
 	field?: string;
 	oldValue?: string;
 	newValue?: string;
