@@ -8,6 +8,8 @@ import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types
 import { Project } from "@/features/projects/types";
 import { adminAuth } from "@/lib/firebase-admin";
 
+const BACKLOG_SPRINT_SENTINEL = "backlog";
+
 const normalizeDate = (data: Record<string, unknown> | undefined) => {
 	const candidate = (data?.$createdAt ?? data?.createdAt) as
 		| { toDate?: () => Date }
@@ -33,6 +35,7 @@ const app = new Hono()
 				issueType: z.nativeEnum(IssueType).nullish(),
 				search: z.string().nullish(),
 				dueDate: z.string().nullish(),
+				sprintId: z.string().nullish(),
 			})
 		),
 		async (c) => {
@@ -47,6 +50,7 @@ const app = new Hono()
 				issueType,
 				search,
 				dueDate,
+				sprintId,
 			} = c.req.valid("query");
 			const member = await getMember({
 				databases,
@@ -88,6 +92,11 @@ const app = new Hono()
 			if (status) tasks = tasks.filter((t: any) => t.status === status);
 			if (priority) tasks = tasks.filter((t: any) => t.priority === priority);
 			if (issueType) tasks = tasks.filter((t: any) => t.issueType === issueType);
+			if (sprintId === BACKLOG_SPRINT_SENTINEL) {
+				tasks = tasks.filter((t: any) => !t.sprintId);
+			} else if (sprintId) {
+				tasks = tasks.filter((t: any) => t.sprintId === sprintId);
+			}
 			if (dueDate) {
 				const dDate = new Date(dueDate).toISOString();
 				tasks = tasks.filter((t: any) => t.dueDate === dDate);
@@ -248,6 +257,9 @@ const app = new Hono()
 				priority,
 				parentId,
 				labels,
+				sprintId,
+				storyPoints,
+				epicId,
 			} = c.req.valid("json");
 			const member = await getMember({
 				databases,
@@ -292,6 +304,9 @@ workspaceId,
 					...(priority !== undefined ? { priority } : {}),
 					...(parentId !== undefined ? { parentId } : {}),
 					...(labels !== undefined ? { labels } : {}),
+					...(sprintId !== undefined ? { sprintId } : {}),
+					...(storyPoints !== undefined ? { storyPoints } : {}),
+					...(epicId !== undefined ? { epicId } : {}),
 				});
 			const doc = await taskRef.get();
 			const data = doc.data();
@@ -407,6 +422,9 @@ workspaceId,
 				priority,
 				parentId,
 				labels,
+				sprintId,
+				storyPoints,
+				epicId,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
 			
@@ -463,13 +481,16 @@ workspaceId,
 			await updateRef.update({
 				...(name !== undefined ? { name } : {}),
 				...(status !== undefined ? { status } : {}),
-				...(dueDate !== undefined ? { dueDate: new Date(dueDate).toISOString() } : {}),
+				...(dueDate !== undefined ? { dueDate: dueDate.toISOString() } : {}),
 				...(assigneeId !== undefined ? { assigneeId } : {}),
 				...(description !== undefined ? { description } : {}),
 				...(issueType !== undefined ? { issueType } : {}),
 				...(priority !== undefined ? { priority } : {}),
 				...(parentId !== undefined ? { parentId } : {}),
 				...(labels !== undefined ? { labels } : {}),
+				...(sprintId !== undefined ? { sprintId } : {}),
+				...(storyPoints !== undefined ? { storyPoints } : {}),
+				...(epicId !== undefined ? { epicId } : {}),
 			});
 			const updatedDoc = await updateRef.get();
 			const data = updatedDoc.data();

@@ -13,6 +13,9 @@ export const createTaskSchema = z.object({
 	priority: z.nativeEnum(TaskPriority).optional(),
 	parentId: z.string().trim().min(1).optional(),
 	labels: z.array(z.string().trim().min(1)).optional(),
+	sprintId: z.string().trim().min(1).nullable().optional(),
+	storyPoints: z.number().int().min(0).optional(),
+	epicId: z.string().trim().min(1).optional(),
 });
 
 export const createCommentSchema = z.object({

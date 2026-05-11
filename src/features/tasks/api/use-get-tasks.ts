@@ -11,6 +11,7 @@ interface UseGetTasksProps {
 	assigneeId?: string | null;
 	dueDate?: string | null;
 	search?: string | null;
+	sprintId?: string | null;
 }
 
 export const useGetTasks = ({
@@ -22,6 +23,7 @@ export const useGetTasks = ({
 	assigneeId,
 	dueDate,
 	search,
+	sprintId,
 }: UseGetTasksProps) => {
 	const query = useQuery({
 		queryKey: [
@@ -34,6 +36,7 @@ export const useGetTasks = ({
 			assigneeId,
 			dueDate,
 			search,
+			sprintId,
 		],
 		queryFn: async () => {
 			const response = await client.api.tasks.$get({
@@ -46,6 +49,7 @@ export const useGetTasks = ({
 					assigneeId: assigneeId ?? undefined,
 					dueDate: dueDate ?? undefined,
 					search: search ?? undefined,
+					sprintId: sprintId ?? undefined,
 				},
 			});
 			if (!response.ok) {
