@@ -80,7 +80,7 @@ export const TaskViewSwitcher = ({
 					<Button
 						className="w-full lg:w-auto"
 						size="sm"
-						onClick={open}
+						onClick={() => open()}
 					>
 						<PlusIcon className="size-4 mr-2" />
 						New
