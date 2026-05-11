@@ -1,6 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { useGetSprints } from "@/features/sprints/api/use-get-sprints";
+import { SprintStatus } from "@/features/sprints/types";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
 import { CreateTaskForm } from "./create-task-form";
@@ -13,11 +16,17 @@ export const CreateTaskFormWrapper = ({
 	onCancel,
 }: CreateTaskFormWrapperProps) => {
 	const workspaceId = useWorkspaceId();
+	const projectId = useProjectId();
 	const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
 		workspaceId,
 	});
 	const { data: members, isLoading: isLoadingMembers } = useGetMembers({
 		workspaceId,
+	});
+	const { data: sprints, isLoading: isLoadingSprints } = useGetSprints({
+		workspaceId,
+		projectId: projectId ?? "",
+		enabled: !!projectId,
 	});
 	const projectOptions = projects?.documents.map((project) => ({
 		id: project.$id,
@@ -28,7 +37,10 @@ export const CreateTaskFormWrapper = ({
 		id: member.$id,
 		name: member.name,
 	}));
-	const isLoading = isLoadingProjects || isLoadingMembers;
+	const sprintOptions = (sprints?.documents ?? [])
+		.filter((s) => s.status === SprintStatus.PLANNED || s.status === SprintStatus.ACTIVE)
+		.map((s) => ({ id: s.$id, name: s.name }));
+	const isLoading = isLoadingProjects || isLoadingMembers || (!!projectId && isLoadingSprints);
 	if (isLoading) {
 		return (
 			<Card className="w-full h-[714px] border-none shadow-none">
@@ -43,6 +55,7 @@ export const CreateTaskFormWrapper = ({
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memeberOptions ?? []}
+			sprintOptions={sprintOptions}
 		/>
 	);
 };

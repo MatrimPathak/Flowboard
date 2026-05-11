@@ -10,5 +10,6 @@ export const useTaskFilters = () => {
 		assigneeId: parseAsString,
 		dueDate: parseAsString,
 		search: parseAsString,
+		sprintId: parseAsString,
 	});
 };
