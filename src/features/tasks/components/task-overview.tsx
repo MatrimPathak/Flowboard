@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Task } from "../types";
 import { PencilIcon } from "lucide-react";
@@ -9,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
 import { TaskPriority } from "../types";
+import { useCurrent } from "@/features/auth/api/use-current";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { TaskWatchers } from "./task-watchers";
 
 interface TaskOverviewProps {
 	task: Task;
@@ -16,6 +21,12 @@ interface TaskOverviewProps {
 
 export const TaskOverview = ({ task }: TaskOverviewProps) => {
 	const { open } = useEditTaskModal();
+	const { data: currentUser } = useCurrent();
+	const { data: membersData } = useGetMembers({ workspaceId: task.workspaceId });
+	const currentMember = membersData?.documents?.find(
+		(m) => m.userId === currentUser?.$id
+	);
+	const currentMemberId = currentMember?.$id ?? "";
 	return (
 		<div className="flex flex-col gap-y-4 col-span-1">
 			<div className="bg-muted rounded-lg p-4">
@@ -77,6 +88,21 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							</div>
 						</OverviewProperty>
 					)}
+					<OverviewProperty label="Watchers">
+						{currentMemberId ? (
+							<TaskWatchers
+								task={task}
+								currentMemberId={currentMemberId}
+								members={membersData?.documents ?? []}
+							/>
+						) : (
+							<span className="text-sm text-muted-foreground">
+								{task.watcherIds && task.watcherIds.length > 0
+									? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
+									: "No watchers"}
+							</span>
+						)}
+					</OverviewProperty>
 				</div>
 			</div>
 		</div>

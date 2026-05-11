@@ -45,6 +45,9 @@ export type Task = {
 	epicId?: string;
 	project?: Project | null;
 	assignee?: Member | null;
+	watcherIds?: string[];
+	links?: TaskLink[];
+	attachments?: TaskAttachment[];
 };
 
 export type TaskComment = {
@@ -54,4 +57,51 @@ export type TaskComment = {
 	authorId: string;
 	content: string;
 	author?: { name: string; email: string } | null;
+};
+
+export enum LinkType {
+	BLOCKS = "BLOCKS",
+	IS_BLOCKED_BY = "IS_BLOCKED_BY",
+	RELATES_TO = "RELATES_TO",
+	DUPLICATES = "DUPLICATES",
+}
+
+export type TaskLink = {
+	$id: string;
+	$createdAt: string;
+	taskId: string;
+	targetTaskId: string;
+	targetWorkspaceId?: string;
+	targetProjectId?: string;
+	type: LinkType;
+	targetTask?: Pick<Task, "$id" | "name" | "status" | "priority"> | null;
+};
+
+export type TaskAttachment = {
+	$id: string;
+	$createdAt: string;
+	taskId: string;
+	url: string;
+	name: string;
+	uploadedByMemberId: string;
+};
+
+export type TaskActivity = {
+	$id: string;
+	$createdAt: string;
+	taskId: string;
+	memberId: string;
+	memberName: string;
+	type:
+		| "FIELD_CHANGE"
+		| "COMMENT_ADDED"
+		| "ATTACHMENT_ADDED"
+		| "ATTACHMENT_REMOVED"
+		| "WATCHER_ADDED"
+		| "WATCHER_REMOVED"
+		| "LINK_ADDED"
+		| "LINK_REMOVED";
+	field?: string;
+	oldValue?: string;
+	newValue?: string;
 };

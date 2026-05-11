@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IssueType, TaskPriority, TaskStatus } from "./types";
+import { IssueType, LinkType, TaskPriority, TaskStatus } from "./types";
 
 export const createTaskSchema = z.object({
 	name: z.string().trim().min(1, "Required"),
@@ -20,4 +20,36 @@ export const createTaskSchema = z.object({
 
 export const createCommentSchema = z.object({
 	content: z.string().trim().min(1, "Required"),
+});
+
+export const addLinkSchema = z.object({
+	targetTaskId: z.string().trim().min(1, "Required"),
+	type: z.nativeEnum(LinkType),
+	workspaceId: z.string().trim().min(1, "Required"),
+	projectId: z.string().trim().min(1, "Required"),
+});
+
+export const addAttachmentSchema = z.object({
+	url: z
+		.string()
+		.url("Invalid URL")
+		.refine(
+			(value) => {
+				try {
+					const parsed = new URL(value);
+					return parsed.protocol === "http:" || parsed.protocol === "https:";
+				} catch {
+					return false;
+				}
+			},
+			{ message: "Only http(s) URLs are allowed" }
+		),
+	name: z.string().trim().min(1, "Required"),
+	workspaceId: z.string().trim().min(1, "Required"),
+	projectId: z.string().trim().min(1, "Required"),
+});
+
+export const watchTaskSchema = z.object({
+	workspaceId: z.string().trim().min(1, "Required"),
+	projectId: z.string().trim().min(1, "Required"),
 });
