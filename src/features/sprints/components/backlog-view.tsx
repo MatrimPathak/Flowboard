@@ -211,7 +211,7 @@ export const BacklogView = ({
       <CreateSprintModal />
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Backlog</h2>
-        <Button size="sm" onClick={openCreateSprint}>
+        <Button size="sm" onClick={() => openCreateSprint()}>
           <PlusIcon className="size-4 mr-2" />
           Create Sprint
         </Button>

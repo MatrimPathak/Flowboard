@@ -30,6 +30,7 @@ import {
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { IssueType, TaskPriority, TaskStatus } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { usePrefill } from "@/contexts/sidebar-context";
 
 interface CreateTaskFormProps {
 	onCancel?: () => void;
@@ -48,9 +49,15 @@ export const CreateTaskForm = ({
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
 	const { mutate, isPending } = useCreateTask();
+	const { prefill, clearPrefill } = usePrefill();
+
 	const form = useForm<z.infer<typeof createTaskSchema>>({
 		resolver: zodResolver(createTaskSchema.omit({ workspaceId: true })),
-		defaultValues: { workspaceId },
+		defaultValues: {
+			workspaceId,
+			projectId: prefill.projectId,
+			issueType: prefill.issueType,
+		},
 	});
 
 	const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
@@ -59,8 +66,8 @@ export const CreateTaskForm = ({
 			{
 				onSuccess: () => {
 					form.reset();
+					clearPrefill();
 					onCancel?.();
-					// TODO: Redirect to the new task
 				},
 			}
 		);

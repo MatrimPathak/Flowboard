@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/date-picker";
 import { createSprintSchema } from "../schemas";
 import { useCreateSprint } from "../api/use-create-sprint";
+import { usePrefill } from "@/contexts/sidebar-context";
 
 interface CreateSprintFormProps {
   onCancel?: () => void;
@@ -32,6 +33,7 @@ export const CreateSprintForm = ({
   projectId,
 }: CreateSprintFormProps) => {
   const { mutate, isPending } = useCreateSprint();
+  const { clearPrefill } = usePrefill();
 
   const form = useForm<z.infer<typeof createSprintSchema>>({
     resolver: zodResolver(createSprintSchema),
@@ -51,6 +53,7 @@ export const CreateSprintForm = ({
       {
         onSuccess: () => {
           form.reset();
+          clearPrefill();
           onCancel?.();
         },
       }
