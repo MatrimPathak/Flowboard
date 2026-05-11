@@ -1,10 +1,10 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { createTaskSchema } from "../schemas";
+import { createCommentSchema, createTaskSchema } from "../schemas";
 import { getMember } from "@/features/members/utils";
 import { z } from "zod";
-import { Task, TaskStatus } from "../types";
+import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types";
 import { Project } from "@/features/projects/types";
 import { adminAuth } from "@/lib/firebase-admin";
 
@@ -29,6 +29,8 @@ const app = new Hono()
 				projectId: z.string().nullish(),
 				assigneeId: z.string().nullish(),
 				status: z.nativeEnum(TaskStatus).nullish(),
+				priority: z.nativeEnum(TaskPriority).nullish(),
+				issueType: z.nativeEnum(IssueType).nullish(),
 				search: z.string().nullish(),
 				dueDate: z.string().nullish(),
 			})
@@ -41,6 +43,8 @@ const app = new Hono()
 				projectId,
 				assigneeId,
 				status,
+				priority,
+				issueType,
 				search,
 				dueDate,
 			} = c.req.valid("query");
@@ -82,6 +86,8 @@ const app = new Hono()
 
 			if (assigneeId) tasks = tasks.filter((t: any) => t.assigneeId === assigneeId);
 			if (status) tasks = tasks.filter((t: any) => t.status === status);
+			if (priority) tasks = tasks.filter((t: any) => t.priority === priority);
+			if (issueType) tasks = tasks.filter((t: any) => t.issueType === issueType);
 			if (dueDate) {
 				const dDate = new Date(dueDate).toISOString();
 				tasks = tasks.filter((t: any) => t.dueDate === dDate);
@@ -238,6 +244,10 @@ const app = new Hono()
 				projectId,
 				dueDate,
 				assigneeId,
+				issueType,
+				priority,
+				parentId,
+				labels,
 			} = c.req.valid("json");
 			const member = await getMember({
 				databases,
@@ -278,6 +288,10 @@ workspaceId,
 					assigneeId,
 					position: newPosition,
 					$createdAt: new Date().toISOString(),
+					...(issueType !== undefined ? { issueType } : {}),
+					...(priority !== undefined ? { priority } : {}),
+					...(parentId !== undefined ? { parentId } : {}),
+					...(labels !== undefined ? { labels } : {}),
 				});
 			const doc = await taskRef.get();
 			const data = doc.data();
@@ -389,6 +403,10 @@ workspaceId,
 				projectId,
 				dueDate,
 				assigneeId,
+				issueType,
+				priority,
+				parentId,
+				labels,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
 			
@@ -448,6 +466,10 @@ workspaceId,
 				...(dueDate !== undefined ? { dueDate: new Date(dueDate).toISOString() } : {}),
 				...(assigneeId !== undefined ? { assigneeId } : {}),
 				...(description !== undefined ? { description } : {}),
+				...(issueType !== undefined ? { issueType } : {}),
+				...(priority !== undefined ? { priority } : {}),
+				...(parentId !== undefined ? { parentId } : {}),
+				...(labels !== undefined ? { labels } : {}),
 			});
 			const updatedDoc = await updateRef.get();
 			const data = updatedDoc.data();
@@ -500,6 +522,147 @@ workspaceId,
 		}
 		await taskDoc.ref.delete();
 		return c.json({ data: { taskId } });
+	})
+	.get("/:taskId/comments", sessionMiddleware, async (c) => {
+		const { taskId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) {
+					taskRef = tDoc.ref;
+					break;
+				}
+			}
+			if (taskRef) break;
+		}
+
+		if (!taskRef) return c.json({ error: "Not found" }, 404);
+
+		const commentsSnapshot = await taskRef.collection("comments").orderBy("$createdAt", "asc").get();
+		const comments = commentsSnapshot.docs.map((doc: any) => {
+			const data = doc.data();
+			return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
+		});
+
+		const authorIds = Array.from(new Set(comments.map((c: any) => c.authorId)));
+		const memberDocs: any[] = [];
+		for (let i = 0; i < authorIds.length; i += 30) {
+			const chunk = authorIds.slice(i, i + 30);
+			if (!chunk.length) break;
+			const snap = await databases.collection("members").where("__name__", "in", chunk).get();
+			memberDocs.push(...snap.docs.map((d: any) => ({ ...d.data(), $id: d.id })));
+		}
+
+		const authors = await Promise.all(
+			memberDocs.map(async (m) => {
+				let u;
+				try { u = await adminAuth.getUser(m.userId); } catch { u = { displayName: "Unknown", email: "" }; }
+				return { $id: m.$id, name: u.displayName || u.email, email: u.email };
+			})
+		);
+
+		const populated = comments.map((comment: any) => ({
+			...comment,
+			author: authors.find((a) => a.$id === comment.authorId) ?? null,
+		}));
+
+		return c.json({ data: { documents: populated, total: populated.length } });
+	})
+	.post(
+		"/:taskId/comments",
+		sessionMiddleware,
+		zValidator("json", createCommentSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { content } = c.req.valid("json");
+
+			const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+			const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+			let taskRef = null;
+			let authorMember = null;
+			for (const wId of workspaceIds) {
+				const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+				for (const pDoc of projectsSnapshot.docs) {
+					const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+					if (tDoc.exists) {
+						taskRef = tDoc.ref;
+						authorMember = membersSnapshot.docs.find((d: any) => d.data().workspaceId === wId);
+						break;
+					}
+				}
+				if (taskRef) break;
+			}
+
+			if (!taskRef || !authorMember) return c.json({ error: "Not found" }, 404);
+
+			const commentRef = await taskRef.collection("comments").add({
+				taskId,
+				authorId: authorMember.id,
+				content,
+				$createdAt: new Date().toISOString(),
+			});
+
+			const commentDoc = await commentRef.get();
+			const data = commentDoc.data();
+
+			let u;
+			try { u = await adminAuth.getUser(currentUser.$id); } catch { u = { displayName: "Unknown", email: "" }; }
+
+			return c.json({
+				data: {
+					...data,
+					$id: commentDoc.id,
+					$createdAt: normalizeDate(data),
+					author: { name: u.displayName || u.email, email: u.email },
+				} as TaskComment,
+			});
+		}
+	)
+	.delete("/:taskId/comments/:commentId", sessionMiddleware, async (c) => {
+		const { taskId, commentId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let commentRef = null;
+		let authorMemberId: string | null = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) {
+					const cDoc = await tDoc.ref.collection("comments").doc(commentId).get();
+					if (cDoc.exists) {
+						commentRef = cDoc.ref;
+						authorMemberId = cDoc.data()?.authorId ?? null;
+					}
+					break;
+				}
+			}
+			if (commentRef) break;
+		}
+
+		if (!commentRef) return c.json({ error: "Not found" }, 404);
+
+		// TODO(phase2): also allow workspace ADMINs to moderate comments
+		const currentMemberDoc = membersSnapshot.docs.find((d: any) => d.id === authorMemberId);
+		if (!currentMemberDoc) return c.json({ error: "Unauthorized" }, 401);
+
+		await commentRef.delete();
+		return c.json({ data: { commentId } });
 	});
 
 export default app;

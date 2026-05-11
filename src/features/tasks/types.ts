@@ -9,6 +9,22 @@ export enum TaskStatus {
 	DONE = "DONE",
 }
 
+export enum TaskPriority {
+	BLOCKER = "BLOCKER",
+	HIGH = "HIGH",
+	MEDIUM = "MEDIUM",
+	LOW = "LOW",
+	TRIVIAL = "TRIVIAL",
+}
+
+export enum IssueType {
+	EPIC = "EPIC",
+	STORY = "STORY",
+	TASK = "TASK",
+	BUG = "BUG",
+	SUBTASK = "SUBTASK",
+}
+
 export type Task = {
 	$id: string;
 	$createdAt: string;
@@ -20,6 +36,19 @@ export type Task = {
 	dueDate: string;
 	position: number;
 	description?: string;
+	issueType?: IssueType;
+	priority?: TaskPriority;
+	parentId?: string;
+	labels?: string[];
 	project?: Project | null;
 	assignee?: Member | null;
+};
+
+export type TaskComment = {
+	$id: string;
+	$createdAt: string;
+	taskId: string;
+	authorId: string;
+	content: string;
+	author?: { name: string; email: string } | null;
 };

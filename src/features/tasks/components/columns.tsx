@@ -10,6 +10,7 @@ import { TaskDate } from "./task-date";
 import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { TaskActions } from "./task-actions";
+import { TaskPriority } from "../types";
 
 export const columns: ColumnDef<Task>[] = [
 	{
@@ -109,6 +110,32 @@ export const columns: ColumnDef<Task>[] = [
 					/>
 					<p className="line-clamp-1">{project?.name || "Unknown Project"}</p>
 				</div>
+			);
+		},
+	},
+	{
+		header: ({ column }) => {
+			return (
+				<Button
+					variant="ghost"
+					className="w-full justify-start -ml-4"
+					onClick={() =>
+						column.toggleSorting(column.getIsSorted() === "asc")
+					}
+				>
+					Priority
+					<ArrowUpDown className="ml-2 h-4 w-4" />
+				</Button>
+			);
+		},
+		accessorKey: "priority",
+		cell: ({ row }) => {
+			const priority = row.original.priority;
+			if (!priority) return <span className="text-muted-foreground text-xs">—</span>;
+			return (
+				<Badge variant={priority as TaskPriority}>
+					{snakeCaseToTitleCase(priority)}
+				</Badge>
 			);
 		},
 	},
