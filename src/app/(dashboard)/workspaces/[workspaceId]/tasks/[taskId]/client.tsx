@@ -8,6 +8,9 @@ import { TaskBreadcrumbs } from "@/features/tasks/components/task-breadcrumbs";
 import { TaskDescription } from "@/features/tasks/components/task-description";
 import { TaskOverview } from "@/features/tasks/components/task-overview";
 import { TaskComments } from "@/features/tasks/components/task-comments";
+import { TaskLinks } from "@/features/tasks/components/task-links";
+import { TaskAttachments } from "@/features/tasks/components/task-attachments";
+import { TaskActivity } from "@/features/tasks/components/task-activity";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
 
 export const TaskIdClient = () => {
@@ -25,6 +28,13 @@ export const TaskIdClient = () => {
 			</div>
 			<DottedSeperator className="my-6" />
 			<TaskComments taskId={data.$id} />
+			<DottedSeperator className="my-6" />
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+				<TaskLinks taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
+				<TaskAttachments taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
+			</div>
+			<DottedSeperator className="my-6" />
+			<TaskActivity taskId={data.$id} />
 		</div>
 	);
 };

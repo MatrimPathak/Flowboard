@@ -1,14 +1,25 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { createCommentSchema, createTaskSchema } from "../schemas";
+import { addAttachmentSchema, addLinkSchema, createCommentSchema, createTaskSchema, watchTaskSchema } from "../schemas";
 import { getMember } from "@/features/members/utils";
 import { z } from "zod";
 import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types";
 import { Project } from "@/features/projects/types";
 import { adminAuth } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 const BACKLOG_SPRINT_SENTINEL = "backlog";
+
+/** Resolve a Firebase user's display name for activity log entries. */
+async function resolveMemberName(userId: string): Promise<string> {
+	try {
+		const u = await adminAuth.getUser(userId);
+		return u.displayName || u.email || userId;
+	} catch {
+		return userId;
+	}
+}
 
 const normalizeDate = (data: Record<string, unknown> | undefined) => {
 	const candidate = (data?.$createdAt ?? data?.createdAt) as
@@ -446,9 +457,12 @@ workspaceId,
 			
 			if (!taskDoc) return c.json({ error: "Not found" }, 404);
 			const tData = taskDoc.data();
+			const existingDueDate =
+				(tData?.dueDate as any)?.toDate?.()?.toISOString() ?? tData?.dueDate;
 			const existingTask = {
 				...tData,
 				$id: taskDoc.id,
+				dueDate: existingDueDate,
 				$createdAt: normalizeDate(tData),
 			} as Task;
 			
@@ -461,6 +475,26 @@ workspaceId,
 				return c.json({ error: "Unauthorized" }, 401);
 			}
 			
+			// Build activity entries for changed fields
+			const memberName = await resolveMemberName(user.$id);
+
+			const activityEntries: Array<{ field: string; oldValue: string | undefined; newValue: string | undefined }> = [];
+			if (name !== undefined && name !== existingTask.name) {
+				activityEntries.push({ field: "name", oldValue: existingTask.name, newValue: name });
+			}
+			if (status !== undefined && status !== existingTask.status) {
+				activityEntries.push({ field: "status", oldValue: existingTask.status, newValue: status });
+			}
+			if (priority !== undefined && priority !== existingTask.priority) {
+				activityEntries.push({ field: "priority", oldValue: existingTask.priority, newValue: priority });
+			}
+			if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId) {
+				activityEntries.push({ field: "assigneeId", oldValue: existingTask.assigneeId, newValue: assigneeId });
+			}
+			if (dueDate !== undefined && dueDate.toISOString() !== existingDueDate) {
+				activityEntries.push({ field: "dueDate", oldValue: existingDueDate, newValue: dueDate.toISOString() });
+			}
+
 			let updateRef = taskDoc.ref;
 			if (projectId && projectId !== existingTask.projectId) {
 				// Move document to new project's subcollection
@@ -471,13 +505,13 @@ workspaceId,
 					.doc(projectId)
 					.collection("tasks")
 					.doc(existingTask.$id);
-				
+
 				const dataToMove = { ...tData, projectId };
 				await newRef.set(dataToMove);
 				await taskDoc.ref.delete();
 				updateRef = newRef;
 			}
-			
+
 			await updateRef.update({
 				...(name !== undefined ? { name } : {}),
 				...(status !== undefined ? { status } : {}),
@@ -492,15 +526,35 @@ workspaceId,
 				...(storyPoints !== undefined ? { storyPoints } : {}),
 				...(epicId !== undefined ? { epicId } : {}),
 			});
+
+			// Write activity entries after main update
+			if (activityEntries.length > 0) {
+				const activityBatch = databases.batch();
+				for (const entry of activityEntries) {
+					const actRef = updateRef.collection("activity").doc();
+					activityBatch.set(actRef, {
+						taskId: existingTask.$id,
+						memberId: member.$id,
+						memberName,
+						type: "FIELD_CHANGE",
+						field: entry.field,
+						oldValue: entry.oldValue ?? null,
+						newValue: entry.newValue ?? null,
+						$createdAt: new Date().toISOString(),
+					});
+				}
+				await activityBatch.commit();
+			}
+
 			const updatedDoc = await updateRef.get();
 			const data = updatedDoc.data();
-			return c.json({ 
-				data: { 
+			return c.json({
+				data: {
 					...data,
-					$id: updatedDoc.id, 
+					$id: updatedDoc.id,
 					dueDate: (data?.dueDate as any)?.toDate?.()?.toISOString() ?? data?.dueDate,
 					$createdAt: normalizeDate(data),
-				} 
+				}
 			});
 		}
 	)
@@ -684,6 +738,411 @@ workspaceId,
 
 		await commentRef.delete();
 		return c.json({ data: { commentId } });
-	});
+	})
+	// ── Activity ────────────────────────────────────────────────────────────
+	.get("/:taskId/activity", sessionMiddleware, async (c) => {
+		const { taskId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef) return c.json({ error: "Not found" }, 404);
+
+		const activitySnapshot = await taskRef.collection("activity").get();
+		const documents = activitySnapshot.docs
+			.map((doc: any) => {
+				const data = doc.data();
+				return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
+			})
+			.sort((a: any, b: any) => {
+				const aTime = a.$createdAt ? new Date(a.$createdAt).getTime() : 0;
+				const bTime = b.$createdAt ? new Date(b.$createdAt).getTime() : 0;
+				return bTime - aTime;
+			});
+
+		return c.json({ data: { documents, total: documents.length } });
+	})
+	// ── Links ────────────────────────────────────────────────────────────────
+	.get("/:taskId/links", sessionMiddleware, async (c) => {
+		const { taskId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		let foundTaskData: any = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) {
+					taskRef = tDoc.ref;
+					foundTaskData = { ...tDoc.data(), workspaceId: wId, projectId: pDoc.id };
+					break;
+				}
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef) return c.json({ error: "Not found" }, 404);
+
+		const linksSnapshot = await taskRef.collection("links").get();
+		const links = linksSnapshot.docs.map((doc: any) => {
+			const data = doc.data();
+			return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
+		});
+
+		// Populate targetTask for each link — use stored path for O(1) lookup, fall back to
+		// scoped search within the same workspace if path fields are missing (legacy docs)
+		const populated = await Promise.all(
+			links.map(async (link: any) => {
+				let targetTask = null;
+				try {
+					if (link.targetWorkspaceId && link.targetProjectId) {
+						// Fast path: direct document lookup
+						const tDoc = await databases
+							.collection("workspaces").doc(link.targetWorkspaceId)
+							.collection("projects").doc(link.targetProjectId)
+							.collection("tasks").doc(link.targetTaskId)
+							.get();
+						if (tDoc.exists) {
+							const d = tDoc.data();
+							targetTask = { $id: tDoc.id, name: d?.name, status: d?.status, priority: d?.priority ?? null };
+						}
+					} else {
+						// Legacy fallback: search within the same workspace only
+						const projectsSnapshot = await databases
+							.collection("workspaces").doc(foundTaskData.workspaceId)
+							.collection("projects").get();
+						for (const pDoc of projectsSnapshot.docs) {
+							const tDoc = await databases
+								.collection("workspaces").doc(foundTaskData.workspaceId)
+								.collection("projects").doc(pDoc.id)
+								.collection("tasks").doc(link.targetTaskId)
+								.get();
+							if (tDoc.exists) {
+								const d = tDoc.data();
+								targetTask = { $id: tDoc.id, name: d?.name, status: d?.status, priority: d?.priority ?? null };
+								break;
+							}
+						}
+					}
+				} catch {
+					// leave targetTask null
+				}
+				return { ...link, targetTask };
+			})
+		);
+
+		return c.json({ data: { documents: populated, total: populated.length } });
+	})
+	.post(
+		"/:taskId/links",
+		sessionMiddleware,
+		zValidator("json", addLinkSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { targetTaskId, type, workspaceId, projectId } = c.req.valid("json");
+
+			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
+			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const taskRef = databases.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
+			const taskDoc = await taskRef.get();
+			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
+
+			// Verify targetTask exists — search within the same workspace only
+			const projectsSnapshot = await databases
+				.collection("workspaces").doc(workspaceId)
+				.collection("projects").get();
+			let targetRef = null;
+			let targetProjectId: string | null = null;
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases
+					.collection("workspaces").doc(workspaceId)
+					.collection("projects").doc(pDoc.id)
+					.collection("tasks").doc(targetTaskId)
+					.get();
+				if (tDoc.exists) {
+					targetRef = tDoc.ref;
+					targetProjectId = pDoc.id;
+					break;
+				}
+			}
+			if (!targetRef) return c.json({ error: "Target task not found" }, 404);
+
+			// Reject self-links
+			if (targetTaskId === taskId) {
+				return c.json({ error: "A task cannot link to itself" }, 400);
+			}
+
+			// Reject duplicate (targetTaskId, type) links
+			const existingLink = await taskRef
+				.collection("links")
+				.where("targetTaskId", "==", targetTaskId)
+				.where("type", "==", type)
+				.limit(1)
+				.get();
+			if (!existingLink.empty) {
+				return c.json({ error: "Link already exists" }, 409);
+			}
+
+			const memberName = await resolveMemberName(currentUser.$id);
+			const linkRef = await taskRef.collection("links").add({
+				taskId,
+				targetTaskId,
+				targetWorkspaceId: workspaceId,
+				targetProjectId,
+				createdByMemberId: member.$id,
+				type,
+				$createdAt: new Date().toISOString(),
+			});
+
+			await taskRef.collection("activity").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				type: "LINK_ADDED",
+				field: "link",
+				newValue: targetTaskId,
+				$createdAt: new Date().toISOString(),
+			});
+
+			const linkDoc = await linkRef.get();
+			const data = linkDoc.data();
+			return c.json({ data: { ...data, $id: linkDoc.id, $createdAt: normalizeDate(data) } });
+		}
+	)
+	.delete("/:taskId/links/:linkId", sessionMiddleware, async (c) => {
+		const { taskId, linkId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		let foundWorkspaceId: string | null = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; foundWorkspaceId = wId; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef || !foundWorkspaceId) return c.json({ error: "Not found" }, 404);
+
+		const member = await getMember({ databases, workspaceId: foundWorkspaceId, userId: currentUser.$id });
+		if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+		const linkDoc = await taskRef.collection("links").doc(linkId).get();
+		if (!linkDoc.exists) return c.json({ error: "Not found" }, 404);
+		const creatorId = linkDoc.data()?.createdByMemberId;
+		if (creatorId && creatorId !== member.$id && member.role !== "ADMIN") {
+			return c.json({ error: "Forbidden" }, 403);
+		}
+
+		const memberName = await resolveMemberName(currentUser.$id);
+		await taskRef.collection("links").doc(linkId).delete();
+		await taskRef.collection("activity").add({
+			taskId,
+			memberId: member.$id,
+			memberName,
+			type: "LINK_REMOVED",
+			field: "link",
+			oldValue: linkId,
+			$createdAt: new Date().toISOString(),
+		});
+
+		return c.json({ data: { linkId } });
+	})
+	// ── Attachments ──────────────────────────────────────────────────────────
+	.get("/:taskId/attachments", sessionMiddleware, async (c) => {
+		const { taskId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef) return c.json({ error: "Not found" }, 404);
+
+		const attachmentsSnapshot = await taskRef.collection("attachments").get();
+		const documents = attachmentsSnapshot.docs.map((doc: any) => {
+			const data = doc.data();
+			return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
+		});
+
+		return c.json({ data: { documents, total: documents.length } });
+	})
+	.post(
+		"/:taskId/attachments",
+		sessionMiddleware,
+		zValidator("json", addAttachmentSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { url, name, workspaceId, projectId } = c.req.valid("json");
+
+			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
+			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const taskRef = databases.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
+			const taskDoc = await taskRef.get();
+			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
+
+			const memberName = await resolveMemberName(currentUser.$id);
+			const attachRef = await taskRef.collection("attachments").add({
+				taskId,
+				url,
+				name,
+				uploadedByMemberId: member.$id,
+				$createdAt: new Date().toISOString(),
+			});
+
+			await taskRef.collection("activity").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				type: "ATTACHMENT_ADDED",
+				newValue: name,
+				$createdAt: new Date().toISOString(),
+			});
+
+			const attachDoc = await attachRef.get();
+			const data = attachDoc.data();
+			return c.json({ data: { ...data, $id: attachDoc.id, $createdAt: normalizeDate(data) } });
+		}
+	)
+	.delete("/:taskId/attachments/:attachmentId", sessionMiddleware, async (c) => {
+		const { taskId, attachmentId } = c.req.param();
+		const currentUser = c.get("user");
+		const databases = c.get("databases");
+
+		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
+		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
+
+		let taskRef = null;
+		let foundWorkspaceId: string | null = null;
+		for (const wId of workspaceIds) {
+			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+			for (const pDoc of projectsSnapshot.docs) {
+				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+				if (tDoc.exists) { taskRef = tDoc.ref; foundWorkspaceId = wId; break; }
+			}
+			if (taskRef) break;
+		}
+		if (!taskRef || !foundWorkspaceId) return c.json({ error: "Not found" }, 404);
+
+		const member = await getMember({ databases, workspaceId: foundWorkspaceId, userId: currentUser.$id });
+		if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+		const attachDoc = await taskRef.collection("attachments").doc(attachmentId).get();
+		if (!attachDoc.exists) return c.json({ error: "Not found" }, 404);
+		const uploaderId = attachDoc.data()?.uploadedByMemberId;
+		if (uploaderId && uploaderId !== member.$id && member.role !== "ADMIN") {
+			return c.json({ error: "Forbidden" }, 403);
+		}
+		const attachName = attachDoc.data()?.name ?? attachmentId;
+		const memberName = await resolveMemberName(currentUser.$id);
+
+		await taskRef.collection("attachments").doc(attachmentId).delete();
+		await taskRef.collection("activity").add({
+			taskId,
+			memberId: member.$id,
+			memberName,
+			type: "ATTACHMENT_REMOVED",
+			oldValue: attachName,
+			$createdAt: new Date().toISOString(),
+		});
+
+		return c.json({ data: { attachmentId } });
+	})
+	// ── Watch / Unwatch ──────────────────────────────────────────────────────
+	.post(
+		"/:taskId/watch",
+		sessionMiddleware,
+		zValidator("json", watchTaskSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { workspaceId, projectId } = c.req.valid("json");
+
+			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
+			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const taskRef = databases.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
+			const taskDoc = await taskRef.get();
+			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
+
+			const memberName = await resolveMemberName(currentUser.$id);
+			await taskRef.update({ watcherIds: FieldValue.arrayUnion(member.$id) });
+			await taskRef.collection("activity").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				type: "WATCHER_ADDED",
+				$createdAt: new Date().toISOString(),
+			});
+
+			return c.json({ data: { memberId: member.$id } });
+		}
+	)
+	.delete(
+		"/:taskId/watch",
+		sessionMiddleware,
+		zValidator("query", watchTaskSchema),
+		async (c) => {
+			const { taskId } = c.req.param();
+			const currentUser = c.get("user");
+			const databases = c.get("databases");
+			const { workspaceId, projectId } = c.req.valid("query");
+
+			const member = await getMember({ databases, workspaceId, userId: currentUser.$id });
+			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const taskRef = databases.collection("workspaces").doc(workspaceId).collection("projects").doc(projectId).collection("tasks").doc(taskId);
+			const taskDoc = await taskRef.get();
+			if (!taskDoc.exists) return c.json({ error: "Task not found" }, 404);
+
+			const memberName = await resolveMemberName(currentUser.$id);
+			await taskRef.update({ watcherIds: FieldValue.arrayRemove(member.$id) });
+			await taskRef.collection("activity").add({
+				taskId,
+				memberId: member.$id,
+				memberName,
+				type: "WATCHER_REMOVED",
+				$createdAt: new Date().toISOString(),
+			});
+
+			return c.json({ data: { memberId: member.$id } });
+		}
+	);
 
 export default app;

@@ -76,7 +76,15 @@ export const TaskComments = ({ taskId }: TaskCommentsProps) => {
 									<TrashIcon className="size-3" />
 								</Button>
 							</div>
-							<p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+							<p className="text-sm mt-1 whitespace-pre-wrap">
+								{comment.content.split(/(@[\w-]+)/g).map((part, i) =>
+									part.startsWith("@") ? (
+										<span key={i} className="text-blue-500 font-medium">{part}</span>
+									) : (
+										part
+									)
+								)}
+							</p>
 						</div>
 					</div>
 				))}
