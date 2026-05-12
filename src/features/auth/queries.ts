@@ -12,6 +12,7 @@ export const getCurrent = async () => {
 			$id: user.uid,
 			name: user.displayName,
 			email: user.email,
+			photoUrl: user.photoURL || "",
 		};
 	} catch {
 		return null;

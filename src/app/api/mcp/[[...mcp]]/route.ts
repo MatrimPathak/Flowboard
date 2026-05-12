@@ -4,10 +4,12 @@ export const maxDuration = 60;
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { TaskStatus, IssueType, TaskPriority } from "@/features/tasks/types";
+import { taskConditionalRefine } from "@/features/tasks/schemas";
 import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
 
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -39,6 +41,131 @@ async function verifyWorkspaceAccess(workspaceId: string) {
 // Use a global variable to preserve the handler across HMR in development
 const globalForMcp = global as unknown as { mcpHandler: any };
 
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+]);
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+async function fetchAndUploadImage(imageUrl: string, userId: string): Promise<string> {
+  const response = await fetch(imageUrl, {
+    headers: {
+      "User-Agent": "Flowboard-MCP/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+    throw new Error(`Invalid image type: ${contentType}. Allowed: JPEG, PNG, GIF, WebP, SVG`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  if (buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error(`Image too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Max: 5MB`);
+  }
+
+  const fileTypeResult = await fileTypeFromBuffer(buffer);
+  const detectedMime = fileTypeResult?.mime || contentType;
+
+  if (!ALLOWED_IMAGE_TYPES.has(detectedMime)) {
+    throw new Error(`Image type not allowed: ${detectedMime}`);
+  }
+
+  const timestamp = Date.now();
+  const ext = detectedMime.split("/")[1] || "jpg";
+  const storagePath = `icons/${userId}/${timestamp}.${ext}`;
+
+  const bucket = adminStorage.bucket();
+  const fileRef = bucket.file(storagePath);
+
+  await fileRef.save(buffer, {
+    metadata: { contentType: detectedMime },
+  });
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 365);
+  const [signedUrl] = await fileRef.getSignedUrl({
+    action: "read",
+    expires: expiresAt,
+  });
+
+  return signedUrl;
+}
+
+async function resolveImageUrl(imageUrl: string | undefined, userId: string): Promise<string> {
+  if (!imageUrl) return "";
+  if (imageUrl.startsWith("https://firebasestorage")) return imageUrl;
+  if (imageUrl.startsWith("https://storage.googleapis.com")) return imageUrl;
+  return fetchAndUploadImage(imageUrl, userId);
+}
+
+const createTicketSchema = z.object({
+  name: z.string().describe("Title of the ticket"),
+  status: z.enum([
+    TaskStatus.BACKLOG,
+    TaskStatus.TODO,
+    TaskStatus.IN_PROGRESS,
+    TaskStatus.UNDER_REVIEW,
+    TaskStatus.DONE,
+  ]).describe("Status of the ticket"),
+  workspaceId: z.string(),
+  projectId: z.string(),
+  dueDate: z.string().describe("ISO Date string"),
+  assigneeId: z.string().describe("Member ID of the assignee"),
+  description: z.string().optional(),
+  acceptanceCriteria: z.string().optional().describe("Acceptance Criteria (required for Epics, Stories, Bugs)"),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+  parentId: z.string().optional().describe("Parent task ID for subtasks"),
+  epicId: z.string().optional().describe("Epic task ID this belongs to"),
+  sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
+  fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
+  storyPoints: z.number().optional(),
+  originalEstimate: z.number().optional().describe("Original estimate in minutes"),
+  remainingEstimate: z.number().optional().describe("Remaining estimate in minutes"),
+  labels: z.array(z.string()).optional(),
+  rca: z.string().optional().describe("Root Cause Analysis (required for Bugs)"),
+}).superRefine(taskConditionalRefine);
+
+const updateTicketSchema = z.object({
+  workspaceId: z.string(),
+  projectId: z.string(),
+  taskId: z.string(),
+  name: z.string().optional(),
+  status: z.enum([
+    TaskStatus.BACKLOG,
+    TaskStatus.TODO,
+    TaskStatus.IN_PROGRESS,
+    TaskStatus.UNDER_REVIEW,
+    TaskStatus.DONE,
+  ]).optional(),
+  dueDate: z.string().optional(),
+  assigneeId: z.string().optional(),
+  description: z.string().optional(),
+  acceptanceCriteria: z.string().optional(),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+  parentId: z.string().optional(),
+  epicId: z.string().optional(),
+  sprintId: z.string().nullable().optional(),
+  fixVersionId: z.string().optional(),
+  storyPoints: z.number().optional(),
+  originalEstimate: z.number().optional().describe("In minutes"),
+  remainingEstimate: z.number().optional().describe("In minutes"),
+  labels: z.array(z.string()).optional(),
+  rca: z.string().optional().describe("Root Cause Analysis"),
+}).superRefine(taskConditionalRefine);
+
 const handler = globalForMcp.mcpHandler || createMcpHandler(
   (server) => {
     server.registerTool(
@@ -46,31 +173,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       {
         title: "Create Ticket",
         description: "Create a new ticket (task) in a project",
-        inputSchema: z.object({
-          name: z.string().describe("Title of the ticket"),
-          status: z.enum([
-            TaskStatus.BACKLOG,
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.UNDER_REVIEW,
-            TaskStatus.DONE,
-          ]).describe("Status of the ticket"),
-          workspaceId: z.string(),
-          projectId: z.string(),
-          dueDate: z.string().describe("ISO Date string"),
-          assigneeId: z.string().describe("Member ID of the assignee"),
-          description: z.string().optional(),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
-          priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-          parentId: z.string().optional().describe("Parent task ID for subtasks"),
-          epicId: z.string().optional().describe("Epic task ID this belongs to"),
-          sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
-          fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
-          storyPoints: z.number().optional(),
-          originalEstimate: z.number().optional().describe("Original estimate in minutes"),
-          remainingEstimate: z.number().optional().describe("Remaining estimate in minutes"),
-          labels: z.array(z.string()).optional(),
-        }) as any,
+        inputSchema: createTicketSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
@@ -179,32 +282,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       {
         title: "Update Ticket",
         description: "Update an existing ticket (task)",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          name: z.string().optional(),
-          status: z.enum([
-            TaskStatus.BACKLOG,
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.UNDER_REVIEW,
-            TaskStatus.DONE,
-          ]).optional(),
-          dueDate: z.string().optional(),
-          assigneeId: z.string().optional(),
-          description: z.string().optional(),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
-          priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-          parentId: z.string().optional(),
-          epicId: z.string().optional(),
-          sprintId: z.string().nullable().optional(),
-          fixVersionId: z.string().optional(),
-          storyPoints: z.number().optional(),
-          originalEstimate: z.number().optional().describe("In minutes"),
-          remainingEstimate: z.number().optional().describe("In minutes"),
-          labels: z.array(z.string()).optional(),
-        }) as any,
+        inputSchema: updateTicketSchema as any,
       },
       async (args: any) => {
         const { workspaceId, projectId, taskId, ...updates } = args;
@@ -317,10 +395,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         const userId = getMcpUserId();
+        const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const workspaceRef = await adminDb.collection("workspaces").add({
           name: args.name,
           userId,
-          imageUrl: args.imageUrl || "",
+          imageUrl,
           inviteCode: generateInviteCode(10),
           $createdAt: new Date().toISOString(),
         });
@@ -347,9 +426,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         }) as any,
       },
       async (args: any) => {
-        const { workspaceId, ...updates } = args;
+        const { workspaceId, imageUrl, ...updates } = args;
         await verifyWorkspaceAccess(workspaceId);
-        await adminDb.collection("workspaces").doc(workspaceId).update(updates);
+        const resolvedImageUrl = await resolveImageUrl(imageUrl, getMcpUserId());
+        const finalUpdates = resolvedImageUrl ? { ...updates, imageUrl: resolvedImageUrl } : updates;
+        await adminDb.collection("workspaces").doc(workspaceId).update(finalUpdates);
         const doc = await adminDb.collection("workspaces").doc(workspaceId).get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
       }
@@ -397,6 +478,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
+        const userId = getMcpUserId();
+        const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const projectRef = await adminDb
           .collection("workspaces")
           .doc(args.workspaceId)
@@ -404,7 +487,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .add({
             name: args.name,
             workspaceId: args.workspaceId,
-            imageUrl: args.imageUrl || "",
+            imageUrl,
             $createdAt: new Date().toISOString(),
           });
         const doc = await projectRef.get();
@@ -424,7 +507,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         }) as any,
       },
       async (args: any) => {
-        const { projectId, ...updates } = args;
+        const { projectId, imageUrl, ...updates } = args;
         const userId = getMcpUserId();
         const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
@@ -441,7 +524,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         if (!projectDoc) throw new Error("Project not found");
         await verifyWorkspaceAccess(projectDoc.data()!.workspaceId);
 
-        await projectDoc.ref.update(updates);
+        const resolvedImageUrl = await resolveImageUrl(imageUrl, userId);
+        const finalUpdates = resolvedImageUrl ? { ...updates, imageUrl: resolvedImageUrl } : updates;
+        await projectDoc.ref.update(finalUpdates);
         const updatedDoc = await projectDoc.ref.get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updatedDoc.id, ...updatedDoc.data() }, null, 2) }] };
       }
@@ -806,6 +891,31 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await batch.commit();
 
         return { content: [{ type: "text" as const, text: `Version ${args.versionId} deleted successfully` }] };
+      }
+    );
+
+    server.registerTool(
+      "upload_image",
+      {
+        title: "Upload Image",
+        description: "Upload an image from a URL to Firebase Storage and return a signed URL. Use this when an image URL needs to be uploaded as an icon for a workspace, project, or any other entity. The agent should search the internet for relevant images and pass the URL here to get a permanent Firebase Storage URL.",
+        inputSchema: z.object({
+          imageUrl: z.string().describe("The URL of the image to upload (e.g. from a web search)"),
+          name: z.string().optional().describe("Optional name/description for the image"),
+        }) as any,
+      },
+      async (args: any) => {
+        const userId = getMcpUserId();
+        const signedUrl = await fetchAndUploadImage(args.imageUrl, userId);
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              url: signedUrl,
+              name: args.name || "uploaded-image",
+            }, null, 2),
+          }],
+        };
       }
     );
   },

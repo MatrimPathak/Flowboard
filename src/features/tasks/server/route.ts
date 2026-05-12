@@ -1,7 +1,7 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { addLinkSchema, createCommentSchema, createTaskSchema, logWorkSchema, watchTaskSchema } from "../schemas";
+import { addLinkSchema, createCommentSchema, createTaskSchema, logWorkSchema, watchTaskSchema, taskConditionalRefine } from "../schemas";
 import { getMember } from "@/features/members/utils";
 import { z } from "zod";
 import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types";
@@ -445,7 +445,7 @@ workspaceId,
 	.patch(
 		"/:taskId",
 		sessionMiddleware,
-		zValidator("json", createTaskSchema.partial()),
+		zValidator("json", createTaskSchema.innerType().partial().superRefine(taskConditionalRefine)),
 		async (c) => {
 			const user = c.get("user");
 			const databases = c.get("databases");
@@ -467,6 +467,7 @@ workspaceId,
 				fixVersionId,
 				originalEstimate,
 				remainingEstimate,
+				rca,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
 			
@@ -560,6 +561,7 @@ workspaceId,
 				...(fixVersionId !== undefined ? { fixVersionId } : {}),
 				...(originalEstimate !== undefined ? { originalEstimate } : {}),
 				...(remainingEstimate !== undefined ? { remainingEstimate } : {}),
+				...(rca !== undefined ? { rca } : {}),
 			});
 
 			// Write activity entries after main update

@@ -12,6 +12,7 @@ type AdditionalContext = {
 			$id: string;
 			name: string;
 			email: string;
+			photoUrl: string;
 		};
 	};
 };
@@ -32,6 +33,7 @@ export const sessionMiddleware = createMiddleware<AdditionalContext>(
 				$id: user.uid,
 				name: user.displayName || user.email || "",
 				email: user.email || "",
+				photoUrl: user.photoURL || "",
 			});
 			await next();
 		} catch (error) {

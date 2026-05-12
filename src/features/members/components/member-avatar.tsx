@@ -1,14 +1,16 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 interface MemberAvatarProps {
 	name: string;
+	imageUrl?: string | null;
 	className?: string;
 	fallbackClassName?: string;
 }
 
 export const MemberAvatar = ({
 	name,
+	imageUrl,
 	className,
 	fallbackClassName,
 }: MemberAvatarProps) => {
@@ -19,6 +21,7 @@ export const MemberAvatar = ({
 				className
 			)}
 		>
+			<AvatarImage src={imageUrl || undefined} alt={name} />
 			<AvatarFallback
 				className={cn(
 					"bg-neutral-200 font-medium text-neutral-500 flex items-center justify-center",

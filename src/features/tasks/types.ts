@@ -47,6 +47,7 @@ export type Task = {
 	fixVersionId?: string;
 	originalEstimate?: number;  // minutes
 	remainingEstimate?: number; // minutes
+	rca?: string;               // Root Cause Analysis (for BUGs)
 	timeSpent?: number;         // computed from worklogs (for display)
 	project?: Project | null;
 	assignee?: Member | null;

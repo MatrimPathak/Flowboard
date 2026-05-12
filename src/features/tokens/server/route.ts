@@ -4,6 +4,33 @@ import { adminDb } from "@/lib/firebase-admin";
 import * as crypto from "crypto";
 
 const app = new Hono()
+	.get("/", sessionMiddleware, async (c) => {
+		const user = c.get("user") as { $id: string };
+
+		const tokensSnapshot = await adminDb.collection("personal_access_tokens")
+			.where("userId", "==", user.$id)
+			.get();
+
+		const nowStr = new Date().toISOString();
+		const tokens = tokensSnapshot.docs
+			.filter(doc => {
+				const data = doc.data();
+				return !data.revoked;
+			})
+			.map(doc => {
+				const data = doc.data();
+				const isExpired = data.expiresAt && data.expiresAt < nowStr;
+				return {
+					$id: doc.id,
+					name: data.name,
+					expiresAt: data.expiresAt,
+					isExpired,
+					$createdAt: data.$createdAt,
+				};
+			});
+
+		return c.json({ data: tokens });
+	})
 	.post("/generate", sessionMiddleware, async (c) => {
 		const user = c.get("user") as { $id: string; name: string; email: string };
 		

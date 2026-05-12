@@ -26,7 +26,7 @@ const verifyPassword = async (email: string, password: string) => {
 const app = new Hono()
 	.get("/current", sessionMiddleware, async (c) => {
 		const user = c.get("user");
-		return c.json({ data: { $id: user.$id, name: user.name, email: user.email } });
+		return c.json({ data: { $id: user.$id, name: user.name, email: user.email, photoUrl: user.photoUrl } });
 	})
 	.post("/login", zValidator("json", loginSchema), async (c) => {
 		const { email, password } = c.req.valid("json");
