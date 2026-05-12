@@ -21,8 +21,6 @@ const normalizeDate = (data: Record<string, unknown> | undefined) => {
 	return candidate.toDate?.().toISOString();
 };
 
-// Bootstrap all workspace members into a project's members sub-collection.
-// Called once per project the first time it is accessed after this feature ships.
 const bootstrapProjectMembers = async (
 	databases: any,
 	workspaceId: string,
@@ -56,6 +54,18 @@ const bootstrapProjectMembers = async (
 	}
 	batch.update(projectRef, { membersBootstrapped: true });
 	await batch.commit();
+};
+
+// Ensure the project's member sub-collection is bootstrapped before any membership lookup.
+const ensureProjectBootstrapped = async (
+	databases: any,
+	workspaceId: string,
+	projectId: string,
+	projectDoc: any
+) => {
+	if (!projectDoc.data()?.membersBootstrapped) {
+		await bootstrapProjectMembers(databases, workspaceId, projectId, projectDoc.ref);
+	}
 };
 
 const app = new Hono()
@@ -192,7 +202,7 @@ const app = new Hono()
 			});
 		}
 	)
-	// ── Project member management ──────────────────────────────────────────────
+	// ── Project member management ────────────────────────────────────────────
 	.get("/:projectId/members", sessionMiddleware, async (c) => {
 		const databases = c.get("databases");
 		const user = c.get("user");
@@ -220,6 +230,7 @@ const app = new Hono()
 			}
 		}
 		if (!projectDoc) return c.json({ error: "Not found" }, 404);
+		await ensureProjectBootstrapped(databases, workspaceId, projectId, projectDoc);
 
 		const member = await getMember({ databases, workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -285,6 +296,7 @@ const app = new Hono()
 				if (pDoc.exists) { projectDoc = pDoc; workspaceId = wId; break; }
 			}
 			if (!projectDoc) return c.json({ error: "Not found" }, 404);
+			await ensureProjectBootstrapped(databases, workspaceId, projectId, projectDoc);
 
 			const member = await getMember({ databases, workspaceId, userId: user.$id });
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -296,14 +308,18 @@ const app = new Hono()
 			const targetMember = await getMember({ databases, workspaceId, userId: targetUserId });
 			if (!targetMember) return c.json({ error: "User is not a workspace member" }, 400);
 
-			await databases
+			const memberRef = databases
 				.collection("workspaces")
 				.doc(workspaceId)
 				.collection("projects")
 				.doc(projectId)
 				.collection("members")
-				.doc(targetUserId)
-				.set({ userId: targetUserId, role, $createdAt: new Date().toISOString() }, { merge: true });
+				.doc(targetUserId);
+			const existingSnap = await memberRef.get();
+			if (existingSnap.exists) {
+				return c.json({ error: "Project member already exists" }, 409);
+			}
+			await memberRef.set({ userId: targetUserId, role, $createdAt: new Date().toISOString() });
 
 			return c.json({ data: { $id: targetUserId } });
 		}
@@ -324,6 +340,7 @@ const app = new Hono()
 				.get();
 			const workspaceIds = membersSnap.docs.map((d: any) => d.data().workspaceId);
 
+			let projectDoc: any = null;
 			let workspaceId = "";
 			for (const wId of workspaceIds) {
 				const pDoc = await databases
@@ -332,9 +349,10 @@ const app = new Hono()
 					.collection("projects")
 					.doc(projectId)
 					.get();
-				if (pDoc.exists) { workspaceId = wId; break; }
+				if (pDoc.exists) { projectDoc = pDoc; workspaceId = wId; break; }
 			}
 			if (!workspaceId) return c.json({ error: "Not found" }, 404);
+			await ensureProjectBootstrapped(databases, workspaceId, projectId, projectDoc);
 
 			const member = await getMember({ databases, workspaceId, userId: user.$id });
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -342,6 +360,18 @@ const app = new Hono()
 			const pm = await getProjectMember({ databases, workspaceId, projectId, userId: user.$id });
 			const isAdmin = member.role === MemberRole.ADMIN || pm?.role === ProjectMemberRole.ADMIN;
 			if (!isAdmin) return c.json({ error: "Unauthorized" }, 401);
+
+			const targetMemberRef = databases
+				.collection("workspaces")
+				.doc(workspaceId)
+				.collection("projects")
+				.doc(projectId)
+				.collection("members")
+				.doc(targetUserId);
+			const targetMemberSnap = await targetMemberRef.get();
+			if (!targetMemberSnap.exists) {
+				return c.json({ error: "Project member not found" }, 404);
+			}
 
 			if (role === "MEMBER") {
 				const adminsSnap = await databases
@@ -358,14 +388,7 @@ const app = new Hono()
 				}
 			}
 
-			await databases
-				.collection("workspaces")
-				.doc(workspaceId)
-				.collection("projects")
-				.doc(projectId)
-				.collection("members")
-				.doc(targetUserId)
-				.update({ role });
+			await targetMemberRef.update({ role });
 
 			return c.json({ data: { $id: targetUserId } });
 		}
@@ -381,6 +404,7 @@ const app = new Hono()
 			.get();
 		const workspaceIds = membersSnap.docs.map((d: any) => d.data().workspaceId);
 
+		let deleteProjectDoc: any = null;
 		let workspaceId = "";
 		for (const wId of workspaceIds) {
 			const pDoc = await databases
@@ -389,9 +413,10 @@ const app = new Hono()
 				.collection("projects")
 				.doc(projectId)
 				.get();
-			if (pDoc.exists) { workspaceId = wId; break; }
+			if (pDoc.exists) { deleteProjectDoc = pDoc; workspaceId = wId; break; }
 		}
 		if (!workspaceId) return c.json({ error: "Not found" }, 404);
+		await ensureProjectBootstrapped(databases, workspaceId, projectId, deleteProjectDoc);
 
 		const member = await getMember({ databases, workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -426,7 +451,7 @@ const app = new Hono()
 
 		return c.json({ data: { $id: targetUserId } });
 	})
-	// ── Analytics + single project GET/PATCH/DELETE (unchanged) ───────────────
+	// ── Analytics + single project GET/PATCH/DELETE ─────────────────────────────
 	.get("/:projectId/analytics", sessionMiddleware, async (c) => {
 		const databases = c.get("databases");
 		const user = c.get("user");
@@ -443,9 +468,15 @@ const app = new Hono()
 		if (!projectDoc) return c.json({ error: "Not found" }, 404);
 		const pData = projectDoc.data();
 		const project = { ...pData, $id: projectDoc.id, $createdAt: normalizeDate(pData) } as Project;
+		await ensureProjectBootstrapped(databases, project.workspaceId, projectId, projectDoc);
 
 		const member = await getMember({ databases, workspaceId: project.workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+		if (member.role !== MemberRole.ADMIN) {
+			const pm = await getProjectMember({ databases, workspaceId: project.workspaceId, projectId, userId: user.$id });
+			if (!pm) return c.json({ error: "Unauthorized" }, 401);
+		}
 
 		const now = new Date();
 		const thisMonthStart = startOfMonth(now).toISOString();
@@ -519,6 +550,7 @@ const app = new Hono()
 		if (!projectDoc) return c.json({ error: "Not found" }, 404);
 		const pData = projectDoc.data();
 		const project = { ...pData, $id: projectDoc.id, $createdAt: normalizeDate(pData) } as Project;
+		await ensureProjectBootstrapped(databases, project.workspaceId, projectId, projectDoc);
 
 		const member = await getMember({ databases, workspaceId: project.workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
@@ -552,6 +584,7 @@ const app = new Hono()
 
 			if (!projectDoc) return c.json({ error: "Not found" }, 404);
 			const existingProject = projectDoc.data() as Project;
+			await ensureProjectBootstrapped(databases, existingProject.workspaceId, projectId, projectDoc);
 
 			const member = await getMember({ databases, workspaceId: existingProject.workspaceId, userId: user.$id });
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
