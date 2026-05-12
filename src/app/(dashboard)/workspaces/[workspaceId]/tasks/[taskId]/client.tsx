@@ -13,6 +13,8 @@ import { TaskAttachments } from "@/features/tasks/components/task-attachments";
 import { TaskActivity } from "@/features/tasks/components/task-activity";
 import { TaskTimeTracking } from "@/features/tasks/components/task-time-tracking";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
+import { TaskRca } from "@/features/tasks/components/task-description";
+import { IssueType } from "@/features/tasks/types";
 
 export const TaskIdClient = () => {
 	const taskId = useTaskId();
@@ -29,7 +31,13 @@ export const TaskIdClient = () => {
 			</div>
 			<DottedSeperator className="my-6" />
 			<TaskComments taskId={data.$id} />
-			<DottedSeperator className="my-6" />
+			{data.issueType === IssueType.BUG && (
+				<>
+					<DottedSeperator className="my-6" />
+					<TaskRca task={data} />
+					<DottedSeperator className="my-6" />
+				</>
+			)}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 				<TaskLinks taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
 				<TaskAttachments taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />

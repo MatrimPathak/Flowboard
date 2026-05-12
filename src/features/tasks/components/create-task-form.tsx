@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,12 +15,11 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateTask } from "../api/use-create-task";
-import { createTaskSchema } from "../schemas";
+import { createTaskSchema, taskConditionalRefine } from "../schemas";
 import { DatePicker } from "@/components/date-picker";
 import {
 	Select,
@@ -32,6 +32,7 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { IssueType, TaskPriority, TaskStatus } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { usePrefill } from "@/contexts/sidebar-context";
+import { MarkdownEditor } from "@/components/markdown-editor";
 
 const ACCEPTANCE_CRITERIA_TYPES = new Set([
 	IssueType.EPIC,
@@ -61,19 +62,33 @@ export const CreateTaskForm = ({
 	const { prefill, clearPrefill } = usePrefill();
 
 	const form = useForm<z.infer<typeof createTaskSchema>>({
-		resolver: zodResolver(createTaskSchema.omit({ workspaceId: true })),
+		resolver: zodResolver(createTaskSchema.innerType().omit({ workspaceId: true }).superRefine(taskConditionalRefine)),
 		defaultValues: {
 			workspaceId,
 			projectId: prefill.projectId,
 			issueType: prefill.issueType,
 			description: "",
 			acceptanceCriteria: "",
+			rca: "",
 		},
 	});
 
 	const issueType = form.watch("issueType");
 	const showAcceptanceCriteria =
 		issueType !== undefined && ACCEPTANCE_CRITERIA_TYPES.has(issueType as IssueType);
+	const showRca = issueType === IssueType.BUG;
+
+	useEffect(() => {
+		if (!showAcceptanceCriteria) {
+			form.setValue("acceptanceCriteria", "");
+		}
+	}, [showAcceptanceCriteria, form]);
+
+	useEffect(() => {
+		if (!showRca) {
+			form.setValue("rca", "");
+		}
+	}, [showRca, form]);
 
 	const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
 		mutate(
@@ -120,7 +135,7 @@ export const CreateTaskForm = ({
 								)}
 							/>
 
-							{/* Description — full width, required */}
+							{/* Description — full width */}
 							<FormField
 								control={form.control}
 								name="description"
@@ -128,11 +143,11 @@ export const CreateTaskForm = ({
 									<FormItem>
 										<FormLabel>Description</FormLabel>
 										<FormControl>
-											<Textarea
-												{...field}
+											<MarkdownEditor
+												value={field.value ?? ""}
+												onChange={field.onChange}
 												placeholder="Describe the task"
-												rows={3}
-												className="resize-none"
+												minRows={4}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -149,11 +164,33 @@ export const CreateTaskForm = ({
 										<FormItem>
 											<FormLabel>Acceptance Criteria</FormLabel>
 											<FormControl>
-												<Textarea
-													{...field}
+												<MarkdownEditor
+													value={field.value ?? ""}
+													onChange={field.onChange}
 													placeholder="Define the conditions that must be met for this to be considered done"
-													rows={3}
-													className="resize-none"
+													minRows={3}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
+
+							{/* RCA — full width, BUG only */}
+							{showRca && (
+								<FormField
+									control={form.control}
+									name="rca"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Root Cause Analysis</FormLabel>
+											<FormControl>
+												<MarkdownEditor
+													value={field.value ?? ""}
+													onChange={field.onChange}
+													placeholder="Analyze the root cause of the bug"
+													minRows={3}
 												/>
 											</FormControl>
 											<FormMessage />

@@ -1,6 +1,29 @@
 import { z } from "zod";
 import { IssueType, LinkType, TaskPriority, TaskStatus } from "./types";
 
+const ACCEPTANCE_CRITERIA_TYPES = new Set([IssueType.EPIC, IssueType.STORY, IssueType.BUG]);
+
+export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.RefinementCtx) => {
+	if (data.issueType && ACCEPTANCE_CRITERIA_TYPES.has(data.issueType as IssueType)) {
+		if (!data.acceptanceCriteria || (typeof data.acceptanceCriteria === "string" && data.acceptanceCriteria.trim() === "")) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Acceptance Criteria is required for Epics, Stories, and Bugs",
+				path: ["acceptanceCriteria"],
+			});
+		}
+	}
+	if (data.issueType === IssueType.BUG) {
+		if (!data.rca || (typeof data.rca === "string" && data.rca.trim() === "")) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Root Cause Analysis is required for Bugs",
+				path: ["rca"],
+			});
+		}
+	}
+};
+
 export const createTaskSchema = z.object({
 	name: z.string().trim().min(1, "Required"),
 	status: z.nativeEnum(TaskStatus, { required_error: "Required" }),
@@ -20,7 +43,8 @@ export const createTaskSchema = z.object({
 	fixVersionId: z.string().trim().min(1).optional(),
 	originalEstimate: z.number().int().min(0).optional(),
 	remainingEstimate: z.number().int().min(0).optional(),
-});
+	rca: z.string().optional(),
+}).superRefine(taskConditionalRefine);
 
 export const createCommentSchema = z.object({
 	content: z.string().trim().min(1, "Required"),
