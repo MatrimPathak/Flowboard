@@ -53,7 +53,7 @@ export const EditTaskFormWrapper = ({
 		if (!initialValues?.assigneeId) return rawMemberOptions;
 		const already = rawMemberOptions.some((m) => m.id === initialValues.assigneeId);
 		if (already) return rawMemberOptions;
-		return [...rawMemberOptions, { id: initialValues.assigneeId, name: "Former member", userId: initialValues.assigneeId }];
+		return [...rawMemberOptions, { id: initialValues.assigneeId, name: "Former member", userId: "" }];
 	})();
 
 	const versionOptions = (versions?.documents ?? [])

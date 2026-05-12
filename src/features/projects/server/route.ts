@@ -48,7 +48,7 @@ const bootstrapProjectMembers = async (
 			memberRef,
 			{
 				userId: data.userId,
-				role: data.role === MemberRole.ADMIN ? "ADMIN" : "MEMBER",
+				role: data.role === MemberRole.ADMIN ? ProjectMemberRole.ADMIN : ProjectMemberRole.MEMBER,
 				$createdAt: new Date().toISOString(),
 			},
 			{ merge: true }
@@ -177,7 +177,7 @@ const app = new Hono()
 				.doc(user.$id)
 				.set({
 					userId: user.$id,
-					role: "ADMIN" as ProjectMemberRole,
+					role: ProjectMemberRole.ADMIN,
 					$createdAt: new Date().toISOString(),
 				});
 
@@ -224,6 +224,11 @@ const app = new Hono()
 		const member = await getMember({ databases, workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
 
+		if (member.role !== MemberRole.ADMIN) {
+			const pm = await getProjectMember({ databases, workspaceId, projectId, userId: user.$id });
+			if (!pm) return c.json({ error: "Unauthorized" }, 401);
+		}
+
 		const pmSnap = await databases
 			.collection("workspaces")
 			.doc(workspaceId)
@@ -238,11 +243,12 @@ const app = new Hono()
 			$id: doc.id,
 		})) as ProjectMember[];
 
-		const userRecords = await adminAuth.getUsers(
-			projectMembers.map((m) => ({ uid: m.userId }))
-		);
 		const userMap = new Map<string, any>();
-		userRecords.users.forEach((u) => userMap.set(u.uid, u));
+		for (let i = 0; i < projectMembers.length; i += 100) {
+			const chunk = projectMembers.slice(i, i + 100);
+			const userRecords = await adminAuth.getUsers(chunk.map((m) => ({ uid: m.userId })));
+			userRecords.users.forEach((u) => userMap.set(u.uid, u));
+		}
 
 		const populated = projectMembers.map((pm) => {
 			const u = userMap.get(pm.userId) ?? { displayName: "Unknown", email: "" };
@@ -284,7 +290,7 @@ const app = new Hono()
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
 
 			const pm = await getProjectMember({ databases, workspaceId, projectId, userId: user.$id });
-			const isAdmin = member.role === MemberRole.ADMIN || pm?.role === "ADMIN";
+			const isAdmin = member.role === MemberRole.ADMIN || pm?.role === ProjectMemberRole.ADMIN;
 			if (!isAdmin) return c.json({ error: "Unauthorized" }, 401);
 
 			const targetMember = await getMember({ databases, workspaceId, userId: targetUserId });
@@ -334,7 +340,7 @@ const app = new Hono()
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
 
 			const pm = await getProjectMember({ databases, workspaceId, projectId, userId: user.$id });
-			const isAdmin = member.role === MemberRole.ADMIN || pm?.role === "ADMIN";
+			const isAdmin = member.role === MemberRole.ADMIN || pm?.role === ProjectMemberRole.ADMIN;
 			if (!isAdmin) return c.json({ error: "Unauthorized" }, 401);
 
 			if (role === "MEMBER") {
@@ -392,7 +398,7 @@ const app = new Hono()
 
 		const pm = await getProjectMember({ databases, workspaceId, projectId, userId: user.$id });
 		const isSelf = user.$id === targetUserId;
-		const isAdmin = member.role === MemberRole.ADMIN || pm?.role === "ADMIN";
+		const isAdmin = member.role === MemberRole.ADMIN || pm?.role === ProjectMemberRole.ADMIN;
 		if (!isSelf && !isAdmin) return c.json({ error: "Unauthorized" }, 401);
 
 		const adminsSnap = await databases
@@ -516,6 +522,12 @@ const app = new Hono()
 
 		const member = await getMember({ databases, workspaceId: project.workspaceId, userId: user.$id });
 		if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+		if (member.role !== MemberRole.ADMIN) {
+			const pm = await getProjectMember({ databases, workspaceId: project.workspaceId, projectId, userId: user.$id });
+			if (!pm) return c.json({ error: "Unauthorized" }, 401);
+		}
+
 		return c.json({ data: project });
 	})
 	.patch(
@@ -543,6 +555,10 @@ const app = new Hono()
 
 			const member = await getMember({ databases, workspaceId: existingProject.workspaceId, userId: user.$id });
 			if (!member) return c.json({ error: "Unauthorized" }, 401);
+
+			const pmForPatch = await getProjectMember({ databases, workspaceId: existingProject.workspaceId, projectId, userId: user.$id });
+			const isProjectAdmin = member.role === MemberRole.ADMIN || pmForPatch?.role === ProjectMemberRole.ADMIN;
+			if (!isProjectAdmin) return c.json({ error: "Unauthorized" }, 401);
 
 			let uploadImageUrl: string | undefined;
 			if (imageUrl instanceof File) {

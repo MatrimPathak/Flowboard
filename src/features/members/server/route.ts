@@ -116,7 +116,7 @@ const app = new Hono()
 			.doc(memberToDelete.workspaceId)
 			.collection("projects")
 			.get();
-		await Promise.all(
+		const cascadeResults = await Promise.allSettled(
 			projectsSnap.docs.map((pDoc: any) =>
 				databases
 					.collection("workspaces")
@@ -126,9 +126,11 @@ const app = new Hono()
 					.collection("members")
 					.doc(memberToDelete.userId)
 					.delete()
-					.catch(() => {}) // ignore if not a member of this project
 			)
 		);
+		if (cascadeResults.some((r) => r.status === "rejected")) {
+			return c.json({ error: "Failed to remove member from all projects" }, 500);
+		}
 
 		return c.json({ data: { $id: memberId } });
 	})

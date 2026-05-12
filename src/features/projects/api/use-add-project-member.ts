@@ -1,6 +1,9 @@
 import { client } from "@/lib/rpc";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { ProjectMemberRole } from "../types";
+
+type ErrorResponse = { error?: string };
 
 export const useAddProjectMember = () => {
 	const queryClient = useQueryClient();
@@ -12,15 +15,15 @@ export const useAddProjectMember = () => {
 		}: {
 			projectId: string;
 			userId: string;
-			role: "ADMIN" | "MEMBER";
+			role: ProjectMemberRole;
 		}) => {
 			const response = await client.api.projects[":projectId"].members.$post({
 				param: { projectId },
 				json: { userId, role },
 			});
 			if (!response.ok) {
-				const err = await response.json();
-				throw new Error((err as any).error ?? "Failed to add member");
+				const err = await response.json() as ErrorResponse;
+				throw new Error(err.error ?? "Failed to add member");
 			}
 			return response.json();
 		},

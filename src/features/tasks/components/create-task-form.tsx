@@ -304,6 +304,9 @@ export const CreateTaskForm = ({
 												defaultValue={field.value}
 												onValueChange={(value) => {
 													field.onChange(value);
+													form.setValue("assigneeId", undefined);
+													form.setValue("sprintId", undefined);
+													form.setValue("fixVersionId", undefined);
 													onProjectChange?.(value);
 												}}
 											>

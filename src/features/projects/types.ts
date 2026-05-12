@@ -7,7 +7,10 @@ export type Project = {
 	membersBootstrapped?: boolean;
 };
 
-export type ProjectMemberRole = "ADMIN" | "MEMBER";
+export enum ProjectMemberRole {
+	ADMIN = "ADMIN",
+	MEMBER = "MEMBER",
+}
 
 export type ProjectMember = {
 	$id: string;

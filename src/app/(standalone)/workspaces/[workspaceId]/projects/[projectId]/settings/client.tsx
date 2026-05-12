@@ -11,6 +11,7 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjectMembers } from "@/features/projects/api/use-get-project-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { MemberRole } from "@/features/members/types";
+import { ProjectMemberRole } from "@/features/projects/types";
 import { DottedSeperator } from "@/components/dotted-seperator";
 import { useCurrent } from "@/features/auth/api/use-current";
 
@@ -31,7 +32,7 @@ export const ProjectIdSettingsClient = () => {
 	const pmRole = projectMembers?.documents.find(
 		(m) => m.userId === currentUser?.$id
 	)?.role;
-	const isAdmin = wsRole === MemberRole.ADMIN || pmRole === "ADMIN";
+	const isAdmin = wsRole === MemberRole.ADMIN || pmRole === ProjectMemberRole.ADMIN;
 
 	return (
 		<Tabs defaultValue="general">

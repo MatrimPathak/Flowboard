@@ -25,6 +25,7 @@ import { useUpdateProjectMember } from "../api/use-update-project-member";
 import { useRemoveProjectMember } from "../api/use-remove-project-member";
 import { useConfirm } from "@/hooks/use-confirm";
 import { Loader, MoreVerticalIcon, UserPlusIcon } from "lucide-react";
+import { ProjectMemberRole } from "../types";
 
 interface ProjectMembersListProps {
 	workspaceId: string;
@@ -38,7 +39,7 @@ export const ProjectMembersList = ({
 	isAdmin,
 }: ProjectMembersListProps) => {
 	const [selectedUserId, setSelectedUserId] = useState<string>("");
-	const [selectedRole, setSelectedRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
+	const [selectedRole, setSelectedRole] = useState<ProjectMemberRole>(ProjectMemberRole.MEMBER);
 
 	const [ConfirmDialog, confirm] = useConfirm(
 		"Remove member",
@@ -70,7 +71,12 @@ export const ProjectMembersList = ({
 		);
 	};
 
+	const admins = projectMembers.filter((m) => m.role === ProjectMemberRole.ADMIN);
+	const isLastAdmin = (userId: string) =>
+		admins.length === 1 && admins[0].userId === userId;
+
 	const handleRemove = async (userId: string) => {
+		if (isLastAdmin(userId)) return;
 		const ok = await confirm();
 		if (!ok) return;
 		removeMember({ projectId, userId });
@@ -97,13 +103,13 @@ export const ProjectMembersList = ({
 								<MemberAvatar
 									className="size-10"
 									fallbackClassName="text-lg"
-									name={member.name}
+									name={member.name ?? member.email ?? "Unknown"}
 								/>
 								<div className="flex flex-col">
 									<p className="text-sm font-medium">{member.name}</p>
 									<p className="text-xs text-muted-foreground">{member.email}</p>
 								</div>
-								{member.role === "ADMIN" && (
+								{member.role === ProjectMemberRole.ADMIN && (
 									<div className="text-xs ml-auto text-white px-2 py-1 rounded-md bg-blue-500">
 										Admin
 									</div>
@@ -112,7 +118,7 @@ export const ProjectMembersList = ({
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<Button
-												className={member.role !== "ADMIN" ? "ml-auto" : ""}
+												className={member.role !== ProjectMemberRole.ADMIN ? "ml-auto" : ""}
 												variant="secondary"
 												size="icon"
 											>
@@ -123,27 +129,27 @@ export const ProjectMembersList = ({
 											<DropdownMenuItem
 												className="font-medium"
 												onClick={() =>
-													updateMember({ projectId, userId: member.userId, role: "ADMIN" })
+													updateMember({ projectId, userId: member.userId, role: ProjectMemberRole.ADMIN })
 												}
-												disabled={isUpdating || member.role === "ADMIN"}
+												disabled={isUpdating || member.role === ProjectMemberRole.ADMIN}
 											>
 												Set as Administrator
 											</DropdownMenuItem>
 											<DropdownMenuItem
 												className="font-medium"
 												onClick={() =>
-													updateMember({ projectId, userId: member.userId, role: "MEMBER" })
+													updateMember({ projectId, userId: member.userId, role: ProjectMemberRole.MEMBER })
 												}
-												disabled={isUpdating || member.role === "MEMBER"}
+												disabled={isUpdating || member.role === ProjectMemberRole.MEMBER}
 											>
 												Set as Member
 											</DropdownMenuItem>
 											<DropdownMenuItem
 												className="font-medium text-amber-700"
 												onClick={() => handleRemove(member.userId)}
-												disabled={isRemoving}
+												disabled={isRemoving || isLastAdmin(member.userId)}
 											>
-												Remove {member.name}
+												Remove {member.name ?? member.email ?? "Unknown"}
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
@@ -175,13 +181,13 @@ export const ProjectMembersList = ({
 							</div>
 							<div>
 								<p className="text-sm font-medium mb-1">Role</p>
-								<Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as "ADMIN" | "MEMBER")}>
+								<Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as ProjectMemberRole)}>
 									<SelectTrigger className="w-28">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="MEMBER">Member</SelectItem>
-										<SelectItem value="ADMIN">Admin</SelectItem>
+										<SelectItem value={ProjectMemberRole.MEMBER}>Member</SelectItem>
+										<SelectItem value={ProjectMemberRole.ADMIN}>Admin</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>

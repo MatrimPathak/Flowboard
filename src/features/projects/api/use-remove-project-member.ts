@@ -2,6 +2,8 @@ import { client } from "@/lib/rpc";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+type ErrorResponse = { error?: string };
+
 export const useRemoveProjectMember = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -16,8 +18,8 @@ export const useRemoveProjectMember = () => {
 				param: { projectId, userId },
 			});
 			if (!response.ok) {
-				const err = await response.json();
-				throw new Error((err as any).error ?? "Failed to remove member");
+				const err = await response.json() as ErrorResponse;
+				throw new Error(err.error ?? "Failed to remove member");
 			}
 			return response.json();
 		},
