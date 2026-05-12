@@ -109,6 +109,27 @@ const app = new Hono()
 			);
 		}
 		await databases.collection("members").doc(memberId).delete();
+
+		// Cascade: remove user from all project member sub-collections in this workspace
+		const projectsSnap = await databases
+			.collection("workspaces")
+			.doc(memberToDelete.workspaceId)
+			.collection("projects")
+			.get();
+		await Promise.all(
+			projectsSnap.docs.map((pDoc: any) =>
+				databases
+					.collection("workspaces")
+					.doc(memberToDelete.workspaceId)
+					.collection("projects")
+					.doc(pDoc.id)
+					.collection("members")
+					.doc(memberToDelete.userId)
+					.delete()
+					.catch(() => {}) // ignore if not a member of this project
+			)
+		);
+
 		return c.json({ data: { $id: memberId } });
 	})
 	.patch(
