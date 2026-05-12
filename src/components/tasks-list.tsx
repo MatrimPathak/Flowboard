@@ -8,6 +8,7 @@ import { DottedSeperator } from "./dotted-seperator";
 import Link from "next/link";
 import { Card, CardContent } from "./ui/card";
 import { formatDistanceToNow } from "date-fns";
+import { DashboardCard } from "./dashboard-card";
 
 interface TaskListProps {
 	data: Task[];
@@ -19,7 +20,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 	const { open: createTask } = useCreateTaskModal();
 	return (
 		<div className="flex flex-col gap-y-4 col-span-1">
-			<div className="bg-white border rounded-lg p-4">
+			<DashboardCard>
 				<div className="flex items-center justify-between">
 					<p className="text-lg font-semibold">Tasks ({total})</p>
 					<Button
@@ -27,7 +28,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 						size="icon"
 						onClick={() => createTask()}
 					>
-						<PlusIcon className="size-4 text-neutral-400" />
+						<PlusIcon className="size-4 text-muted-foreground" />
 					</Button>
 				</div>
 				<DottedSeperator className="my-4" />
@@ -44,7 +45,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 										</p>
 										<div className="flex items-center gap-x-2">
 											<p>{task.project?.name}</p>
-											<div className="size-1 rounded-full bg-neutral-300" />
+											<div className="size-1 rounded-full bg-border" />
 											<div className="text-sm text-muted-foreground flex items-center">
 												<CalendarIcon className="size-3 mr-1" />
 												<span className="truncate">
@@ -68,7 +69,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 						Show All
 					</Link>
 				</Button>
-			</div>
+			</DashboardCard>
 		</div>
 	);
 };

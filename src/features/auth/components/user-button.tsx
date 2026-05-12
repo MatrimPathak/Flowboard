@@ -25,7 +25,7 @@ export const UserButton = () => {
 
 	if (isLoading) {
 		return (
-			<div className="size-10 rounded-full flex items-center justify-center bg-neutral-200 border border-neutral-300">
+			<div className="size-10 rounded-full flex items-center justify-center bg-muted border border-border">
 				<Loader className="size-4 animate-spin text-muted-foreground" />
 			</div>
 		);
@@ -43,9 +43,9 @@ export const UserButton = () => {
 	return (
 		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger className="outline-none relative">
-				<Avatar className="size-10 hover:opacity-75 transition border border-neutral-300">
+				<Avatar className="size-10 hover:opacity-75 transition border border-border">
 					<AvatarImage src={photoUrl} alt={name || email} />
-					<AvatarFallback className="bg-neutral-200 font-medium text-neutral-500 flex items-center justify-center">
+					<AvatarFallback className="bg-muted font-medium text-muted-foreground flex items-center justify-center">
 						{avatarFallback}
 					</AvatarFallback>
 				</Avatar>
@@ -57,9 +57,9 @@ export const UserButton = () => {
 				sideOffset={10}
 			>
 				<div className="flex flex-col items-center justify-center gap-2 px-2.5 py-4">
-					<Avatar className="size-[52px] border border-neutral-300">
+					<Avatar className="size-[52px] border border-border">
 						<AvatarImage src={photoUrl} alt={name || email} />
-						<AvatarFallback className="bg-neutral-200 text-xl font-medium text-neutral-500 flex items-center justify-center">
+						<AvatarFallback className="bg-muted text-xl font-medium text-muted-foreground flex items-center justify-center">
 							{avatarFallback}
 						</AvatarFallback>
 					</Avatar>

@@ -14,12 +14,12 @@ import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint
 import { IssueType } from "@/features/tasks/types";
 
 const subItems = [
-	{ label: "Backlog", icon: List, color: "text-blue-600", bg: "bg-blue-50", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
-	{ label: "Sprints", icon: Timer, color: "text-green-600", bg: "bg-green-50", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
-	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50", hrefSuffix: "/versions", issueType: undefined, modalType: "task" as const },
-	{ label: "Epics", icon: Target, color: "text-amber-600", bg: "bg-amber-50", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
-	{ label: "Stories", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
-	{ label: "Bugs", icon: Bug, color: "text-red-600", bg: "bg-red-50", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
+	{ label: "Backlog", icon: List, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
+	{ label: "Sprints", icon: Timer, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
+	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/versions", issueType: undefined, modalType: "task" as const },
+	{ label: "Epics", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
+	{ label: "Stories", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
+	{ label: "Bugs", icon: Bug, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
 ];
 
 interface SubItemProps {
@@ -50,27 +50,30 @@ const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, mod
 	};
 
 	return (
-		<Link href={href} className="relative group">
-			<div className={cn(
-				"flex items-center justify-between p-2.5 rounded-xl transition-all",
-				isActive
-					? "bg-white border border-neutral-200 text-neutral-900 shadow-sm"
-					: "hover:bg-white hover:border-neutral-200 hover:shadow-sm border border-transparent"
-			)}>
-				<div className="flex items-center gap-x-3">
-					<div className={cn("p-2 rounded-lg", bg)}>
-						<Icon className={cn("size-4", color)} />
+		<div className="relative group">
+			<Link href={href} className="block">
+				<div className={cn(
+					"flex items-center justify-between p-2.5 rounded-xl transition-all",
+					isActive
+						? "bg-background border border-border text-foreground shadow-sm"
+						: "hover:bg-background hover:border-border hover:shadow-sm border border-transparent"
+				)}>
+					<div className="flex items-center gap-x-3">
+						<div className={cn("p-2 rounded-lg", bg)}>
+							<Icon className={cn("size-4", color)} />
+						</div>
+						<span className="text-sm font-medium tracking-tight">{label}</span>
 					</div>
-					<span className="text-sm font-medium tracking-tight">{label}</span>
 				</div>
-				<button
-					onClick={handleCreate}
-					className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 rounded-full transition-all"
-				>
-					<Plus className="size-4 text-neutral-500" />
-				</button>
-			</div>
-		</Link>
+			</Link>
+			<button
+				type="button"
+				onClick={handleCreate}
+				className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded-full transition-all"
+			>
+				<Plus className="size-4 text-muted-foreground" />
+			</button>
+		</div>
 	);
 };
 
@@ -97,11 +100,11 @@ export const Projects = () => {
 	return (
 		<div className="flex flex-col gap-y-4">
 			<div className="flex items-center justify-between">
-				<p className="text-xs uppercase text-neutral-500 tracking-tight">Projects</p>
+				<p className="text-xs uppercase text-muted-foreground tracking-tight">Projects</p>
 				<button
 					onClick={open}
 					aria-label="Create project"
-					className="p-1 hover:bg-neutral-200 rounded-full transition cursor-pointer text-neutral-500"
+					className="p-1 hover:bg-muted rounded-full transition cursor-pointer text-muted-foreground"
 				>
 					<Plus className="size-4" strokeWidth={2.5} />
 				</button>
@@ -120,8 +123,8 @@ export const Projects = () => {
 										className={cn(
 											"flex items-center gap-3 p-2.5 rounded-xl transition cursor-pointer group",
 											isActive
-												? "bg-white border border-neutral-200 text-neutral-900 shadow-sm"
-												: "hover:bg-neutral-200/50 text-neutral-600"
+												? "bg-background border border-border text-foreground shadow-sm"
+												: "hover:bg-muted/50 text-muted-foreground"
 										)}
 									>
 										<ProjectAvatar
@@ -133,16 +136,16 @@ export const Projects = () => {
 								</Link>
 								<button
 									onClick={(e) => toggleExpand(e, project.$id)}
-									className="p-1.5 hover:bg-neutral-200 rounded-lg transition"
+									className="p-1.5 hover:bg-muted rounded-lg transition"
 								>
 									<ChevronDown className={cn(
-										"size-4 text-neutral-400 transition-transform duration-200",
+										"size-4 text-muted-foreground transition-transform duration-200",
 										!isExpanded && "rotate-180"
 									)} />
 								</button>
 							</div>
 							{isExpanded && (
-								<div className="flex flex-col gap-y-1.5 ml-2 pl-4 border-l border-neutral-200">
+								<div className="flex flex-col gap-y-1.5 ml-2 pl-4 border-l border-border">
 									{subItems.map((item) => (
 										<SubItem
 											key={item.label}
