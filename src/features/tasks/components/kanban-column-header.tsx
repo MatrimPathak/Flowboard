@@ -46,7 +46,7 @@ export const KanbanColumnHeader = ({
 				<h2 className="text-sm font-medium">
 					{snakeCaseToTitleCase(board)}
 				</h2>
-				<div className="size-5 flex items-center justify-center rounded-md bg-neutral-200 text-xs text-neutral-700 font-medium">
+				<div className="size-5 flex items-center justify-center rounded-md bg-muted text-xs text-muted-foreground font-medium">
 					{taskCount}
 				</div>
 			</div>
@@ -56,7 +56,7 @@ export const KanbanColumnHeader = ({
 				size="icon"
 				className="size-5"
 			>
-				<PlusIcon className="size-4 text-neutral-500" />
+				<PlusIcon className="size-4 text-muted-foreground" />
 			</Button>
 		</div>
 	);

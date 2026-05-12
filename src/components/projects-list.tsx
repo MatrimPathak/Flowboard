@@ -7,6 +7,7 @@ import { DottedSeperator } from "./dotted-seperator";
 import Link from "next/link";
 import { Card, CardContent } from "./ui/card";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { DashboardCard } from "./dashboard-card";
 
 interface ProjectListProps {
 	data: Project[];
@@ -18,7 +19,7 @@ export const ProjectList = ({ data, total }: ProjectListProps) => {
 	const { open: createProject } = useCreateProjectModal();
 	return (
 		<div className="flex flex-col gap-y-4 col-span-1">
-			<div className="bg-white border rounded-lg p-4">
+			<DashboardCard>
 				<div className="flex items-center justify-between">
 					<p className="text-lg font-semibold">Projects ({total})</p>
 					<Button
@@ -26,7 +27,7 @@ export const ProjectList = ({ data, total }: ProjectListProps) => {
 						size="icon"
 						onClick={createProject}
 					>
-						<PlusIcon className="size-4 text-neutral-400" />
+						<PlusIcon className="size-4 text-muted-foreground" />
 					</Button>
 				</div>
 				<DottedSeperator className="my-4" />
@@ -56,7 +57,7 @@ export const ProjectList = ({ data, total }: ProjectListProps) => {
 						No Projects Found
 					</li>
 				</ul>
-			</div>
+			</DashboardCard>
 		</div>
 	);
 };

@@ -6,6 +6,7 @@ import { SettingsIcon } from "lucide-react";
 import { DottedSeperator } from "./dotted-seperator";
 import { Card, CardContent } from "./ui/card";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { DashboardCard } from "./dashboard-card";
 
 interface MembersListProps {
 	data: Member[];
@@ -16,12 +17,12 @@ export const MembersList = ({ data, total }: MembersListProps) => {
 	const workspaceId = useWorkspaceId();
 	return (
 		<div className="flex flex-col gap-y-4 col-span-1">
-			<div className="bg-white border rounded-lg p-4">
+			<DashboardCard>
 				<div className="flex items-center justify-between">
 					<p className="text-lg font-semibold">Members ({total})</p>
 					<Button variant="secondary" size="icon" asChild>
 						<Link href={`/workspaces/${workspaceId}/members`}>
-							<SettingsIcon className="size-4 text-neutral-400" />
+							<SettingsIcon className="size-4 text-muted-foreground" />
 						</Link>
 					</Button>
 				</div>
@@ -51,7 +52,7 @@ export const MembersList = ({ data, total }: MembersListProps) => {
 						No Members Found
 					</li>
 				</ul>
-			</div>
-		</div>
+		</DashboardCard>
+	</div>
 	);
 };
