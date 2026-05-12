@@ -7,7 +7,7 @@ const projectIdSettingsPage = async () => {
 	const user = await getCurrent();
 	if (!user) redirect("/sing-in");
 	return (
-		<div className="w-full lg:max-w-xl">
+		<div className="w-full lg:max-w-2xl">
 			<ProjectIdSettingsClient />
 		</div>
 	);
