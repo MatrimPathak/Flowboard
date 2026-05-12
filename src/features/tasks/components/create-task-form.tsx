@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +73,12 @@ export const CreateTaskForm = ({
 	const issueType = form.watch("issueType");
 	const showAcceptanceCriteria =
 		issueType !== undefined && ACCEPTANCE_CRITERIA_TYPES.has(issueType as IssueType);
+
+	useEffect(() => {
+		if (!showAcceptanceCriteria) {
+			form.setValue("acceptanceCriteria", "");
+		}
+	}, [showAcceptanceCriteria, form]);
 
 	const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
 		mutate(
@@ -371,13 +378,13 @@ export const CreateTaskForm = ({
 													placeholder="e.g. 3"
 													value={field.value ?? ""}
 													onChange={(e) => {
-														const val =
-															e.target.value === ""
-																? undefined
-																: Number(e.target.value);
-														field.onChange(
-															isNaN(val as number) ? field.value : val
-														);
+														const raw = e.target.value;
+														if (raw === "") {
+															field.onChange(undefined);
+															return;
+														}
+														const val = Number(raw);
+														field.onChange(Number.isNaN(val) ? field.value : val);
 													}}
 												/>
 											</FormControl>
