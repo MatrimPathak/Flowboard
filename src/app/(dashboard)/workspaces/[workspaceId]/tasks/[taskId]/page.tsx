@@ -1,4 +1,5 @@
 import { getCurrent } from "@/features/auth/queries";
+import { getMember } from "@/features/members/utils";
 import { adminDb } from "@/lib/firebase-admin";
 import { getTaskRoute } from "@/lib/task-routes";
 import { IssueType } from "@/features/tasks/types";
@@ -13,6 +14,9 @@ const TaskIdPage = async ({ params }: Props) => {
 	if (!user) redirect("/sign-in");
 
 	const { workspaceId, taskId } = params;
+
+	const member = await getMember({ databases: adminDb, workspaceId, userId: user.$id });
+	if (!member) redirect(`/workspaces/${workspaceId}`);
 
 	// Find the task across all projects in this workspace
 	const projectsSnap = await adminDb
@@ -33,9 +37,8 @@ const TaskIdPage = async ({ params }: Props) => {
 
 		if (taskDoc.exists) {
 			const data = taskDoc.data();
-			const projectId = data?.projectId ?? projectDoc.id;
 			const issueType = data?.issueType as IssueType | undefined;
-			redirect(getTaskRoute(workspaceId, projectId, { $id: taskId, issueType }));
+			redirect(getTaskRoute(workspaceId, projectDoc.id, { $id: taskId, issueType }));
 		}
 	}
 

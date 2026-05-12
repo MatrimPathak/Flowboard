@@ -19,11 +19,13 @@ const TasksPage = async ({ params }: Props) => {
 		userId,
 	});
 
+	if (!member) redirect(`/workspaces/${params.workspaceId}`);
+
 	return (
 		<div className="h-full flex flex-col">
 			<TaskViewSwitcher
 				hideProjectFilter={false}
-				lockedAssigneeId={member?.$id}
+				lockedAssigneeId={member.$id}
 			/>
 		</div>
 	);

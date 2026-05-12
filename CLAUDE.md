@@ -10,7 +10,7 @@ See [`docs/terminology.md`](./docs/terminology.md) for definitions of all domain
 
 All routes are workspace-scoped. Project-specific resources also carry the project segment.
 
-```
+```text
 /workspaces/[workspaceId]                                      — Workspace overview
 /workspaces/[workspaceId]/tasks                                — My Tasks (all items assigned to me)
 /workspaces/[workspaceId]/projects/[projectId]                 — Project overview
