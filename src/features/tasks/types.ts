@@ -36,6 +36,7 @@ export type Task = {
 	dueDate: string;
 	position: number;
 	description?: string;
+	acceptanceCriteria?: string;
 	issueType?: IssueType;
 	priority?: TaskPriority;
 	parentId?: string;

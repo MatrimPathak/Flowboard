@@ -21,10 +21,12 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 
 interface TaskViewSwitcherProps {
 	hideProjectFilter?: boolean;
+	lockedAssigneeId?: string;
 }
 
 export const TaskViewSwitcher = ({
 	hideProjectFilter,
+	lockedAssigneeId,
 }: TaskViewSwitcherProps) => {
 	const paramProjectId = useProjectId();
 	const [{ status, assigneeId, projectId, dueDate, priority, issueType }] = useTaskFilters();
@@ -38,7 +40,7 @@ export const TaskViewSwitcher = ({
 		status,
 		priority,
 		issueType,
-		assigneeId,
+		assigneeId: lockedAssigneeId ?? assigneeId,
 		dueDate,
 	});
 	const { open } = useCreateTaskModal();
@@ -87,7 +89,7 @@ export const TaskViewSwitcher = ({
 					</Button>
 				</div>
 				<DottedSeperator className="my-4" />
-				<DataFilters hideProjectFilter={hideProjectFilter} />
+				<DataFilters hideProjectFilter={hideProjectFilter} hideAssigneeFilter={!!lockedAssigneeId} />
 				<DottedSeperator className="my-4" />
 				{isLoadingTasks ? (
 					<div className="w-full border rounded-lg h-[200px] flex flex-col items-center justify-center">

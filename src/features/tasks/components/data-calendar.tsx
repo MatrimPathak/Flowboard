@@ -76,6 +76,8 @@ export const DataCalender = ({ data }: DataCalenderProps) => {
 		assignee: task.assignee,
 		status: task.status,
 		id: task.$id,
+		projectId: task.projectId,
+		issueType: task.issueType,
 	}));
 	const handleNavigate = (action: "PREV" | "NEXT" | "TODAY") => {
 		if (action === "PREV") {
@@ -105,6 +107,8 @@ export const DataCalender = ({ data }: DataCalenderProps) => {
 				eventWrapper: ({ event }) => (
 					<EventCard
 						id={event.id}
+						projectId={event.projectId}
+						issueType={event.issueType}
 						title={event.title}
 						assignee={event.assignee}
 						project={event.project}

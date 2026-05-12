@@ -165,8 +165,9 @@ export const columns: ColumnDef<Task>[] = [
 		cell: ({ row }) => {
 			const id = row.original.$id;
 			const projectId = row.original.projectId;
+			const issueType = row.original.issueType;
 			return (
-				<TaskActions id={id} projectId={projectId}>
+				<TaskActions id={id} projectId={projectId} issueType={issueType}>
 					<Button variant="ghost" className="size-8 p-0">
 						<MoreVertical className="size-4" />
 					</Button>
