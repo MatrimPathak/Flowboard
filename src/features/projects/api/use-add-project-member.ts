@@ -24,7 +24,7 @@ export const useAddProjectMember = () => {
 			}
 			return response.json();
 		},
-		onSuccess: (_data, { projectId }) => {
+		onSuccess: () => {
 			toast.success("Member added to project");
 			queryClient.invalidateQueries({ queryKey: ["project-members"] });
 		},

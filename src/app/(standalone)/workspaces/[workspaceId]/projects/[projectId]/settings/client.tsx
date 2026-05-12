@@ -34,32 +34,30 @@ export const ProjectIdSettingsClient = () => {
 	const isAdmin = wsRole === MemberRole.ADMIN || pmRole === "ADMIN";
 
 	return (
-		<div className="w-full lg:max-w-2xl">
-			<Tabs defaultValue="general">
-				<TabsList className="mb-4">
-					<TabsTrigger value="general">General</TabsTrigger>
-					<TabsTrigger value="members">Members</TabsTrigger>
-				</TabsList>
+		<Tabs defaultValue="general">
+			<TabsList className="mb-4">
+				<TabsTrigger value="general">General</TabsTrigger>
+				<TabsTrigger value="members">Members</TabsTrigger>
+			</TabsList>
 
-				<TabsContent value="general">
-					<EditProjectForm initialValues={initialValues} />
-				</TabsContent>
+			<TabsContent value="general">
+				<EditProjectForm initialValues={initialValues} />
+			</TabsContent>
 
-				<TabsContent value="members">
-					<div className="border rounded-lg p-6 bg-card">
-						<h2 className="text-lg font-semibold mb-1">Project Members</h2>
-						<p className="text-sm text-muted-foreground mb-4">
-							Manage who has access to this project.
-						</p>
-						<DottedSeperator className="mb-4" />
-						<ProjectMembersList
-							workspaceId={workspaceId}
-							projectId={projectId}
-							isAdmin={isAdmin}
-						/>
-					</div>
-				</TabsContent>
-			</Tabs>
-		</div>
+			<TabsContent value="members">
+				<div className="border rounded-lg p-6 bg-card">
+					<h2 className="text-lg font-semibold mb-1">Project Members</h2>
+					<p className="text-sm text-muted-foreground mb-4">
+						Manage who has access to this project.
+					</p>
+					<DottedSeperator className="mb-4" />
+					<ProjectMembersList
+						workspaceId={workspaceId}
+						projectId={projectId}
+						isAdmin={isAdmin}
+					/>
+				</div>
+			</TabsContent>
+		</Tabs>
 	);
 };

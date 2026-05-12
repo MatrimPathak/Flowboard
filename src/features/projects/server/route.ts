@@ -471,18 +471,29 @@ const app = new Hono()
 			return docs.length;
 		};
 
+		const thisTotal = getTaskCount(thisMonthStart, thisMonthEnd);
+		const lastTotal = getTaskCount(lastMonthStart, lastMonthEnd);
+		const thisAssigned = getTaskCount(thisMonthStart, thisMonthEnd, { assigneeId: member.$id });
+		const lastAssigned = getTaskCount(lastMonthStart, lastMonthEnd, { assigneeId: member.$id });
+		const thisIncomplete = getTaskCount(thisMonthStart, thisMonthEnd, { notStatus: TaskStatus.DONE });
+		const lastIncomplete = getTaskCount(lastMonthStart, lastMonthEnd, { notStatus: TaskStatus.DONE });
+		const thisCompleted = getTaskCount(thisMonthStart, thisMonthEnd, { status: TaskStatus.DONE });
+		const lastCompleted = getTaskCount(lastMonthStart, lastMonthEnd, { status: TaskStatus.DONE });
+		const thisOverdue = getTaskCount(thisMonthStart, thisMonthEnd, { overdue: true });
+		const lastOverdue = getTaskCount(lastMonthStart, lastMonthEnd, { overdue: true });
+
 		return c.json({
 			data: {
-				taskCount: getTaskCount(thisMonthStart, thisMonthEnd),
-				taskDifference: getTaskCount(thisMonthStart, thisMonthEnd) - getTaskCount(lastMonthStart, lastMonthEnd),
-				assignedTaskCount: getTaskCount(thisMonthStart, thisMonthEnd, { assigneeId: member.$id }),
-				assignedTaskDifference: getTaskCount(thisMonthStart, thisMonthEnd, { assigneeId: member.$id }) - getTaskCount(lastMonthStart, lastMonthEnd, { assigneeId: member.$id }),
-				incompleteTaskCount: getTaskCount(thisMonthStart, thisMonthEnd, { notStatus: TaskStatus.DONE }),
-				incompleteTaskDifference: getTaskCount(thisMonthStart, thisMonthEnd, { notStatus: TaskStatus.DONE }) - getTaskCount(lastMonthStart, lastMonthEnd, { notStatus: TaskStatus.DONE }),
-				completedTaskCount: getTaskCount(thisMonthStart, thisMonthEnd, { status: TaskStatus.DONE }),
-				completedTaskDifference: getTaskCount(thisMonthStart, thisMonthEnd, { status: TaskStatus.DONE }) - getTaskCount(lastMonthStart, lastMonthEnd, { status: TaskStatus.DONE }),
-				overdueTaskCount: getTaskCount(thisMonthStart, thisMonthEnd, { overdue: true }),
-				overdueTaskDifference: getTaskCount(thisMonthStart, thisMonthEnd, { overdue: true }) - getTaskCount(lastMonthStart, lastMonthEnd, { overdue: true }),
+				taskCount: thisTotal,
+				taskDifference: thisTotal - lastTotal,
+				assignedTaskCount: thisAssigned,
+				assignedTaskDifference: thisAssigned - lastAssigned,
+				incompleteTaskCount: thisIncomplete,
+				incompleteTaskDifference: thisIncomplete - lastIncomplete,
+				completedTaskCount: thisCompleted,
+				completedTaskDifference: thisCompleted - lastCompleted,
+				overdueTaskCount: thisOverdue,
+				overdueTaskDifference: thisOverdue - lastOverdue,
 			},
 		});
 	})
