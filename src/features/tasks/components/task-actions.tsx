@@ -10,14 +10,17 @@ import { useDeleteTask } from "../api/use-delete-task";
 import { useRouter } from "next/navigation";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
+import { getTaskRoute } from "@/lib/task-routes";
+import { IssueType } from "../types";
 
 interface TaskActionsProps {
 	id: string;
 	projectId: string;
+	issueType?: IssueType;
 	children: React.ReactNode;
 }
 
-export const TaskActions = ({ id, projectId, children }: TaskActionsProps) => {
+export const TaskActions = ({ id, projectId, issueType, children }: TaskActionsProps) => {
 	const router = useRouter();
 	const workspaceId = useWorkspaceId();
 	const { open } = useEditTaskModal();
@@ -34,7 +37,7 @@ export const TaskActions = ({ id, projectId, children }: TaskActionsProps) => {
 	};
 
 	const onOpenTask = () => {
-		router.push(`/workspaces/${workspaceId}/tasks/${id}`);
+		router.push(getTaskRoute(workspaceId, projectId, { $id: id, issueType }));
 	};
 	const onOpenProject = () => {
 		router.push(`/workspaces/${workspaceId}/projects/${projectId}`);

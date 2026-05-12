@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { TaskStatus } from "../types";
+import { IssueType, TaskStatus } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { Project } from "@/features/projects/types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
@@ -7,9 +7,12 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { Member } from "@/features/members/types";
+import { getTaskRoute } from "@/lib/task-routes";
 
 interface EventCardProps {
 	id: string;
+	projectId: string;
+	issueType?: IssueType;
 	title: string;
 	assignee?: Member | null;
 	project?: Project | null;
@@ -26,6 +29,8 @@ const statusColorMap: Record<string, string> = {
 
 export const EventCard = ({
 	id,
+	projectId,
+	issueType,
 	title,
 	assignee,
 	project,
@@ -35,7 +40,7 @@ export const EventCard = ({
 	const router = useRouter();
 	const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
 		e.stopPropagation();
-		router.push(`/workspaces/${workspaceId}/tasks/${id}`);
+		router.push(getTaskRoute(workspaceId, projectId, { $id: id, issueType }));
 	};
 	return (
 		<div className="px-2">

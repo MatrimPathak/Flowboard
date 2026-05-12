@@ -16,9 +16,10 @@ import { DatePicker } from "@/components/date-picker";
 
 interface DataFiltersProps {
 	hideProjectFilter?: boolean;
+	hideAssigneeFilter?: boolean;
 }
 
-export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
+export const DataFilters = ({ hideProjectFilter, hideAssigneeFilter }: DataFiltersProps) => {
 	const workspaceId = useWorkspaceId();
 	const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
 		workspaceId,
@@ -85,26 +86,28 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 					<SelectItem value={TaskStatus.DONE}>Done</SelectItem>
 				</SelectContent>
 			</Select>
-			<Select
-				defaultValue={assigneeId ?? undefined}
-				onValueChange={(value) => onAssigneeChange(value)}
-			>
-				<SelectTrigger className="w-full lg:w-auto h-8">
-					<div className="flex items-center pr-2">
-						<UserIcon className="size-4 mr-2" />
-						<SelectValue placeholder="All Assignees" />
-					</div>
-				</SelectTrigger>
-				<SelectContent>
-					<SelectItem value="all">All Assignees</SelectItem>
-					<SelectSeparator />
-					{memberOptions?.map((member) => (
-						<SelectItem key={member.value} value={member.value}>
-							{member.label}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
+			{!hideAssigneeFilter && (
+				<Select
+					defaultValue={assigneeId ?? undefined}
+					onValueChange={(value) => onAssigneeChange(value)}
+				>
+					<SelectTrigger className="w-full lg:w-auto h-8">
+						<div className="flex items-center pr-2">
+							<UserIcon className="size-4 mr-2" />
+							<SelectValue placeholder="All Assignees" />
+						</div>
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All Assignees</SelectItem>
+						<SelectSeparator />
+						{memberOptions?.map((member) => (
+							<SelectItem key={member.value} value={member.value}>
+								{member.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			)}
 			{!hideProjectFilter && (
 				<Select
 					defaultValue={projectId ?? undefined}

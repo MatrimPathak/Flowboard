@@ -1,6 +1,7 @@
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { Task } from "@/features/tasks/types";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { getTaskRoute } from "@/lib/task-routes";
 import { CalendarIcon, PlusIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { DottedSeperator } from "./dotted-seperator";
@@ -34,7 +35,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 					{data.slice(0, 5).map((task) => (
 						<li key={task.$id}>
 							<Link
-								href={`/workspaces/${workspaceId}/tasks/${task.$id}`}
+								href={getTaskRoute(workspaceId, task.projectId, task)}
 							>
 								<Card className="shadow-none rounded-lg hover:opacity-75 transition">
 									<CardContent className="p-4">

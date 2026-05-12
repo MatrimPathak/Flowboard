@@ -30,7 +30,7 @@ export const TaskBreadcrumbs = ({ project, task }: TaskBreadcrumbsProps) => {
 			{ param: { taskId: task.$id } },
 			{
 				onSuccess: () => {
-					router.push(`/workspaces/${workspaceId}/tasks`);
+					router.push(`/workspaces/${workspaceId}/projects/${project?.$id}`);
 				},
 			}
 		);

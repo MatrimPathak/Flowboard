@@ -14,6 +14,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -31,6 +32,12 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { IssueType, TaskPriority, TaskStatus } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { usePrefill } from "@/contexts/sidebar-context";
+
+const ACCEPTANCE_CRITERIA_TYPES = new Set([
+	IssueType.EPIC,
+	IssueType.STORY,
+	IssueType.BUG,
+]);
 
 interface CreateTaskFormProps {
 	onCancel?: () => void;
@@ -60,6 +67,10 @@ export const CreateTaskForm = ({
 		},
 	});
 
+	const issueType = form.watch("issueType");
+	const showAcceptanceCriteria =
+		issueType !== undefined && ACCEPTANCE_CRITERIA_TYPES.has(issueType as IssueType);
+
 	const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
 		mutate(
 			{ json: { ...values, workspaceId } },
@@ -87,6 +98,7 @@ export const CreateTaskForm = ({
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)}>
 						<div className="flex flex-col gap-y-4">
+							{/* Title — full width */}
 							<FormField
 								control={form.control}
 								name="name"
@@ -103,146 +115,182 @@ export const CreateTaskForm = ({
 									</FormItem>
 								)}
 							/>
+
+							{/* Description — full width, required */}
 							<FormField
 								control={form.control}
-								name="dueDate"
+								name="description"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Due Date</FormLabel>
+										<FormLabel>Description</FormLabel>
 										<FormControl>
-											<DatePicker {...field} />
+											<Textarea
+												{...field}
+												placeholder="Describe the task"
+												rows={3}
+												className="resize-none"
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-							<FormField
-								control={form.control}
-								name="assigneeId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Assignee</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
+
+							{/* Acceptance Criteria — full width, conditional */}
+							{showAcceptanceCriteria && (
+								<FormField
+									control={form.control}
+									name="acceptanceCriteria"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Acceptance Criteria</FormLabel>
 											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select Assignee" />
-												</SelectTrigger>
+												<Textarea
+													{...field}
+													placeholder="Define the conditions that must be met for this to be considered done"
+													rows={3}
+													className="resize-none"
+												/>
 											</FormControl>
 											<FormMessage />
-											<SelectContent>
-												{memberOptions.map((member) => (
-													<SelectItem
-														key={member.id}
-														value={member.id}
-													>
-														<div className="flex items-center gap-x-2">
-															<MemberAvatar
-																className="size-6"
-																name={
-																	member.name
-																}
-															/>
-															{member.name}
-														</div>
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="status"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Status</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
+										</FormItem>
+									)}
+								/>
+							)}
+
+							{/* Two-column grid for compact fields */}
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="dueDate"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Due Date</FormLabel>
 											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select Status" />
-												</SelectTrigger>
+												<DatePicker {...field} />
 											</FormControl>
 											<FormMessage />
-											<SelectContent>
-												{Object.values(TaskStatus).map(
-													(status) => (
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="assigneeId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Assignee</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Assignee" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{memberOptions.map((member) => (
 														<SelectItem
-															key={status}
-															value={status}
+															key={member.id}
+															value={member.id}
 														>
-															{snakeCaseToTitleCase(
-																status
-															)}
+															<div className="flex items-center gap-x-2">
+																<MemberAvatar
+																	className="size-6"
+																	name={member.name}
+																/>
+																{member.name}
+															</div>
 														</SelectItem>
-													)
-												)}
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="issueType"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Issue Type</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select Issue Type" />
-												</SelectTrigger>
-											</FormControl>
+													))}
+												</SelectContent>
+											</Select>
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="status"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Status</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Status" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{Object.values(TaskStatus).map((status) => (
+														<SelectItem key={status} value={status}>
+															{snakeCaseToTitleCase(status)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
 											<FormMessage />
-											<SelectContent>
-												{Object.values(IssueType).map((type) => (
-													<SelectItem key={type} value={type}>
-														{snakeCaseToTitleCase(type)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="priority"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Priority</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select Priority" />
-												</SelectTrigger>
-											</FormControl>
-											<FormMessage />
-											<SelectContent>
-												{Object.values(TaskPriority).map((p) => (
-													<SelectItem key={p} value={p}>
-														{snakeCaseToTitleCase(p)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</FormItem>
-								)}
-							/>
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="issueType"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Issue Type</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Issue Type" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{Object.values(IssueType).map((type) => (
+														<SelectItem key={type} value={type}>
+															{snakeCaseToTitleCase(type)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="priority"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Priority</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select Priority" />
+													</SelectTrigger>
+												</FormControl>
+												<FormMessage />
+												<SelectContent>
+													{Object.values(TaskPriority).map((p) => (
+														<SelectItem key={p} value={p}>
+															{snakeCaseToTitleCase(p)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FormItem>
+									)}
+								/>
 								<FormField
 									control={form.control}
 									name="projectId"
@@ -260,27 +308,21 @@ export const CreateTaskForm = ({
 												</FormControl>
 												<FormMessage />
 												<SelectContent>
-													{projectOptions.map(
-														(project) => (
-															<SelectItem
-																key={project.id}
+													{projectOptions.map((project) => (
+														<SelectItem
+															key={project.id}
 															value={project.id}
-															>
-																<div className="flex items-center gap-x-2">
-																	<ProjectAvatar
-																		className="size-6"
-																		imageUrl={
-																			project.imageUrl
-																		}
-																		name={
-																			project.name
-																		}
-																	/>
+														>
+															<div className="flex items-center gap-x-2">
+																<ProjectAvatar
+																	className="size-6"
+																	imageUrl={project.imageUrl}
+																	name={project.name}
+																/>
 																{project.name}
-																</div>
-															</SelectItem>
-														)
-													)}
+															</div>
+														</SelectItem>
+													))}
 												</SelectContent>
 											</Select>
 										</FormItem>
@@ -328,8 +370,13 @@ export const CreateTaskForm = ({
 													placeholder="e.g. 3"
 													value={field.value ?? ""}
 													onChange={(e) => {
-														const val = e.target.value === "" ? undefined : Number(e.target.value);
-														field.onChange(isNaN(val as number) ? field.value : val);
+														const val =
+															e.target.value === ""
+																? undefined
+																: Number(e.target.value);
+														field.onChange(
+															isNaN(val as number) ? field.value : val
+														);
 													}}
 												/>
 											</FormControl>
@@ -346,7 +393,11 @@ export const CreateTaskForm = ({
 												<FormLabel>Version (optional)</FormLabel>
 												<Select
 													defaultValue={field.value ?? undefined}
-													onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+													onValueChange={(value) =>
+														field.onChange(
+															value === "none" ? undefined : value
+														)
+													}
 												>
 													<FormControl>
 														<SelectTrigger>
@@ -367,6 +418,7 @@ export const CreateTaskForm = ({
 										)}
 									/>
 								)}
+							</div>
 						</div>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">
