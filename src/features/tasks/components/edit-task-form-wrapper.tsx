@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useGetProjectMembers } from "@/features/projects/api/use-get-project-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
 import { useGetTask } from "../api/use-get-task";
@@ -24,28 +24,47 @@ export const EditTaskFormWrapper = ({
 	const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
 		workspaceId,
 	});
-	const { data: members, isLoading: isLoadingMembers } = useGetMembers({
-		workspaceId,
-	});
 	const projectId = initialValues?.projectId ?? "";
+	const { data: projectMembersData, isLoading: isLoadingMembers } = useGetProjectMembers({
+		workspaceId,
+		projectId,
+		enabled: !!projectId,
+	});
 	const { data: versions, isLoading: isLoadingVersions } = useGetVersions({
 		workspaceId,
 		projectId,
 		enabled: !!projectId,
 	});
+
 	const projectOptions = projects?.documents.map((project) => ({
 		id: project.$id,
 		name: project.name,
 		imageUrl: project.imageUrl,
 	}));
-	const memeberOptions = members?.documents.map((member) => ({
+
+	const rawMemberOptions = (projectMembersData?.documents ?? []).map((member) => ({
 		id: member.$id,
-		name: member.name,
+		name: member.name ?? member.email ?? "Unknown",
+		userId: member.userId,
 	}));
+
+	// Always include current assignee even if they've been removed from the project
+	const memberOptions = (() => {
+		if (!initialValues?.assigneeId) return rawMemberOptions;
+		const already = rawMemberOptions.some((m) => m.id === initialValues.assigneeId);
+		if (already) return rawMemberOptions;
+		return [...rawMemberOptions, { id: initialValues.assigneeId, name: "Former member", userId: "" }];
+	})();
+
 	const versionOptions = (versions?.documents ?? [])
 		.filter((v) => v.status === VersionStatus.UNRELEASED || v.$id === initialValues?.fixVersionId)
 		.map((v) => ({ id: v.$id, name: v.name }));
-	const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask || (!!projectId && isLoadingVersions);
+
+	const isLoading =
+		isLoadingProjects ||
+		isLoadingTask ||
+		(!!projectId && (isLoadingMembers || isLoadingVersions));
+
 	if (isLoading) {
 		return (
 			<Card className="w-full h-[714px] border-none shadow-none">
@@ -63,7 +82,7 @@ export const EditTaskFormWrapper = ({
 			initalValues={initialValues}
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
-			memberOptions={memeberOptions ?? []}
+			memberOptions={memberOptions}
 			versionOptions={versionOptions}
 		/>
 	);

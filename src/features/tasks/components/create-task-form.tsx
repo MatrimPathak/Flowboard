@@ -45,6 +45,7 @@ interface CreateTaskFormProps {
 	memberOptions: { id: string; name: string }[];
 	sprintOptions?: { id: string; name: string }[];
 	versionOptions?: { id: string; name: string }[];
+	onProjectChange?: (projectId: string) => void;
 }
 
 export const CreateTaskForm = ({
@@ -53,6 +54,7 @@ export const CreateTaskForm = ({
 	memberOptions,
 	sprintOptions = [],
 	versionOptions = [],
+	onProjectChange,
 }: CreateTaskFormProps) => {
 	const workspaceId = useWorkspaceId();
 	const { mutate, isPending } = useCreateTask();
@@ -182,7 +184,7 @@ export const CreateTaskForm = ({
 										<FormItem>
 											<FormLabel>Assignee</FormLabel>
 											<Select
-												defaultValue={field.value}
+												value={field.value ?? undefined}
 												onValueChange={field.onChange}
 											>
 												<FormControl>
@@ -300,7 +302,13 @@ export const CreateTaskForm = ({
 											<FormLabel>Project</FormLabel>
 											<Select
 												defaultValue={field.value}
-												onValueChange={field.onChange}
+												onValueChange={(value) => {
+													field.onChange(value);
+													form.resetField("assigneeId");
+													form.resetField("sprintId");
+													form.resetField("fixVersionId");
+													onProjectChange?.(value);
+												}}
 											>
 												<FormControl>
 													<SelectTrigger>
@@ -337,7 +345,7 @@ export const CreateTaskForm = ({
 											<FormItem>
 												<FormLabel>Sprint (optional)</FormLabel>
 												<Select
-													defaultValue={field.value ?? undefined}
+													value={field.value ?? undefined}
 													onValueChange={field.onChange}
 												>
 													<FormControl>
@@ -376,7 +384,7 @@ export const CreateTaskForm = ({
 																? undefined
 																: Number(e.target.value);
 														field.onChange(
-															isNaN(val as number) ? field.value : val
+															Number.isNaN(val as number) ? field.value : val
 														);
 													}}
 												/>
@@ -393,7 +401,7 @@ export const CreateTaskForm = ({
 											<FormItem>
 												<FormLabel>Version (optional)</FormLabel>
 												<Select
-													defaultValue={field.value ?? undefined}
+													value={field.value ?? undefined}
 													onValueChange={(value) =>
 														field.onChange(
 															value === "none" ? undefined : value

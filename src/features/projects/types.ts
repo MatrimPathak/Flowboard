@@ -4,4 +4,19 @@ export type Project = {
 	name: string;
 	imageUrl: string;
 	workspaceId: string;
+	membersBootstrapped?: boolean;
+};
+
+export enum ProjectMemberRole {
+	ADMIN = "ADMIN",
+	MEMBER = "MEMBER",
+}
+
+export type ProjectMember = {
+	$id: string;
+	$createdAt?: string;
+	userId: string;
+	role: ProjectMemberRole;
+	name?: string;
+	email?: string;
 };
