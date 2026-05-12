@@ -11,6 +11,7 @@ import { useCreateComment } from "../api/use-create-comment";
 import { useDeleteComment } from "../api/use-delete-comment";
 import { formatDistanceToNow } from "date-fns";
 import { TaskComment } from "../types";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 interface TaskCommentsProps {
 	taskId: string;
@@ -76,15 +77,9 @@ export const TaskComments = ({ taskId }: TaskCommentsProps) => {
 									<TrashIcon className="size-3" />
 								</Button>
 							</div>
-							<p className="text-sm mt-1 whitespace-pre-wrap">
-								{comment.content.split(/(@[\w-]+)/g).map((part, i) =>
-									part.startsWith("@") ? (
-										<span key={i} className="text-blue-500 font-medium">{part}</span>
-									) : (
-										part
-									)
-								)}
-							</p>
+							<div className="text-sm mt-1">
+								<MarkdownRenderer content={comment.content} />
+							</div>
 						</div>
 					</div>
 				))}

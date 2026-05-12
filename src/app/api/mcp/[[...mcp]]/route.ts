@@ -4,6 +4,7 @@ export const maxDuration = 60;
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { TaskStatus, IssueType, TaskPriority } from "@/features/tasks/types";
+import { taskConditionalRefine } from "@/features/tasks/schemas";
 import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
@@ -39,6 +40,63 @@ async function verifyWorkspaceAccess(workspaceId: string) {
 // Use a global variable to preserve the handler across HMR in development
 const globalForMcp = global as unknown as { mcpHandler: any };
 
+const createTicketSchema = z.object({
+  name: z.string().describe("Title of the ticket"),
+  status: z.enum([
+    TaskStatus.BACKLOG,
+    TaskStatus.TODO,
+    TaskStatus.IN_PROGRESS,
+    TaskStatus.UNDER_REVIEW,
+    TaskStatus.DONE,
+  ]).describe("Status of the ticket"),
+  workspaceId: z.string(),
+  projectId: z.string(),
+  dueDate: z.string().describe("ISO Date string"),
+  assigneeId: z.string().describe("Member ID of the assignee"),
+  description: z.string().optional(),
+  acceptanceCriteria: z.string().optional().describe("Acceptance Criteria (required for Epics, Stories, Bugs)"),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+  parentId: z.string().optional().describe("Parent task ID for subtasks"),
+  epicId: z.string().optional().describe("Epic task ID this belongs to"),
+  sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
+  fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
+  storyPoints: z.number().optional(),
+  originalEstimate: z.number().optional().describe("Original estimate in minutes"),
+  remainingEstimate: z.number().optional().describe("Remaining estimate in minutes"),
+  labels: z.array(z.string()).optional(),
+  rca: z.string().optional().describe("Root Cause Analysis (required for Bugs)"),
+}).superRefine(taskConditionalRefine);
+
+const updateTicketSchema = z.object({
+  workspaceId: z.string(),
+  projectId: z.string(),
+  taskId: z.string(),
+  name: z.string().optional(),
+  status: z.enum([
+    TaskStatus.BACKLOG,
+    TaskStatus.TODO,
+    TaskStatus.IN_PROGRESS,
+    TaskStatus.UNDER_REVIEW,
+    TaskStatus.DONE,
+  ]).optional(),
+  dueDate: z.string().optional(),
+  assigneeId: z.string().optional(),
+  description: z.string().optional(),
+  acceptanceCriteria: z.string().optional(),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
+  parentId: z.string().optional(),
+  epicId: z.string().optional(),
+  sprintId: z.string().nullable().optional(),
+  fixVersionId: z.string().optional(),
+  storyPoints: z.number().optional(),
+  originalEstimate: z.number().optional().describe("In minutes"),
+  remainingEstimate: z.number().optional().describe("In minutes"),
+  labels: z.array(z.string()).optional(),
+  rca: z.string().optional().describe("Root Cause Analysis"),
+}).superRefine(taskConditionalRefine);
+
 const handler = globalForMcp.mcpHandler || createMcpHandler(
   (server) => {
     server.registerTool(
@@ -46,31 +104,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       {
         title: "Create Ticket",
         description: "Create a new ticket (task) in a project",
-        inputSchema: z.object({
-          name: z.string().describe("Title of the ticket"),
-          status: z.enum([
-            TaskStatus.BACKLOG,
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.UNDER_REVIEW,
-            TaskStatus.DONE,
-          ]).describe("Status of the ticket"),
-          workspaceId: z.string(),
-          projectId: z.string(),
-          dueDate: z.string().describe("ISO Date string"),
-          assigneeId: z.string().describe("Member ID of the assignee"),
-          description: z.string().optional(),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
-          priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-          parentId: z.string().optional().describe("Parent task ID for subtasks"),
-          epicId: z.string().optional().describe("Epic task ID this belongs to"),
-          sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
-          fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
-          storyPoints: z.number().optional(),
-          originalEstimate: z.number().optional().describe("Original estimate in minutes"),
-          remainingEstimate: z.number().optional().describe("Remaining estimate in minutes"),
-          labels: z.array(z.string()).optional(),
-        }) as any,
+        inputSchema: createTicketSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
@@ -179,32 +213,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       {
         title: "Update Ticket",
         description: "Update an existing ticket (task)",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          name: z.string().optional(),
-          status: z.enum([
-            TaskStatus.BACKLOG,
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.UNDER_REVIEW,
-            TaskStatus.DONE,
-          ]).optional(),
-          dueDate: z.string().optional(),
-          assigneeId: z.string().optional(),
-          description: z.string().optional(),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
-          priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-          parentId: z.string().optional(),
-          epicId: z.string().optional(),
-          sprintId: z.string().nullable().optional(),
-          fixVersionId: z.string().optional(),
-          storyPoints: z.number().optional(),
-          originalEstimate: z.number().optional().describe("In minutes"),
-          remainingEstimate: z.number().optional().describe("In minutes"),
-          labels: z.array(z.string()).optional(),
-        }) as any,
+        inputSchema: updateTicketSchema as any,
       },
       async (args: any) => {
         const { workspaceId, projectId, taskId, ...updates } = args;

@@ -1,25 +1,40 @@
 import { DottedSeperator } from "@/components/dotted-seperator";
-import { Task } from "../types";
+import { Task, IssueType } from "../types";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { useUpdateTask } from "../api/use-update-task";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownEditor } from "@/components/markdown-editor";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { cn } from "@/lib/utils";
 
-interface OverviewPropertyProps {
+interface TaskDescriptionProps {
 	task: Task;
 }
 
-export const TaskDescription = ({ task }: OverviewPropertyProps) => {
+export const TaskDescription = ({ task }: TaskDescriptionProps) => {
 	const [isEditing, setIsEditing] = useState(false);
-	const [value, setValue] = useState(task.description);
+	const [descriptionValue, setDescriptionValue] = useState(task.description ?? "");
+	const [acValue, setAcValue] = useState(task.acceptanceCriteria ?? "");
 	const { mutate, isPending } = useUpdateTask();
+
 	const handleSave = () => {
 		mutate(
-			{ json: { description: value }, param: { taskId: task.$id } },
+			{
+				json: {
+					description: descriptionValue,
+					acceptanceCriteria: acValue,
+				},
+				param: { taskId: task.$id },
+			},
 			{ onSuccess: () => setIsEditing(false) }
 		);
 	};
+
+	const showAc =
+		task.issueType &&
+		[IssueType.EPIC, IssueType.STORY, IssueType.BUG].includes(task.issueType);
+
 	return (
 		<div className="p-4 border rounded-lg">
 			<div className="flex items-center justify-between">
@@ -27,7 +42,8 @@ export const TaskDescription = ({ task }: OverviewPropertyProps) => {
 				<Button
 					onClick={() => {
 						setIsEditing((prev) => !prev);
-						setValue(task.description);
+						setDescriptionValue(task.description ?? "");
+						setAcValue(task.acceptanceCriteria ?? "");
 					}}
 					size="sm"
 					variant="secondary"
@@ -43,13 +59,26 @@ export const TaskDescription = ({ task }: OverviewPropertyProps) => {
 			<DottedSeperator className="my-4" />
 			{isEditing ? (
 				<div className="flex flex-col gap-y-4">
-					<Textarea
-						placeholder="Add a description..."
-						value={value}
-						rows={4}
-						onChange={(e) => setValue(e.target.value)}
-						disabled={isPending}
-					/>
+					<div>
+						<p className="text-sm font-medium mb-2">Description</p>
+						<MarkdownEditor
+							value={descriptionValue}
+							onChange={setDescriptionValue}
+							placeholder="Describe the task"
+							minRows={4}
+						/>
+					</div>
+					{showAc && (
+						<div>
+							<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
+							<MarkdownEditor
+								value={acValue}
+								onChange={setAcValue}
+								placeholder="Define the conditions that must be met for this to be considered done"
+								minRows={3}
+							/>
+						</div>
+					)}
 					<Button
 						size="sm"
 						className="w-fit ml-auto"
@@ -60,13 +89,96 @@ export const TaskDescription = ({ task }: OverviewPropertyProps) => {
 					</Button>
 				</div>
 			) : (
-				<div className="">
-					{task.description || (
-						<span className="text-muted-foreground">
-							No Description Found
-						</span>
+				<div className="flex flex-col gap-y-4">
+					<div>
+						{task.description ? (
+							<MarkdownRenderer content={task.description} />
+						) : (
+							<span className="text-muted-foreground text-sm italic">
+								No Description Found
+							</span>
+						)}
+					</div>
+					{showAc && (
+						<div>
+							<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
+							{task.acceptanceCriteria ? (
+								<MarkdownRenderer content={task.acceptanceCriteria} />
+							) : (
+								<span className="text-muted-foreground text-sm italic">
+									No Acceptance Criteria
+								</span>
+							)}
+						</div>
 					)}
 				</div>
+			)}
+		</div>
+	);
+};
+
+interface TaskRcaProps {
+	task: Task;
+}
+
+export const TaskRca = ({ task }: TaskRcaProps) => {
+	const [isEditing, setIsEditing] = useState(false);
+	const [rcaValue, setRcaValue] = useState(task.rca ?? "");
+	const { mutate, isPending } = useUpdateTask();
+
+	const handleSave = () => {
+		mutate(
+			{ json: { rca: rcaValue }, param: { taskId: task.$id } },
+			{ onSuccess: () => setIsEditing(false) }
+		);
+	};
+
+	if (task.issueType !== IssueType.BUG) return null;
+
+	return (
+		<div className="p-4 border rounded-lg">
+			<div className="flex items-center justify-between">
+				<p className="text-lg font-semibold">Root Cause Analysis</p>
+				<Button
+					onClick={() => {
+						setIsEditing((prev) => !prev);
+						setRcaValue(task.rca ?? "");
+					}}
+					size="sm"
+					variant="secondary"
+				>
+					{isEditing ? (
+						<XIcon className="size-4 mr-2" />
+					) : (
+						<PencilIcon className="size-4 mr-2" />
+					)}
+					{isEditing ? "Cancel" : "Edit"}
+				</Button>
+			</div>
+			<DottedSeperator className="my-4" />
+			{isEditing ? (
+				<div className="flex flex-col gap-y-4">
+					<MarkdownEditor
+						value={rcaValue}
+						onChange={setRcaValue}
+						placeholder="Analyze the root cause of the bug"
+						minRows={4}
+					/>
+					<Button
+						size="sm"
+						className="w-fit ml-auto"
+						onClick={handleSave}
+						disabled={isPending}
+					>
+						{isPending ? "Saving..." : "Save Changes"}
+					</Button>
+				</div>
+			) : task.rca ? (
+				<MarkdownRenderer content={task.rca} />
+			) : (
+				<span className="text-muted-foreground text-sm italic">
+					No Root Cause Analysis
+				</span>
 			)}
 		</div>
 	);
