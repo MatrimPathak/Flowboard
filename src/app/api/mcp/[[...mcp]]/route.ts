@@ -8,7 +8,8 @@ import { taskConditionalRefine } from "@/features/tasks/schemas";
 import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
 
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -39,6 +40,133 @@ async function verifyWorkspaceAccess(workspaceId: string) {
 
 // Use a global variable to preserve the handler across HMR in development
 const globalForMcp = global as unknown as { mcpHandler: any };
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+function isAllowedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
+
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+
+    if (hostname === "localhost" || hostname.startsWith("127.") || hostname === "::1") return false;
+
+    const parts = hostname.split(".").map(Number);
+    if (parts.length === 4 && parts.every(n => !isNaN(n))) {
+      if (parts[0] === 10) return false;
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+      if (parts[0] === 192 && parts[1] === 168) return false;
+      if (parts[0] === 169 && parts[1] === 254) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchAndUploadImage(imageUrl: string, userId: string): Promise<string> {
+  if (!isAllowedUrl(imageUrl)) {
+    throw new Error("URL not allowed: internal or private addresses are blocked");
+  }
+
+  const response = await fetch(imageUrl, {
+    signal: AbortSignal.timeout(10000),
+    redirect: "manual",
+    headers: {
+      "User-Agent": "Flowboard-MCP/1.0",
+    },
+  });
+
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("Redirected image URLs are not allowed");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+  }
+
+  const rawContentType = response.headers.get("content-type") || "";
+  const contentType = rawContentType.split(";")[0].trim().toLowerCase();
+  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+    throw new Error(`Invalid image type: ${contentType}. Allowed: JPEG, PNG, GIF, WebP`);
+  }
+
+  const contentLengthHeader = response.headers.get("content-length");
+  if (contentLengthHeader) {
+    const contentLength = Number(contentLengthHeader);
+    if (!Number.isFinite(contentLength) || contentLength > MAX_IMAGE_SIZE) {
+      throw new Error(`Image too large: ${(contentLength / 1024 / 1024).toFixed(1)}MB. Max: 5MB`);
+    }
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("Unable to read response body");
+  }
+
+  const chunks: Uint8Array[] = [];
+  let bytesRead = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > MAX_IMAGE_SIZE) {
+        throw new Error(`Image too large: ${(bytesRead / 1024 / 1024).toFixed(1)}MB. Max: 5MB`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const buffer = Buffer.concat(chunks);
+
+  const fileTypeResult = await fileTypeFromBuffer(buffer);
+  const detectedMime = fileTypeResult?.mime || contentType;
+
+  if (!ALLOWED_IMAGE_TYPES.has(detectedMime)) {
+    throw new Error(`Image type not allowed: ${detectedMime}`);
+  }
+
+  const timestamp = Date.now();
+  const mimeSubtype = detectedMime.split("/")[1] || "jpg";
+  const ext = (mimeSubtype.split("+")[0] || "jpg").replace(/[^a-zA-Z0-9]/g, "");
+  const storagePath = `icons/${userId}/${timestamp}.${ext}`;
+
+  const bucket = adminStorage.bucket();
+  const fileRef = bucket.file(storagePath);
+
+  await fileRef.save(buffer, {
+    metadata: { contentType: detectedMime },
+  });
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 365);
+  const [signedUrl] = await fileRef.getSignedUrl({
+    action: "read",
+    expires: expiresAt,
+  });
+
+  return signedUrl;
+}
+
+async function resolveImageUrl(imageUrl: string | undefined, userId: string): Promise<string> {
+  if (!imageUrl) return "";
+  if (imageUrl.startsWith("https://firebasestorage.googleapis.com/")) return imageUrl;
+  if (imageUrl.startsWith("https://storage.googleapis.com/")) return imageUrl;
+  return fetchAndUploadImage(imageUrl, userId);
+}
 
 const createTicketSchema = z.object({
   name: z.string().describe("Title of the ticket"),
@@ -326,10 +454,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         const userId = getMcpUserId();
+        const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const workspaceRef = await adminDb.collection("workspaces").add({
           name: args.name,
           userId,
-          imageUrl: args.imageUrl || "",
+          imageUrl,
           inviteCode: generateInviteCode(10),
           $createdAt: new Date().toISOString(),
         });
@@ -356,9 +485,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         }) as any,
       },
       async (args: any) => {
-        const { workspaceId, ...updates } = args;
+        const { workspaceId, imageUrl, ...updates } = args;
         await verifyWorkspaceAccess(workspaceId);
-        await adminDb.collection("workspaces").doc(workspaceId).update(updates);
+        const resolvedImageUrl = await resolveImageUrl(imageUrl, getMcpUserId());
+        const finalUpdates = resolvedImageUrl ? { ...updates, imageUrl: resolvedImageUrl } : updates;
+        await adminDb.collection("workspaces").doc(workspaceId).update(finalUpdates);
         const doc = await adminDb.collection("workspaces").doc(workspaceId).get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
       }
@@ -406,6 +537,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
+        const userId = getMcpUserId();
+        const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const projectRef = await adminDb
           .collection("workspaces")
           .doc(args.workspaceId)
@@ -413,7 +546,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           .add({
             name: args.name,
             workspaceId: args.workspaceId,
-            imageUrl: args.imageUrl || "",
+            imageUrl,
             $createdAt: new Date().toISOString(),
           });
         const doc = await projectRef.get();
@@ -433,7 +566,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         }) as any,
       },
       async (args: any) => {
-        const { projectId, ...updates } = args;
+        const { projectId, imageUrl, ...updates } = args;
         const userId = getMcpUserId();
         const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
@@ -450,7 +583,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         if (!projectDoc) throw new Error("Project not found");
         await verifyWorkspaceAccess(projectDoc.data()!.workspaceId);
 
-        await projectDoc.ref.update(updates);
+        const resolvedImageUrl = await resolveImageUrl(imageUrl, userId);
+        const finalUpdates = resolvedImageUrl ? { ...updates, imageUrl: resolvedImageUrl } : updates;
+        await projectDoc.ref.update(finalUpdates);
         const updatedDoc = await projectDoc.ref.get();
         return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updatedDoc.id, ...updatedDoc.data() }, null, 2) }] };
       }
@@ -817,6 +952,28 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         return { content: [{ type: "text" as const, text: `Version ${args.versionId} deleted successfully` }] };
       }
     );
+
+    server.registerTool(
+      "upload_image",
+      {
+        title: "Upload Image",
+        description: "Upload an image from a URL to Firebase Storage and return a signed URL. Use this when an image URL needs to be uploaded as an icon for a workspace, project, or any other entity. The agent should search the internet for relevant images and pass the URL here to get a permanent Firebase Storage URL.",
+        inputSchema: z.object({
+          imageUrl: z.string().describe("The URL of the image to upload (e.g. from a web search)"),
+          name: z.string().optional().describe("Optional name/description for the image"),
+        }) as any,
+      },
+      async (args: any) => {
+        const userId = getMcpUserId();
+        const signedUrl = await fetchAndUploadImage(args.imageUrl, userId);
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ url: signedUrl, name: args.name || "uploaded-image" }, null, 2),
+          }],
+        };
+      }
+    );
   },
   {
     serverInfo: {
@@ -866,6 +1023,10 @@ async function authenticateAndGetUserId(req: Request) {
     console.error("MCP Auth Failed: Token expired", { hash });
     return null;
   }
+
+  snapshot.docs[0].ref.update({ lastUsedAt: new Date().toISOString() }).catch((err) => {
+    console.error("Failed to update lastUsedAt for token", snapshot.docs[0].id, err);
+  });
 
   return tokenData.userId;
 }
