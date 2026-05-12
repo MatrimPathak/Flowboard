@@ -24,7 +24,7 @@ All routes are workspace-scoped. Project-specific resources also carry the proje
 /workspaces/[workspaceId]/projects/[projectId]/story/[taskId]  — Story detail
 /workspaces/[workspaceId]/projects/[projectId]/task/[taskId]   — Task detail
 /workspaces/[workspaceId]/projects/[projectId]/bug/[taskId]    — Bug detail
-/workspaces/[workspaceId]/projects/[projectId]/subtask/[taskId]— Sub-task detail
+/workspaces/[workspaceId]/projects/[projectId]/subtask/[taskId] — Sub-task detail
 ```
 
 ---
