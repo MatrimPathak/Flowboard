@@ -64,6 +64,8 @@ export const CreateTaskForm = ({
 			workspaceId,
 			projectId: prefill.projectId,
 			issueType: prefill.issueType,
+			description: "",
+			acceptanceCriteria: "",
 		},
 	});
 

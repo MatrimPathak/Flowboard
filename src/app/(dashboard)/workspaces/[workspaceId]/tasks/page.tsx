@@ -11,7 +11,7 @@ interface Props {
 const TasksPage = async ({ params }: Props) => {
 	const user = await getCurrent();
 	if (!user) redirect("/sign-in");
-	const userId = (user as NonNullable<typeof user>).$id;
+	const userId = user!.$id;
 
 	const member = await getMember({
 		databases: adminDb,
