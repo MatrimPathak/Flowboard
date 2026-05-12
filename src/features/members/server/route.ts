@@ -108,9 +108,7 @@ const app = new Hono()
 				400
 			);
 		}
-		await databases.collection("members").doc(memberId).delete();
-
-		// Cascade: remove user from all project member sub-collections in this workspace
+		// Cascade first: remove user from all project member sub-collections
 		const projectsSnap = await databases
 			.collection("workspaces")
 			.doc(memberToDelete.workspaceId)
@@ -132,6 +130,7 @@ const app = new Hono()
 			return c.json({ error: "Failed to remove member from all projects" }, 500);
 		}
 
+		await databases.collection("members").doc(memberId).delete();
 		return c.json({ data: { $id: memberId } });
 	})
 	.patch(

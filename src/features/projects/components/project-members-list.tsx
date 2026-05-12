@@ -118,6 +118,7 @@ export const ProjectMembersList = ({
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<Button
+												aria-label={`Manage ${member.name ?? member.email ?? "member"}`}
 												className={member.role !== ProjectMemberRole.ADMIN ? "ml-auto" : ""}
 												variant="secondary"
 												size="icon"
@@ -173,7 +174,7 @@ export const ProjectMembersList = ({
 									<SelectContent>
 										{addableMembers.map((m) => (
 											<SelectItem key={m.$id} value={m.userId ?? m.$id}>
-												{m.name ?? m.email}
+												{m.name ?? m.email ?? "Unknown"}
 											</SelectItem>
 										))}
 									</SelectContent>

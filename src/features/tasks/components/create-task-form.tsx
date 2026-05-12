@@ -184,7 +184,7 @@ export const CreateTaskForm = ({
 										<FormItem>
 											<FormLabel>Assignee</FormLabel>
 											<Select
-												defaultValue={field.value}
+												value={field.value ?? undefined}
 												onValueChange={field.onChange}
 											>
 												<FormControl>
@@ -304,9 +304,9 @@ export const CreateTaskForm = ({
 												defaultValue={field.value}
 												onValueChange={(value) => {
 													field.onChange(value);
-													form.setValue("assigneeId", undefined);
-													form.setValue("sprintId", undefined);
-													form.setValue("fixVersionId", undefined);
+													form.resetField("assigneeId");
+													form.resetField("sprintId");
+													form.resetField("fixVersionId");
 													onProjectChange?.(value);
 												}}
 											>
@@ -345,7 +345,7 @@ export const CreateTaskForm = ({
 											<FormItem>
 												<FormLabel>Sprint (optional)</FormLabel>
 												<Select
-													defaultValue={field.value ?? undefined}
+													value={field.value ?? undefined}
 													onValueChange={field.onChange}
 												>
 													<FormControl>
@@ -401,7 +401,7 @@ export const CreateTaskForm = ({
 											<FormItem>
 												<FormLabel>Version (optional)</FormLabel>
 												<Select
-													defaultValue={field.value ?? undefined}
+													value={field.value ?? undefined}
 													onValueChange={(value) =>
 														field.onChange(
 															value === "none" ? undefined : value
