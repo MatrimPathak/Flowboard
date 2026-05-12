@@ -226,7 +226,6 @@ export const CreateTaskForm = ({
 														<SelectValue placeholder="Select Status" />
 													</SelectTrigger>
 												</FormControl>
-												<FormMessage />
 												<SelectContent>
 													{Object.values(TaskStatus).map((status) => (
 														<SelectItem key={status} value={status}>
