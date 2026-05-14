@@ -63,7 +63,7 @@ export const EditProjectForm = ({
 			{
 				onSuccess: () => {
 					router.push("/");
-					window.location.href = `/workspaces/${initialValues.workspaceId}`;
+					window.location.href = `/workspace/${initialValues.workspaceId}`;
 				},
 			}
 		);
@@ -96,7 +96,7 @@ export const EditProjectForm = ({
 								? onCancel
 								: () =>
 										router.push(
-											`/workspaces/${initialValues.workspaceId}/projects/${initialValues.$id}`
+											`/workspace/${initialValues.workspaceId}/project/${initialValues.$id}`
 										)
 						}
 					>

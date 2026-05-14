@@ -108,7 +108,7 @@ export const EditWorkspaceForm = ({
 			form.setValue("imageUrl", file);
 		}
 	};
-	const fullInviteLink = `${window.location.origin}/workspaces/${initialValues.$id}/join/${initialValues.inviteCode}`;
+	const fullInviteLink = `${window.location.origin}/workspace/${initialValues.$id}/join/${initialValues.inviteCode}`;
 	const handleCopyInviteLink = () => {
 		navigator.clipboard
 			.writeText(fullInviteLink)
@@ -129,7 +129,7 @@ export const EditWorkspaceForm = ({
 								? onCancel
 								: () =>
 										router.push(
-											`/workspaces/${initialValues.$id}`
+											`/workspace/${initialValues.$id}`
 										)
 						}
 					>

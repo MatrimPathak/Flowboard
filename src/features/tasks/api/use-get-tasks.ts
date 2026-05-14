@@ -12,6 +12,7 @@ interface UseGetTasksProps {
 	dueDate?: string | null;
 	search?: string | null;
 	sprintId?: string | null;
+	enabled?: boolean;
 }
 
 export const useGetTasks = ({
@@ -24,8 +25,10 @@ export const useGetTasks = ({
 	dueDate,
 	search,
 	sprintId,
+	enabled = true,
 }: UseGetTasksProps) => {
 	const query = useQuery({
+		enabled,
 		queryKey: [
 			"tasks",
 			workspaceId,

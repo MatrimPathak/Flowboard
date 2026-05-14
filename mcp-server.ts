@@ -12,6 +12,7 @@ import { SprintStatus } from "./src/features/sprints/types";
 import { VersionStatus } from "./src/features/versions/types";
 import { MemberRole } from "./src/features/members/types";
 import { generateInviteCode } from "./src/lib/utils";
+import { generatePrefixedId, ID_PREFIX } from "./src/lib/ids";
 
 const TARGET_USER_ID = process.env.MCP_USER_ID;
 if (!TARGET_USER_ID) {
@@ -25,13 +26,11 @@ const server = new McpServer({
 });
 
 async function verifyWorkspaceAccess(workspaceId: string) {
-  const userId = TARGET_USER_ID;
   const memberSnapshot = await getAdminDb().collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
+    .where("userId", "==", TARGET_USER_ID)
     .get();
-    
-  if (memberSnapshot.empty) {
+  const hasMembership = memberSnapshot.docs.some((d) => d.data().workspaceId === workspaceId);
+  if (!hasMembership) {
     throw new Error(`Unauthorized: You do not have access to workspace ${workspaceId}`);
   }
 }
@@ -54,16 +53,18 @@ server.registerTool(
       dueDate: z.string(),
       assigneeId: z.string(),
       description: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
       priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-      parentId: z.string().optional().describe("Parent task ID for subtasks"),
-      epicId: z.string().optional().describe("Epic task ID this belongs to"),
+      parentId: z.string().optional().describe("Parent task ID"),
+      epicId: z.string().optional().describe("Epic task ID this belongs to (required for BUG)"),
       sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
       fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
       storyPoints: z.number().optional(),
       originalEstimate: z.number().optional().describe("In minutes"),
       remainingEstimate: z.number().optional().describe("In minutes"),
       labels: z.array(z.string()).optional(),
+      acceptanceCriteria: z.string().optional().describe("Required for EPIC, STORY, BUG"),
+      rca: z.string().optional().describe("Root cause analysis — required for BUG"),
     }) as any
   },
   async (args: any) => {
@@ -78,21 +79,31 @@ server.registerTool(
       .orderBy("position", "desc")
       .limit(1)
       .get();
-    
+
     const highestPositionTask = highestPositionSnapshot.docs[0]?.data();
     const newPosition = highestPositionTask ? highestPositionTask.position + 1000 : 1000;
 
-    const taskRef = await getAdminDb()
+    const issueTypePrefix = (() => {
+      switch (args.issueType) {
+        case IssueType.EPIC: return ID_PREFIX.EPIC;
+        case IssueType.STORY: return ID_PREFIX.STORY;
+        case IssueType.BUG: return ID_PREFIX.BUG;
+        default: return ID_PREFIX.SPIKE;
+      }
+    })();
+    const taskId = generatePrefixedId(issueTypePrefix);
+    const taskRef = getAdminDb()
       .collection("workspaces")
       .doc(args.workspaceId)
       .collection("projects")
       .doc(args.projectId)
       .collection("tasks")
-      .add({
-        ...args,
-        position: newPosition,
-        $createdAt: new Date().toISOString(),
-      });
+      .doc(taskId);
+    await taskRef.set({
+      ...args,
+      position: newPosition,
+      $createdAt: new Date().toISOString(),
+    });
     const taskDoc = await taskRef.get();
     return { content: [{ type: "text" as const, text: JSON.stringify({ $id: taskDoc.id, ...taskDoc.data() }, null, 2) }] };
   }
@@ -114,7 +125,7 @@ server.registerTool(
         TaskStatus.DONE,
       ]).optional(),
       search: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
       priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
       sprintId: z.string().nullable().optional().describe("Filter by sprint ID, or null for backlog items"),
       epicId: z.string().optional().describe("Filter by epic ID"),
@@ -229,7 +240,9 @@ server.registerTool(
   },
   async (args: any) => {
     const inviteCode = generateInviteCode(6);
-    const workspaceRef = await getAdminDb().collection("workspaces").add({
+    const workspaceId = generatePrefixedId(ID_PREFIX.WORKSPACE);
+    const workspaceRef = getAdminDb().collection("workspaces").doc(workspaceId);
+    await workspaceRef.set({
       name: args.name,
       imageUrl: args.imageUrl || null,
       inviteCode,
@@ -237,9 +250,9 @@ server.registerTool(
       $createdAt: new Date().toISOString(),
     });
 
-    await getAdminDb().collection("members").add({
+    await getAdminDb().collection("members").doc(generatePrefixedId("MBR")).set({
       userId: TARGET_USER_ID,
-      workspaceId: workspaceRef.id,
+      workspaceId,
       role: MemberRole.ADMIN,
       $createdAt: new Date().toISOString(),
     });
@@ -313,16 +326,18 @@ server.registerTool(
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
-    const projectRef = await getAdminDb()
+    const projectId = generatePrefixedId(ID_PREFIX.PROJECT);
+    const projectRef = getAdminDb()
       .collection("workspaces")
       .doc(args.workspaceId)
       .collection("projects")
-      .add({
-        name: args.name,
-        imageUrl: args.imageUrl || null,
-        workspaceId: args.workspaceId,
-        $createdAt: new Date().toISOString(),
-      });
+      .doc(projectId);
+    await projectRef.set({
+      name: args.name,
+      imageUrl: args.imageUrl || null,
+      workspaceId: args.workspaceId,
+      $createdAt: new Date().toISOString(),
+    });
 
     const doc = await projectRef.get();
     return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
@@ -406,7 +421,7 @@ server.registerTool(
       dueDate: z.string().optional(),
       assigneeId: z.string().optional(),
       description: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
       priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
       parentId: z.string().optional(),
       epicId: z.string().optional(),
@@ -523,7 +538,9 @@ server.registerTool(
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
-    const sprintRef = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").add({
+    const sprintId = generatePrefixedId(ID_PREFIX.SPRINT);
+    const sprintRef = getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("sprints").doc(sprintId);
+    await sprintRef.set({
       name: args.name,
       goal: args.goal || null,
       startDate: args.startDate || null,
@@ -691,7 +708,9 @@ server.registerTool(
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
-    const versionRef = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").add({
+    const versionId = generatePrefixedId(ID_PREFIX.RELEASE);
+    const versionRef = getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("versions").doc(versionId);
+    await versionRef.set({
       name: args.name,
       description: args.description || null,
       startDate: args.startDate || null,

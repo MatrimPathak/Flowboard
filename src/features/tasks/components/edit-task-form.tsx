@@ -17,18 +17,22 @@ interface EditTaskFormProps {
 	onCancel?: () => void;
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
+	epicOptions?: { id: string; name: string }[];
 	initalValues: Task;
 	sprintOptions?: { id: string; name: string }[];
 	versionOptions?: { id: string; name: string }[];
+	onProjectChange?: (projectId: string) => void;
 }
 
 export const EditTaskForm = ({
 	onCancel,
 	projectOptions,
 	memberOptions,
+	epicOptions = [],
 	initalValues: initialValues,
 	sprintOptions = [],
 	versionOptions = [],
+	onProjectChange,
 }: EditTaskFormProps) => {
 	const { mutate, isPending } = useUpdateTask();
 
@@ -69,8 +73,10 @@ export const EditTaskForm = ({
 							form={form}
 							projectOptions={projectOptions}
 							memberOptions={memberOptions}
+							epicOptions={epicOptions}
 							sprintOptions={sprintOptions}
 							versionOptions={versionOptions}
+							onProjectChange={onProjectChange}
 						/>
 						<DottedSeperator className="py-7" />
 						<div className="flex items-center justify-between">

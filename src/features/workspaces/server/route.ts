@@ -4,6 +4,7 @@ import { createWorkspaceSchema, updateWorkspaceSchema } from "../schemas";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { MemberRole } from "@/features/members/types";
 import { generateInviteCode } from "@/lib/utils";
+import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { getMember } from "@/features/members/utils";
 import { z } from "zod";
 import { Workspace } from "../types";
@@ -87,7 +88,7 @@ const app = new Hono()
 			
 			// Atomic batch: create workspace and admin member together
 			const batch = databases.batch();
-			const workspaceRef = databases.collection("workspaces").doc();
+			const workspaceRef = databases.collection("workspaces").doc(generatePrefixedId(ID_PREFIX.WORKSPACE));
 			batch.set(workspaceRef, {
 				name,
 				userId: user.$id,
@@ -368,14 +369,15 @@ const app = new Hono()
 			
 			// Atomic check+insert: use a transaction to prevent race conditions
 			await databases.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
-				// Re-check membership inside transaction
+				// Re-check membership inside transaction — single-field query to avoid composite index
 				const memberQuery = await transaction.get(
 					databases.collection("members")
-						.where("workspaceId", "==", workspaceId)
 						.where("userId", "==", user.$id)
-						.limit(1)
 				);
-				if (!memberQuery.empty) {
+				const alreadyMember = memberQuery.docs.some(
+					(d) => d.data().workspaceId === workspaceId
+				);
+				if (alreadyMember) {
 					throw new Error("Already a member");
 				}
 				const newMemberRef = databases.collection("members").doc();

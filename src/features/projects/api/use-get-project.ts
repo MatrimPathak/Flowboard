@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 
 interface UseGetProjectProps {
 	projectId: string;
+	enabled?: boolean;
 }
 
-export const useGetProject = ({ projectId }: UseGetProjectProps) => {
+export const useGetProject = ({ projectId, enabled = true }: UseGetProjectProps) => {
 	const query = useQuery({
+		enabled,
 		queryKey: ["project", projectId],
 		queryFn: async () => {
 			const response = await client.api.projects[":projectId"].$get({

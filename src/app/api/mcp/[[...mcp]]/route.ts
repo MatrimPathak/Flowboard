@@ -183,7 +183,7 @@ const createTicketSchema = z.object({
   assigneeId: z.string().describe("Member ID of the assignee"),
   description: z.string().optional(),
   acceptanceCriteria: z.string().optional().describe("Acceptance Criteria (required for Epics, Stories, Bugs)"),
-  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
   priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
   parentId: z.string().optional().describe("Parent task ID for subtasks"),
   epicId: z.string().optional().describe("Epic task ID this belongs to"),
@@ -212,7 +212,7 @@ const updateTicketSchema = z.object({
   assigneeId: z.string().optional(),
   description: z.string().optional(),
   acceptanceCriteria: z.string().optional(),
-  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
   priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
   parentId: z.string().optional(),
   epicId: z.string().optional(),
@@ -283,7 +283,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             TaskStatus.DONE,
           ]).optional(),
           search: z.string().optional().describe("Search by ticket name"),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG, IssueType.SUBTASK]).optional(),
+          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
           priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
           sprintId: z.string().nullable().optional().describe("Filter by sprint ID, or null for backlog items"),
           epicId: z.string().optional().describe("Filter by epic ID"),
@@ -982,7 +982,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
     }
   },
   {
-    basePath: "/api/mcp",
+    basePath: "/api",
     verboseLogs: true,
   }
 );

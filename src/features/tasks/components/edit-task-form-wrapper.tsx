@@ -3,10 +3,15 @@ import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useGetProjectMembers } from "@/features/projects/api/use-get-project-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
+import { useState } from "react";
 import { useGetTask } from "../api/use-get-task";
 import { EditTaskForm } from "./edit-task-form";
 import { useGetVersions } from "@/features/versions/api/use-get-versions";
 import { VersionStatus } from "@/features/versions/types";
+import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
+import { IssueType } from "@/features/tasks/types";
+import { useGetSprints } from "@/features/sprints/api/use-get-sprints";
+import { SprintStatus } from "@/features/sprints/types";
 
 interface EditTaskFormWrapperProps {
 	onCancel: () => void;
@@ -18,13 +23,12 @@ export const EditTaskFormWrapper = ({
 	id,
 }: EditTaskFormWrapperProps) => {
 	const workspaceId = useWorkspaceId();
-	const { data: initialValues, isLoading: isLoadingTask } = useGetTask({
-		taskId: id,
-	});
-	const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
-		workspaceId,
-	});
-	const projectId = initialValues?.projectId ?? "";
+	const { data: initialValues, isLoading: isLoadingTask } = useGetTask({ taskId: id });
+	const { data: projects, isLoading: isLoadingProjects } = useGetProjects({ workspaceId });
+
+	const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+	const projectId = selectedProjectId || initialValues?.projectId || "";
+
 	const { data: projectMembersData, isLoading: isLoadingMembers } = useGetProjectMembers({
 		workspaceId,
 		projectId,
@@ -33,6 +37,17 @@ export const EditTaskFormWrapper = ({
 	const { data: versions, isLoading: isLoadingVersions } = useGetVersions({
 		workspaceId,
 		projectId,
+		enabled: !!projectId,
+	});
+	const { data: sprints, isLoading: isLoadingSprints } = useGetSprints({
+		workspaceId,
+		projectId,
+		enabled: !!projectId,
+	});
+	const { data: epicsData } = useGetTasks({
+		workspaceId,
+		projectId,
+		issueType: IssueType.EPIC,
 		enabled: !!projectId,
 	});
 
@@ -48,7 +63,6 @@ export const EditTaskFormWrapper = ({
 		userId: member.userId,
 	}));
 
-	// Always include current assignee even if they've been removed from the project
 	const memberOptions = (() => {
 		if (!initialValues?.assigneeId) return rawMemberOptions;
 		const already = rawMemberOptions.some((m) => m.id === initialValues.assigneeId);
@@ -60,10 +74,19 @@ export const EditTaskFormWrapper = ({
 		.filter((v) => v.status === VersionStatus.UNRELEASED || v.$id === initialValues?.fixVersionId)
 		.map((v) => ({ id: v.$id, name: v.name }));
 
+	const sprintOptions = (sprints?.documents ?? [])
+		.filter((s) => s.status === SprintStatus.PLANNED || s.status === SprintStatus.ACTIVE)
+		.map((s) => ({ id: s.$id, name: s.name }));
+
+	const epicOptions = (epicsData?.documents ?? []).map((e) => ({
+		id: e.$id,
+		name: e.name,
+	}));
+
 	const isLoading =
 		isLoadingProjects ||
 		isLoadingTask ||
-		(!!projectId && (isLoadingMembers || isLoadingVersions));
+		(!!projectId && (isLoadingMembers || isLoadingVersions || isLoadingSprints));
 
 	if (isLoading) {
 		return (
@@ -83,7 +106,10 @@ export const EditTaskFormWrapper = ({
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memberOptions}
+			epicOptions={epicOptions}
+			sprintOptions={sprintOptions}
 			versionOptions={versionOptions}
+			onProjectChange={setSelectedProjectId}
 		/>
 	);
 };

@@ -1,4 +1,5 @@
 import { getMember } from "@/features/members/utils";
+import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { MemberRole } from "@/features/members/types";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { adminAuth } from "@/lib/firebase-admin";
@@ -165,17 +166,19 @@ const app = new Hono()
 				await file.makePublic();
 				uploadImageUrl = file.publicUrl();
 			}
-			const docRef = await databases
+			const newProjectId = generatePrefixedId(ID_PREFIX.PROJECT);
+			const docRef = databases
 				.collection("workspaces")
 				.doc(workspaceId)
 				.collection("projects")
-				.add({
-					name,
-					imageUrl: uploadImageUrl || null,
-					workspaceId,
-					$createdAt: new Date().toISOString(),
-					membersBootstrapped: true,
-				});
+				.doc(newProjectId);
+			await docRef.set({
+				name,
+				imageUrl: uploadImageUrl || null,
+				workspaceId,
+				$createdAt: new Date().toISOString(),
+				membersBootstrapped: true,
+			});
 
 			// Auto-add creator as project ADMIN
 			await databases
@@ -189,6 +192,7 @@ const app = new Hono()
 					userId: user.$id,
 					role: ProjectMemberRole.ADMIN,
 					$createdAt: new Date().toISOString(),
+					membersBootstrapped: true,
 				});
 
 			const projectDoc = await docRef.get();

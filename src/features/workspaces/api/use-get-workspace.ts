@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 
 interface UseGetWorkspaceProps {
 	workspaceId: string;
+	enabled?: boolean;
 }
 
-export const useGetWorkspace = ({ workspaceId }: UseGetWorkspaceProps) => {
+export const useGetWorkspace = ({ workspaceId, enabled = true }: UseGetWorkspaceProps) => {
 	const query = useQuery({
+		enabled,
 		queryKey: ["workspace", workspaceId],
 		queryFn: async () => {
 			const response = await client.api.workspaces[":workspaceId"].$get({
