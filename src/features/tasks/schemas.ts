@@ -3,7 +3,7 @@ import { IssueType, LinkType, TaskPriority, TaskStatus } from "./types";
 
 const ACCEPTANCE_CRITERIA_TYPES = new Set([IssueType.EPIC, IssueType.STORY, IssueType.BUG]);
 
-export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.RefinementCtx) => {
+export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.RefinementCtx, requireRca = false) => {
 	if (data.issueType && ACCEPTANCE_CRITERIA_TYPES.has(data.issueType as IssueType)) {
 		if (!data.acceptanceCriteria || (typeof data.acceptanceCriteria === "string" && data.acceptanceCriteria.trim() === "")) {
 			ctx.addIssue({
@@ -14,11 +14,18 @@ export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.Refi
 		}
 	}
 	if (data.issueType === IssueType.BUG) {
-		if (!data.rca || (typeof data.rca === "string" && data.rca.trim() === "")) {
+		if (requireRca && (!data.rca || (typeof data.rca === "string" && data.rca.trim() === ""))) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Root Cause Analysis is required for Bugs",
 				path: ["rca"],
+			});
+		}
+		if (!data.epicId || (typeof data.epicId === "string" && data.epicId.trim() === "")) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Epic is required for Bugs",
+				path: ["epicId"],
 			});
 		}
 	}

@@ -5,12 +5,7 @@ import { cn } from "@/lib/utils";
 import { SettingsIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-	GoCheckCircle,
-	GoCheckCircleFill,
-	GoHome,
-	GoHomeFill,
-} from "react-icons/go";
+import { GoHome, GoHomeFill } from "react-icons/go";
 
 const routes = [
 	{
@@ -18,12 +13,6 @@ const routes = [
 		href: "",
 		icon: GoHome,
 		activeIcon: GoHomeFill,
-	},
-	{
-		label: "My Tasks",
-		href: "/tasks",
-		icon: GoCheckCircle,
-		activeIcon: GoCheckCircleFill,
 	},
 	{
 		label: "Settings",
@@ -45,7 +34,7 @@ export const Navigation = () => {
 	return (
 		<ul className="flex flex-col">
 			{routes.map((route) => {
-				const fullHref = `/workspaces/${workspaceId}${route.href}`;
+				const fullHref = `/workspace/${workspaceId}${route.href}`;
 				const isActive = pathname === fullHref;
 				const Icon = isActive ? route.activeIcon : route.icon;
 				return (

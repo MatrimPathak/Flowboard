@@ -6,6 +6,8 @@ import { useGetSprints } from "@/features/sprints/api/use-get-sprints";
 import { SprintStatus } from "@/features/sprints/types";
 import { useGetVersions } from "@/features/versions/api/use-get-versions";
 import { VersionStatus } from "@/features/versions/types";
+import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
+import { IssueType } from "@/features/tasks/types";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Loader } from "lucide-react";
 import { useState } from "react";
@@ -45,6 +47,12 @@ export const CreateTaskFormWrapper = ({
 		projectId: selectedProjectId ?? "",
 		enabled: !!selectedProjectId,
 	});
+	const { data: epicsData } = useGetTasks({
+		workspaceId,
+		projectId: selectedProjectId ?? "",
+		issueType: IssueType.EPIC,
+		enabled: !!selectedProjectId,
+	});
 
 	const projectOptions = projects?.documents.map((project) => ({
 		id: project.$id,
@@ -64,6 +72,12 @@ export const CreateTaskFormWrapper = ({
 	const versionOptions = (versions?.documents ?? [])
 		.filter((v) => v.status === VersionStatus.UNRELEASED)
 		.map((v) => ({ id: v.$id, name: v.name }));
+
+	const epicOptions = (epicsData?.documents ?? []).map((e) => ({
+		id: e.$id,
+		name: e.name,
+	}));
+
 
 	const isLoading =
 		isLoadingProjects ||
@@ -85,6 +99,7 @@ export const CreateTaskFormWrapper = ({
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memberOptions}
+			epicOptions={epicOptions}
 			sprintOptions={sprintOptions}
 			versionOptions={versionOptions}
 			onProjectChange={setSelectedProjectId}

@@ -1,4 +1,5 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { addLinkSchema, createCommentSchema, createTaskSchema, logWorkSchema, watchTaskSchema, taskConditionalRefine } from "../schemas";
@@ -318,13 +319,23 @@ workspaceId,
 			
 			const newPosition = Number.isFinite(lastPosition) ? lastPosition + 1000 : 1000;
 			
-			const taskRef = await databases
+			const taskIdPrefix = (() => {
+				switch (issueType) {
+					case IssueType.EPIC: return ID_PREFIX.EPIC;
+					case IssueType.STORY: return ID_PREFIX.STORY;
+					case IssueType.BUG: return ID_PREFIX.BUG;
+					default: return ID_PREFIX.SPIKE;
+				}
+			})();
+			const newTaskId = generatePrefixedId(taskIdPrefix);
+			const taskRef = databases
 				.collection("workspaces")
 				.doc(workspaceId)
 				.collection("projects")
 				.doc(projectId)
 				.collection("tasks")
-				.add({
+				.doc(newTaskId);
+			await taskRef.set({
 					name,
 					status,
 					workspaceId,
@@ -445,7 +456,7 @@ workspaceId,
 	.patch(
 		"/:taskId",
 		sessionMiddleware,
-		zValidator("json", createTaskSchema.innerType().partial().superRefine(taskConditionalRefine)),
+		zValidator("json", createTaskSchema.innerType().partial().superRefine((data, ctx) => taskConditionalRefine(data, ctx, true))),
 		async (c) => {
 			const user = c.get("user");
 			const databases = c.get("databases");
@@ -927,14 +938,13 @@ workspaceId,
 				return c.json({ error: "A task cannot link to itself" }, 400);
 			}
 
-			// Reject duplicate (targetTaskId, type) links
-			const existingLink = await taskRef
+			// Reject duplicate (targetTaskId, type) links — single-field query to avoid composite index
+			const existingLinksSnap = await taskRef
 				.collection("links")
 				.where("targetTaskId", "==", targetTaskId)
-				.where("type", "==", type)
-				.limit(1)
 				.get();
-			if (!existingLink.empty) {
+			const duplicateLink = existingLinksSnap.docs.some((d) => d.data().type === type);
+			if (duplicateLink) {
 				return c.json({ error: "Link already exists" }, 409);
 			}
 

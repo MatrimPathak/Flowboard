@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createSprintSchema, updateSprintSchema } from "../schemas";
 import { getMember } from "@/features/members/utils";
+import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { z } from "zod";
 import { Sprint, SprintStatus } from "../types";
 import { TaskStatus } from "@/features/tasks/types";
@@ -88,13 +89,14 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const sprintRef = await databases
+      const sprintRef = databases
         .collection("workspaces")
         .doc(workspaceId)
         .collection("projects")
         .doc(projectId)
         .collection("sprints")
-        .add({
+        .doc(generatePrefixedId(ID_PREFIX.SPRINT));
+      await sprintRef.set({
           name,
           status: SprintStatus.PLANNED,
           workspaceId,

@@ -20,7 +20,7 @@ export const WorkspaceSwitcher = () => {
 	const { data: workspaces } = useGetWorkspaces();
 	const { open } = useCreateWorkspaceModal();
 	const onSelect = (id: string) => {
-		router.push(`/workspaces/${id}`);
+		router.push(`/workspace/${id}`);
 	};
 	return (
 		<div className="flex flex-col gap-y-2">

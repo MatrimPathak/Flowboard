@@ -21,7 +21,7 @@ export const MembersList = ({ data, total }: MembersListProps) => {
 				<div className="flex items-center justify-between">
 					<p className="text-lg font-semibold">Members ({total})</p>
 					<Button variant="secondary" size="icon" asChild>
-						<Link href={`/workspaces/${workspaceId}/members`}>
+						<Link href={`/workspace/${workspaceId}/members`}>
 							<SettingsIcon className="size-4 text-muted-foreground" />
 						</Link>
 					</Button>

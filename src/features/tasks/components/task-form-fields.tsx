@@ -32,10 +32,17 @@ const ACCEPTANCE_CRITERIA_TYPES = new Set([
 	IssueType.BUG,
 ]);
 
+const EPIC_SELECTOR_TYPES = new Set([
+	IssueType.STORY,
+	IssueType.SPIKE,
+	IssueType.BUG,
+]);
+
 interface TaskFormFieldsProps {
 	form: UseFormReturn<z.infer<typeof createTaskSchema>>;
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
+	epicOptions?: { id: string; name: string }[];
 	sprintOptions?: { id: string; name: string }[];
 	versionOptions?: { id: string; name: string }[];
 	onProjectChange?: (projectId: string) => void;
@@ -45,6 +52,7 @@ export const TaskFormFields = ({
 	form,
 	projectOptions,
 	memberOptions,
+	epicOptions = [],
 	sprintOptions = [],
 	versionOptions = [],
 	onProjectChange,
@@ -53,6 +61,8 @@ export const TaskFormFields = ({
 	const showAcceptanceCriteria =
 		issueType !== undefined && ACCEPTANCE_CRITERIA_TYPES.has(issueType as IssueType);
 	const showRca = issueType === IssueType.BUG;
+	const showEpicSelector =
+		issueType !== undefined && EPIC_SELECTOR_TYPES.has(issueType as IssueType);
 
 	useEffect(() => {
 		if (!showAcceptanceCriteria) form.setValue("acceptanceCriteria", "");
@@ -61,6 +71,10 @@ export const TaskFormFields = ({
 	useEffect(() => {
 		if (!showRca) form.setValue("rca", "");
 	}, [showRca, form]);
+
+	useEffect(() => {
+		if (!showEpicSelector) form.setValue("epicId", undefined);
+	}, [showEpicSelector, form]);
 
 	return (
 		<div className="flex flex-col gap-y-4">
@@ -300,6 +314,40 @@ export const TaskFormFields = ({
 						</FormItem>
 					)}
 				/>
+				{showEpicSelector && (
+					<FormField
+						control={form.control}
+						name="epicId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>
+									Epic{issueType === IssueType.BUG ? " *" : " (optional)"}
+								</FormLabel>
+								<Select
+									value={field.value ?? undefined}
+									onValueChange={field.onChange}
+								>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select Epic" />
+										</SelectTrigger>
+									</FormControl>
+									<FormMessage />
+									<SelectContent>
+										{epicOptions.map((epic) => (
+											<SelectItem key={epic.id} value={epic.id}>
+												<span className="font-mono">{epic.id}</span>
+												{epic.name !== epic.id && (
+													<span className="ml-2 text-muted-foreground">{epic.name}</span>
+												)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</FormItem>
+						)}
+					/>
+				)}
 				{sprintOptions.length > 0 && (
 					<FormField
 						control={form.control}

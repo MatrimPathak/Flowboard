@@ -5,7 +5,7 @@ export function getTaskRoute(
 	projectId: string,
 	task: Pick<Task, "$id" | "issueType">
 ): string {
-	const base = `/workspaces/${workspaceId}/projects/${projectId}`;
+	const base = `/workspace/${workspaceId}/project/${projectId}`;
 	switch (task.issueType) {
 		case IssueType.EPIC:
 			return `${base}/epic/${task.$id}`;
@@ -13,9 +13,7 @@ export function getTaskRoute(
 			return `${base}/story/${task.$id}`;
 		case IssueType.BUG:
 			return `${base}/bug/${task.$id}`;
-		case IssueType.SUBTASK:
-			return `${base}/subtask/${task.$id}`;
 		default:
-			return `${base}/task/${task.$id}`;
+			return `${base}/spike/${task.$id}`;
 	}
 }

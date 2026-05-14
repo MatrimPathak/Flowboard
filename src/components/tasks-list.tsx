@@ -65,7 +65,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
 					</li>
 				</ul>
 				<Button variant="muted" className="mt-4 w-full" asChild>
-					<Link href={`/workspaces/${workspaceId}/tasks`}>
+					<Link href={`/workspace/${workspaceId}/tasks`}>
 						Show All
 					</Link>
 				</Button>

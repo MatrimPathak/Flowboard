@@ -18,6 +18,7 @@ interface CreateTaskFormProps {
 	onCancel?: () => void;
 	projectOptions: { id: string; name: string; imageUrl: string }[];
 	memberOptions: { id: string; name: string }[];
+	epicOptions?: { id: string; name: string }[];
 	sprintOptions?: { id: string; name: string }[];
 	versionOptions?: { id: string; name: string }[];
 	onProjectChange?: (projectId: string) => void;
@@ -27,6 +28,7 @@ export const CreateTaskForm = ({
 	onCancel,
 	projectOptions,
 	memberOptions,
+	epicOptions = [],
 	sprintOptions = [],
 	versionOptions = [],
 	onProjectChange,
@@ -77,6 +79,7 @@ export const CreateTaskForm = ({
 							form={form}
 							projectOptions={projectOptions}
 							memberOptions={memberOptions}
+						epicOptions={epicOptions}
 							sprintOptions={sprintOptions}
 							versionOptions={versionOptions}
 							onProjectChange={onProjectChange}

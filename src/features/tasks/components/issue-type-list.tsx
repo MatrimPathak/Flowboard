@@ -18,6 +18,7 @@ import { IssueType } from "@/features/tasks/types";
 const singularMap: Record<string, string> = {
 	Epics: "Epic",
 	Stories: "Story",
+	Spikes: "Spike",
 	Bugs: "Bug",
 };
 
@@ -67,7 +68,7 @@ export const IssueTypeList = ({ issueType, pageTitle }: IssueTypeListProps) => {
 				<div className="flex items-center gap-x-2">
 					<Button size="sm" variant="secondary" asChild>
 						<Link
-							href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`}
+							href={`/workspace/${project.workspaceId}/project/${project.$id}/settings`}
 						>
 							<PencilIcon className="size-4 mr-2" />
 							Edit Project

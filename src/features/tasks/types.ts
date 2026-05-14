@@ -20,9 +20,8 @@ export enum TaskPriority {
 export enum IssueType {
 	EPIC = "EPIC",
 	STORY = "STORY",
-	TASK = "TASK",
+	SPIKE = "SPIKE",
 	BUG = "BUG",
-	SUBTASK = "SUBTASK",
 }
 
 export type Task = {

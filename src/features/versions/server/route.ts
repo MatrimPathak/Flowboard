@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createVersionSchema, updateVersionSchema } from "../schemas";
 import { getMember } from "@/features/members/utils";
+import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { z } from "zod";
 import { Version, VersionStatus } from "../types";
 
@@ -88,13 +89,14 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const versionRef = await databases
+      const versionRef = databases
         .collection("workspaces")
         .doc(workspaceId)
         .collection("projects")
         .doc(projectId)
         .collection("versions")
-        .add({
+        .doc(generatePrefixedId(ID_PREFIX.RELEASE));
+      await versionRef.set({
           name,
           workspaceId,
           projectId,

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, Plus, List, Timer, Rocket, Target, BookOpen, Bug } from "lucide-react";
+import { ChevronDown, Plus, List, Timer, Rocket, Target, BookOpen, Bug, Zap } from "lucide-react";
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint-modal";
 import { IssueType } from "@/features/tasks/types";
@@ -16,9 +16,10 @@ import { IssueType } from "@/features/tasks/types";
 const subItems = [
 	{ label: "Backlog", icon: List, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
 	{ label: "Sprints", icon: Timer, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
-	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/versions", issueType: undefined, modalType: "task" as const },
+	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "task" as const },
 	{ label: "Epics", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
 	{ label: "Stories", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
+	{ label: "Spikes", icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: "task" as const },
 	{ label: "Bugs", icon: Bug, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
 ];
 
@@ -85,7 +86,7 @@ export const Projects = () => {
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
 	const isProjectActive = (projectId: string) => {
-		const href = `/workspaces/${workspaceId}/projects/${projectId}`;
+		const href = `/workspace/${workspaceId}/project/${projectId}`;
 		return pathName === href || pathName.startsWith(`${href}/`);
 	};
 
@@ -111,7 +112,7 @@ export const Projects = () => {
 			</div>
 			<div className="flex flex-col gap-y-1">
 				{data?.documents.map((project) => {
-					const href = `/workspaces/${workspaceId}/projects/${project.$id}`;
+					const href = `/workspace/${workspaceId}/project/${project.$id}`;
 					const isActive = isProjectActive(project.$id);
 					const isExpanded = expanded[project.$id] !== undefined ? expanded[project.$id] : isActive;
 
