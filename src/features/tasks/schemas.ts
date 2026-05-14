@@ -2,6 +2,7 @@ import { z } from "zod";
 import { IssueType, LinkType, TaskPriority, TaskStatus } from "./types";
 
 const ACCEPTANCE_CRITERIA_TYPES = new Set([IssueType.EPIC, IssueType.STORY, IssueType.BUG]);
+const EPIC_REQUIRED_TYPES = new Set([IssueType.STORY, IssueType.SPIKE, IssueType.BUG]);
 
 export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.RefinementCtx, requireRca = false) => {
 	if (data.issueType && ACCEPTANCE_CRITERIA_TYPES.has(data.issueType as IssueType)) {
@@ -13,19 +14,21 @@ export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.Refi
 			});
 		}
 	}
+	if (data.issueType && EPIC_REQUIRED_TYPES.has(data.issueType as IssueType)) {
+		if (!data.epicId || (typeof data.epicId === "string" && data.epicId.trim() === "")) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Epic is required for Stories, Spikes, and Bugs",
+				path: ["epicId"],
+			});
+		}
+	}
 	if (data.issueType === IssueType.BUG) {
 		if (requireRca && (!data.rca || (typeof data.rca === "string" && data.rca.trim() === ""))) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Root Cause Analysis is required for Bugs",
 				path: ["rca"],
-			});
-		}
-		if (!data.epicId || (typeof data.epicId === "string" && data.epicId.trim() === "")) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: "Epic is required for Bugs",
-				path: ["epicId"],
 			});
 		}
 	}

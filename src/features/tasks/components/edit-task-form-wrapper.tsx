@@ -75,7 +75,7 @@ export const EditTaskFormWrapper = ({
 		.map((v) => ({ id: v.$id, name: v.name }));
 
 	const sprintOptions = (sprints?.documents ?? [])
-		.filter((s) => s.status === SprintStatus.PLANNED || s.status === SprintStatus.ACTIVE)
+		.filter((s) => s.status === SprintStatus.ACTIVE)
 		.map((s) => ({ id: s.$id, name: s.name }));
 
 	const epicOptions = (epicsData?.documents ?? []).map((e) => ({

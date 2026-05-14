@@ -66,7 +66,7 @@ export const CreateTaskFormWrapper = ({
 	}));
 
 	const sprintOptions = (sprints?.documents ?? [])
-		.filter((s) => s.status === SprintStatus.PLANNED || s.status === SprintStatus.ACTIVE)
+		.filter((s) => s.status === SprintStatus.ACTIVE)
 		.map((s) => ({ id: s.$id, name: s.name }));
 
 	const versionOptions = (versions?.documents ?? [])

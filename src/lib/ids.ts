@@ -1,8 +1,8 @@
 import { randomBytes } from "crypto";
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const CHARS = "0123456789";
 
-export function generatePrefixedId(prefix: string, length = 6): string {
+export function generatePrefixedId(prefix: string, length = 8): string {
 	const CHARS_LEN = CHARS.length;
 	const MAX_VALID = 256 - (256 % CHARS_LEN);
 	let suffix = "";

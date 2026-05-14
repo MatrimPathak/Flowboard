@@ -37,6 +37,7 @@ const EPIC_SELECTOR_TYPES = new Set([
 	IssueType.SPIKE,
 	IssueType.BUG,
 ]);
+const EPIC_REQUIRED_TYPES = new Set([IssueType.STORY, IssueType.SPIKE, IssueType.BUG]);
 
 interface TaskFormFieldsProps {
 	form: UseFormReturn<z.infer<typeof createTaskSchema>>;
@@ -321,7 +322,7 @@ export const TaskFormFields = ({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>
-									Epic{issueType === IssueType.BUG ? " *" : " (optional)"}
+									Epic{issueType && EPIC_REQUIRED_TYPES.has(issueType as IssueType) ? " *" : " (optional)"}
 								</FormLabel>
 								<Select
 									value={field.value ?? undefined}

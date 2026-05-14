@@ -74,8 +74,8 @@ export const LogWorkModal = ({
             <Input
               id="hours"
               type="number"
-              min={0.1}
-              step={0.25}
+              min={0.01}
+              step="any"
               placeholder="e.g. 1.5"
               value={hours}
               onChange={(e) => setHours(e.target.value)}

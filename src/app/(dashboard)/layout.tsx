@@ -6,7 +6,7 @@ import { EditTaskModal } from "@/features/tasks/components/edit-task-model";
 import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { CreateSprintModal } from "@/features/sprints/components/create-sprint-modal";
-
+import { CreateVersionModal } from "@/features/versions/components/create-version-modal";
 
 interface DashBoardLayoutProps {
 	children?: React.ReactNode;
@@ -20,6 +20,7 @@ const DashBoardLayout = ({ children }: DashBoardLayoutProps) => {
 			<CreateTaskModal />
 			<EditTaskModal />
 			<CreateSprintModal />
+			<CreateVersionModal />
 			<div className="flex w-full h-full">
 				<div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
 					<Sidebar />

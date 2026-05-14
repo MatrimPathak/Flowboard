@@ -171,16 +171,16 @@ const app = new Hono()
 			
 			const assignees = await Promise.all(
 				members.map(async (m) => {
-					let u;
+					let u: { displayName?: string | null; email?: string } = {};
 					try {
 						u = await adminAuth.getUser(m.userId);
 					} catch (e) {
-						u = { displayName: "Unknown User", email: "" };
+						console.error("getUser failed for", m.userId, e);
 					}
 					return {
 						...m,
-						name: u.displayName || u.email,
-						email: u.email,
+						name: u.displayName || u.email || m.userId,
+						email: u.email ?? "",
 					};
 				})
 			);
@@ -253,16 +253,16 @@ const app = new Hono()
 		
 		let assignee = null;
 		if (memberData) {
-			let u;
+			let u: { displayName?: string | null; email?: string } = {};
 			try {
 				u = await adminAuth.getUser(memberData.userId);
 			} catch (e) {
-				u = { displayName: "Unknown", email: "" };
+				console.error("getUser failed for", memberData.userId, e);
 			}
 			assignee = {
 				...memberData,
-				name: u.displayName || u.email,
-				email: u.email,
+				name: u.displayName || u.email || memberData.userId,
+				email: u.email ?? "",
 			};
 		}
 		
@@ -686,9 +686,9 @@ workspaceId,
 
 		const authors = await Promise.all(
 			memberDocs.map(async (m) => {
-				let u;
-				try { u = await adminAuth.getUser(m.userId); } catch { u = { displayName: "Unknown", email: "" }; }
-				return { $id: m.$id, name: u.displayName || u.email, email: u.email };
+				let u: { displayName?: string | null; email?: string } = {};
+				try { u = await adminAuth.getUser(m.userId); } catch (e) { console.error("getUser failed for", m.userId, e); }
+				return { $id: m.$id, name: u.displayName || u.email || m.userId, email: u.email ?? "" };
 			})
 		);
 
@@ -739,15 +739,15 @@ workspaceId,
 			const commentDoc = await commentRef.get();
 			const data = commentDoc.data();
 
-			let u;
-			try { u = await adminAuth.getUser(currentUser.$id); } catch { u = { displayName: "Unknown", email: "" }; }
+			let u: { displayName?: string | null; email?: string } = {};
+			try { u = await adminAuth.getUser(currentUser.$id); } catch (e) { console.error("getUser failed for", currentUser.$id, e); }
 
 			return c.json({
 				data: {
 					...data,
 					$id: commentDoc.id,
 					$createdAt: normalizeDate(data),
-					author: { name: u.displayName || u.email, email: u.email },
+					author: { name: u.displayName || u.email || currentUser.$id, email: u.email ?? "" },
 				} as TaskComment,
 			});
 		}
