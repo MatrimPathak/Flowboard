@@ -1,6 +1,5 @@
 "use client";
 
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
 import { useGetTask } from "@/features/tasks/api/use-get-task";
@@ -15,6 +14,7 @@ import { TaskTimeTracking } from "@/features/tasks/components/task-time-tracking
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
 import { TaskRca } from "@/features/tasks/components/task-description";
 import { IssueType } from "@/features/tasks/types";
+import { DottedSeperator } from "@/components/dotted-seperator";
 
 export const TaskIdClient = () => {
 	const taskId = useTaskId();
@@ -22,35 +22,36 @@ export const TaskIdClient = () => {
 	if (isLoading) return <PageLoader />;
 	if (!data) return <PageError message="Task not found" />;
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-y-4">
 			<TaskBreadcrumbs project={data.project} task={data} />
-			<DottedSeperator className="my-6" />
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-				<TaskOverview task={data} />
-				<TaskDescription task={data} />
+			<DottedSeperator />
+			<div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_280px] gap-6">
+				{/* LEFT — Overview + Time Tracking */}
+				<div className="flex flex-col gap-y-4">
+					<TaskOverview task={data} />
+					<TaskTimeTracking
+						taskId={data.$id}
+						workspaceId={data.workspaceId}
+						projectId={data.projectId}
+						task={data}
+					/>
+				</div>
+
+				{/* CENTER — Title, Description, RCA (bug only), Comments */}
+				<div className="flex flex-col gap-y-4">
+					<h1 className="text-2xl font-semibold break-words">{data.name}</h1>
+					<TaskDescription task={data} />
+					{data.issueType === IssueType.BUG && <TaskRca task={data} />}
+					<TaskComments taskId={data.$id} />
+				</div>
+
+				{/* RIGHT — Links, Attachments, Activity */}
+				<div className="flex flex-col gap-y-4">
+					<TaskLinks taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
+					<TaskAttachments taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
+					<TaskActivity taskId={data.$id} />
+				</div>
 			</div>
-			<DottedSeperator className="my-6" />
-			<TaskComments taskId={data.$id} />
-			{data.issueType === IssueType.BUG && (
-				<>
-					<DottedSeperator className="my-6" />
-					<TaskRca task={data} />
-					<DottedSeperator className="my-6" />
-				</>
-			)}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-				<TaskLinks taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
-				<TaskAttachments taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
-			</div>
-			<DottedSeperator className="my-6" />
-			<TaskTimeTracking
-				taskId={data.$id}
-				workspaceId={data.workspaceId}
-				projectId={data.projectId}
-				task={data}
-			/>
-			<DottedSeperator className="my-6" />
-			<TaskActivity taskId={data.$id} />
 		</div>
 	);
 };

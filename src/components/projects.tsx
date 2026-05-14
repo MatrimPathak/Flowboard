@@ -11,12 +11,13 @@ import { useState } from "react";
 import { ChevronDown, Plus, List, Timer, Rocket, Target, BookOpen, Bug, Zap } from "lucide-react";
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint-modal";
+import { useCreateVersionModal } from "@/features/versions/hooks/use-create-version-modal";
 import { IssueType } from "@/features/tasks/types";
 
 const subItems = [
 	{ label: "Backlog", icon: List, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
 	{ label: "Sprints", icon: Timer, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
-	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "task" as const },
+	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "release" as const },
 	{ label: "Epics", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
 	{ label: "Stories", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
 	{ label: "Spikes", icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: "task" as const },
@@ -31,7 +32,7 @@ interface SubItemProps {
 	href: string;
 	projectId: string;
 	issueType?: IssueType;
-	modalType: "task" | "sprint";
+	modalType: "task" | "sprint" | "release";
 }
 
 const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, modalType }: SubItemProps) => {
@@ -39,12 +40,15 @@ const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, mod
 	const isActive = pathname === href;
 	const { open: openTaskModal } = useCreateTaskModal();
 	const { open: openSprintModal } = useCreateSprintModal();
+	const { open: openVersionModal } = useCreateVersionModal();
 
 	const handleCreate = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
 		if (modalType === "sprint") {
 			openSprintModal({ projectId });
+		} else if (modalType === "release") {
+			openVersionModal({ projectId });
 		} else {
 			openTaskModal({ projectId, issueType });
 		}
@@ -54,25 +58,26 @@ const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, mod
 		<div className="relative group">
 			<Link href={href} className="block">
 				<div className={cn(
-					"flex items-center justify-between p-2.5 rounded-xl transition-all",
+					"flex items-center justify-between p-1.5 rounded-lg transition-all",
 					isActive
 						? "bg-background border border-border text-foreground shadow-sm"
 						: "hover:bg-background hover:border-border hover:shadow-sm border border-transparent"
 				)}>
-					<div className="flex items-center gap-x-3">
-						<div className={cn("p-2 rounded-lg", bg)}>
-							<Icon className={cn("size-4", color)} />
+					<div className="flex items-center gap-x-2">
+						<div className={cn("p-1.5 rounded-md", bg)}>
+							<Icon className={cn("size-3.5", color)} />
 						</div>
-						<span className="text-sm font-medium tracking-tight">{label}</span>
+						<span className="text-xs font-medium tracking-tight">{label}</span>
 					</div>
 				</div>
 			</Link>
 			<button
 				type="button"
 				onClick={handleCreate}
-				className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded-full transition-all"
+				aria-label={`Create ${label}`}
+				className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded-full transition-all"
 			>
-				<Plus className="size-4 text-muted-foreground" />
+				<Plus className="size-3 text-muted-foreground" />
 			</button>
 		</div>
 	);
@@ -93,9 +98,17 @@ export const Projects = () => {
 	const toggleExpand = (e: React.MouseEvent, projectId: string) => {
 		e.preventDefault();
 		e.stopPropagation();
-		const isActive = isProjectActive(projectId);
-		const currentlyExpanded = expanded[projectId] !== undefined ? expanded[projectId] : isActive;
-		setExpanded((prev) => ({ ...prev, [projectId]: !currentlyExpanded }));
+		const isCurrentlyExpanded = expanded[projectId] !== undefined ? expanded[projectId] : isProjectActive(projectId);
+		if (isCurrentlyExpanded) {
+			setExpanded((prev) => ({ ...prev, [projectId]: false }));
+		} else {
+			const next: Record<string, boolean> = {};
+			data?.documents.forEach((p) => {
+				if (p.$id !== projectId && !isProjectActive(p.$id)) next[p.$id] = false;
+			});
+			next[projectId] = true;
+			setExpanded((prev) => ({ ...prev, ...next }));
+		}
 	};
 
 	return (
@@ -117,7 +130,7 @@ export const Projects = () => {
 					const isExpanded = expanded[project.$id] !== undefined ? expanded[project.$id] : isActive;
 
 					return (
-						<div key={project.$id} className="flex flex-col gap-y-1">
+						<div key={project.$id} className="flex flex-col gap-y-0.5">
 							<div className="flex items-center justify-between">
 								<Link href={href} className="flex-1">
 									<div
@@ -146,7 +159,7 @@ export const Projects = () => {
 								</button>
 							</div>
 							{isExpanded && (
-								<div className="flex flex-col gap-y-1.5 ml-2 pl-4 border-l border-border">
+								<div className="flex flex-col gap-y-0.5 ml-1 pl-2 border-l border-border">
 									{subItems.map((item) => (
 										<SubItem
 											key={item.label}
