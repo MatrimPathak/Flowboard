@@ -18,7 +18,6 @@ import {
   getComments, addComment, updateComment, deleteComment,
   getTaskLinks, addTaskLink, deleteTaskLink,
   getProjectMembers, addProjectMember, updateProjectMember, removeProjectMember,
-  updateWorkspaceMember, removeWorkspaceMember,
 } from "./src/lib/mcp-shared";
 import { D } from "./src/lib/mcp-tool-descriptions";
 import {
@@ -28,7 +27,6 @@ import {
   logWorkSchema, updateWorklogSchema,
   addCommentSchema, updateCommentSchema,
   addTaskLinkSchema,
-  updateWorkspaceMemberSchema, removeWorkspaceMemberSchema,
   addProjectMemberSchema, updateProjectMemberSchema, removeProjectMemberSchema,
 } from "./src/lib/mcp-schemas";
 
@@ -942,31 +940,6 @@ server.registerTool(
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
     return textResult(await getProjectMembers(getAdminDb(), args.workspaceId, args.projectId));
-  }
-);
-
-server.registerTool(
-  "update_member",
-  {
-    description: D.updateMember,
-    inputSchema: updateWorkspaceMemberSchema as any,
-  },
-  async (args: any) => {
-    await verifyWorkspaceAccess(args.workspaceId);
-    return textResult(await updateWorkspaceMember(getAdminDb(), TARGET_USER_ID!, args));
-  }
-);
-
-server.registerTool(
-  "remove_member",
-  {
-    description: D.removeMember,
-    inputSchema: removeWorkspaceMemberSchema as any,
-  },
-  async (args: any) => {
-    await verifyWorkspaceAccess(args.workspaceId);
-    await removeWorkspaceMember(getAdminDb(), TARGET_USER_ID!, args);
-    return textResult(`Member ${args.memberId} removed from workspace successfully`);
   }
 );
 

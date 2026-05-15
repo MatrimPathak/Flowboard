@@ -17,7 +17,6 @@ import {
   getComments, addComment, updateComment, deleteComment,
   getTaskLinks, addTaskLink, deleteTaskLink,
   getProjectMembers, addProjectMember, updateProjectMember, removeProjectMember,
-  updateWorkspaceMember, removeWorkspaceMember,
 } from "@/lib/mcp-shared";
 import { D } from "@/lib/mcp-tool-descriptions";
 import {
@@ -27,7 +26,6 @@ import {
   logWorkSchema, updateWorklogSchema,
   addCommentSchema, updateCommentSchema,
   addTaskLinkSchema,
-  updateWorkspaceMemberSchema, removeWorkspaceMemberSchema,
   addProjectMemberSchema, updateProjectMemberSchema, removeProjectMemberSchema,
 } from "@/lib/mcp-schemas";
 
@@ -1146,33 +1144,6 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
     );
 
     // ── Member Management Tools ───────────────────────────────────────────────
-
-    server.registerTool(
-      "update_member",
-      {
-        title: "Update Member",
-        description: D.updateMember,
-        inputSchema: updateWorkspaceMemberSchema as any,
-      },
-      async (args: any) => {
-        await verifyWorkspaceAccess(args.workspaceId);
-        return textResult(await updateWorkspaceMember(adminDb, getMcpUserId(), args));
-      }
-    );
-
-    server.registerTool(
-      "remove_member",
-      {
-        title: "Remove Member",
-        description: D.removeMember,
-        inputSchema: removeWorkspaceMemberSchema as any,
-      },
-      async (args: any) => {
-        await verifyWorkspaceAccess(args.workspaceId);
-        await removeWorkspaceMember(adminDb, getMcpUserId(), args);
-        return textResult(`Member ${args.memberId} removed from workspace successfully`);
-      }
-    );
 
     // ── Project Member Tools ──────────────────────────────────────────────────
 
