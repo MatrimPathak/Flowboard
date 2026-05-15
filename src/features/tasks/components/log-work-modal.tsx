@@ -37,7 +37,7 @@ export const LogWorkModal = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const hoursNum = parseFloat(hours);
-    if (isNaN(hoursNum) || hoursNum <= 0) return;
+    if (Number.isNaN(hoursNum) || hoursNum <= 0) return;
     const timeSpentMinutes = Math.round(hoursNum * 60);
 
     logWork(

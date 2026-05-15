@@ -55,8 +55,8 @@ export const TaskAttachments = ({ taskId, workspaceId, projectId }: TaskAttachme
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0] ?? null;
 		if (!file) return;
-		if (file.size > 10 * 1024 * 1024) {
-			toast.error("File exceeds the 10 MB limit");
+		if (file.size > 4 * 1024 * 1024) {
+			toast.error("File exceeds the 4 MB limit");
 			return;
 		}
 		setSelectedFile(file);

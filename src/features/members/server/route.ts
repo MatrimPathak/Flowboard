@@ -55,13 +55,13 @@ const app = new Hono()
 
 			const populatedMembers = members.map((member) => {
 				const memberUser = userMap.get(member.userId) || {
-					displayName: "Unknown User",
+					displayName: null,
 					email: "",
 				};
 				return {
 					...member,
-					name: memberUser.displayName || memberUser.email,
-					email: memberUser.email,
+					name: member.name || memberUser.displayName || memberUser.email || "Unknown User",
+					email: memberUser.email || member.email || "",
 					role: member.role,
 				};
 			});
