@@ -366,7 +366,15 @@ function taskDocRef(wId: string, pId: string, taskId: string) { return tasksCol(
 function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collection("sprints"); }
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
 
-function computeAnalytics(allTasks: any[], userId: string) {
+async function computeAnalytics(allTasks: any[], workspaceId: string, userId: string) {
+  // Resolve Firestore member doc ID so it matches the assigneeId stored in tasks
+  const memberSnap = await adminDb.collection("members")
+    .where("workspaceId", "==", workspaceId)
+    .where("userId", "==", userId)
+    .limit(1)
+    .get();
+  const memberId = memberSnap.empty ? userId : memberSnap.docs[0].id;
+
   const now = new Date();
   const nowIso = now.toISOString();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -377,7 +385,7 @@ function computeAnalytics(allTasks: any[], userId: string) {
 
   const metrics = (tasks: any[]) => ({
     taskCount: tasks.length,
-    assignedTaskCount: tasks.filter((t) => t.assigneeId === userId).length,
+    assignedTaskCount: tasks.filter((t) => t.assigneeId === memberId).length,
     incompleteTaskCount: tasks.filter((t) => t.status !== TaskStatus.DONE).length,
     completedTaskCount: tasks.filter((t) => t.status === TaskStatus.DONE).length,
     overdueTaskCount: tasks.filter((t) => t.dueDate && t.dueDate < nowIso && t.status !== TaskStatus.DONE).length,
@@ -1319,7 +1327,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           const tasksSnap = await tasksCol(args.workspaceId, pDoc.id).get();
           allTasks.push(...tasksSnap.docs.map((d: any) => d.data()));
         }
-        return textResult(computeAnalytics(allTasks, userId));
+        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
       }
     );
 
@@ -1338,7 +1346,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const tasksSnap = await tasksCol(args.workspaceId, args.projectId).get();
         const allTasks = tasksSnap.docs.map((d: any) => d.data());
-        return textResult(computeAnalytics(allTasks, userId));
+        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
       }
     );
 

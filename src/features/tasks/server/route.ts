@@ -274,14 +274,10 @@ const app = new Hono()
 				const membersSnapshot = await databases.collection("members").where("__name__", "in", chunk).get();
 				members.push(...membersSnapshot.docs.map((doc: any) => {
 					const data = doc.data();
-					return { 
-						...data,
-						$id: doc.id, 
-						$createdAt: normalizeDate(data),
-					};
+					return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
 				}));
 			}
-			
+
 			const assignees = await Promise.all(
 				members.map(async (m) => {
 					if (m.name) {
@@ -300,7 +296,7 @@ const app = new Hono()
 					};
 				})
 			);
-			
+
 			const populatedTasks = tasks.map((task: any) => {
 				const project = projects.find((p: any) => p.$id === task.projectId);
 				const assignee = assignees.find((a: any) => a.$id === task.assigneeId);

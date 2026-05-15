@@ -265,9 +265,28 @@ const app = new Hono()
 			userRecords.users.forEach((u) => userMap.set(u.uid, u));
 		}
 
+		// Join with the workspace-level members collection to get the Firestore
+		// doc ID that tasks store as assigneeId, and the cached display name.
+		const wsMembersSnap = await databases
+			.collection("members")
+			.where("workspaceId", "==", workspaceId)
+			.get();
+		const wsMemberByUserId = new Map<string, { id: string; name?: string; email?: string }>();
+		wsMembersSnap.docs.forEach((doc: any) => {
+			const d = doc.data();
+			wsMemberByUserId.set(d.userId as string, { id: doc.id, name: d.name, email: d.email });
+		});
+
 		const populated = projectMembers.map((pm) => {
-			const u = userMap.get(pm.userId) ?? { displayName: "Unknown", email: "" };
-			return { ...pm, name: u.displayName || u.email, email: u.email };
+			const wsMember = wsMemberByUserId.get(pm.userId);
+			const u = userMap.get(pm.userId) ?? { displayName: null, email: "" };
+			const name = wsMember?.name || u.displayName || u.email || "Unknown";
+			return {
+				...pm,
+				$id: wsMember?.id ?? pm.userId,
+				name,
+				email: u.email || wsMember?.email || "",
+			};
 		});
 
 		return c.json({ data: { documents: populated, total: populated.length } });
