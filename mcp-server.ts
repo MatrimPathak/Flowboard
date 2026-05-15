@@ -49,33 +49,33 @@ function textResult(data: unknown) {
 server.registerTool(
   "create_ticket",
   {
-    description: "Create a new ticket (task) in a workspace project",
+    description: "Create a new Flowboard ticket. Issue types determine the ID prefix: EPIC (large feature, EPIC-xxxxxxxx), STORY (user story, US-xxxxxxxx, requires epicId), SPIKE (investigation/research, SPIKE-xxxxxxxx), BUG (defect, BUG-xxxxxxxx, requires epicId and rca). Use get_members to find the correct assigneeId.",
     inputSchema: z.object({
-      name: z.string(),
+      name: z.string().describe("Title of the ticket"),
       status: z.enum([
         TaskStatus.BACKLOG,
         TaskStatus.TODO,
         TaskStatus.IN_PROGRESS,
         TaskStatus.UNDER_REVIEW,
         TaskStatus.DONE,
-      ]),
-      workspaceId: z.string(),
-      projectId: z.string(),
-      dueDate: z.string(),
-      assigneeId: z.string(),
-      description: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
-      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-      parentId: z.string().optional().describe("Parent task ID"),
-      epicId: z.string().optional().describe("Epic task ID this belongs to (required for BUG)"),
-      sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
-      fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
-      storyPoints: z.number().optional(),
-      originalEstimate: z.number().optional().describe("In minutes"),
-      remainingEstimate: z.number().optional().describe("In minutes"),
-      labels: z.array(z.string()).optional(),
-      acceptanceCriteria: z.string().optional().describe("Acceptance Criteria — required for EPIC, STORY, BUG"),
-      rca: z.string().optional().describe("Root Cause Analysis — required for BUG"),
+      ]).describe("Workflow status: BACKLOG, TODO, IN_PROGRESS, UNDER_REVIEW, or DONE"),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx) — use get_workspaces to find"),
+      projectId: z.string().describe("Project ID (PRJ-xxxxxxxx) — use get_projects to find"),
+      dueDate: z.string().describe("ISO date string (e.g. 2026-06-30)"),
+      assigneeId: z.string().describe("Firestore member document $id — use get_members to look up; differs from Firebase Auth userId"),
+      description: z.string().optional().describe("Detailed description of the ticket"),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe("EPIC=large feature (EPIC-), STORY=user story (US-) needs epicId, SPIKE=investigation (SPIKE-), BUG=defect (BUG-) needs epicId+rca"),
+      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional().describe("Priority: BLOCKER, HIGH, MEDIUM, LOW, or TRIVIAL"),
+      parentId: z.string().optional().describe("Parent ticket ID for sub-tasks"),
+      epicId: z.string().optional().describe("Parent Epic ID (EPIC-xxxxxxxx) — required for STORY and BUG issue types"),
+      sprintId: z.string().nullable().optional().describe("Sprint ID (SPR-xxxxxxxx) to assign to a sprint, or null to place in the backlog"),
+      fixVersionId: z.string().optional().describe("Release ID (RLS-xxxxxxxx) this is fixed in — 'version' and 'release' are the same concept in Flowboard"),
+      storyPoints: z.number().optional().describe("Story point estimate for effort sizing"),
+      originalEstimate: z.number().optional().describe("Original time estimate in minutes (60 = 1 hour)"),
+      remainingEstimate: z.number().optional().describe("Remaining time estimate in minutes"),
+      labels: z.array(z.string()).optional().describe("Free-form label tags"),
+      acceptanceCriteria: z.string().optional().describe("Acceptance Criteria — required for EPIC, STORY, and BUG issue types"),
+      rca: z.string().optional().describe("Root Cause Analysis — required for BUG issue type"),
     }) as any
   },
   async (args: any) => {
@@ -123,24 +123,24 @@ server.registerTool(
 server.registerTool(
   "get_tickets",
   {
-    description: "Retrieve tickets (tasks) from projects with optional filtering",
+    description: "Retrieve Flowboard tickets (Epics, Stories, Spikes, Bugs) with optional filtering. Returns up to 100 results sorted by creation date.",
     inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string().optional(),
-      assigneeId: z.string().optional(),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)"),
+      projectId: z.string().optional().describe("Narrow to a specific project (PRJ-xxxxxxxx); omit to search across all projects"),
+      assigneeId: z.string().optional().describe("Filter by member document $id (use get_members to find)"),
       status: z.enum([
         TaskStatus.BACKLOG,
         TaskStatus.TODO,
         TaskStatus.IN_PROGRESS,
         TaskStatus.UNDER_REVIEW,
         TaskStatus.DONE,
-      ]).optional(),
-      search: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
-      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-      sprintId: z.string().nullable().optional().describe("Filter by sprint ID, or null for backlog items"),
-      epicId: z.string().optional().describe("Filter by epic ID"),
-      fixVersionId: z.string().optional().describe("Filter by version/release ID"),
+      ]).optional().describe("Filter by workflow status"),
+      search: z.string().optional().describe("Case-insensitive substring match on ticket name"),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe("Filter by issue type: EPIC, STORY, SPIKE, or BUG"),
+      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional().describe("Filter by priority"),
+      sprintId: z.string().nullable().optional().describe("Filter by Sprint ID (SPR-xxxxxxxx), or null to get backlog items (no sprint assigned)"),
+      epicId: z.string().optional().describe("Filter by parent Epic ID (EPIC-xxxxxxxx) to get all stories/bugs under an epic"),
+      fixVersionId: z.string().optional().describe("Filter by Release ID (RLS-xxxxxxxx)"),
     }) as any
   },
   async (args: any) => {
@@ -190,7 +190,7 @@ server.registerTool(
 server.registerTool(
   "get_workspaces",
   {
-    description: "List all workspaces the authenticated user has access to"
+    description: "List all Flowboard workspaces accessible to the authenticated user. The returned $id is the workspaceId (WKSP-xxxxxxxx) used in all other tools."
   },
   async () => {
     const membersSnapshot = await getAdminDb().collection("members").where("userId", "==", TARGET_USER_ID).get();
@@ -208,8 +208,8 @@ server.registerTool(
 server.registerTool(
   "get_projects",
   {
-    description: "List projects within a specific workspace",
-    inputSchema: z.object({ workspaceId: z.string() }) as any
+    description: "List projects within a workspace. Project IDs have prefix PRJ-. The returned $id is the projectId used in ticket and sprint tools.",
+    inputSchema: z.object({ workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)") }) as any
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -226,8 +226,8 @@ server.registerTool(
 server.registerTool(
   "get_members",
   {
-    description: "List members within a specific workspace (useful to find assigneeId)",
-    inputSchema: z.object({ workspaceId: z.string() }) as any
+    description: "List workspace members. The returned $id is the assigneeId to use when creating or filtering tickets. The userId field is the Firebase Auth uid (different from $id). Call this before create_ticket to find the correct assigneeId.",
+    inputSchema: z.object({ workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)") }) as any
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -243,7 +243,7 @@ server.registerTool(
 server.registerTool(
   "create_workspace",
   {
-    description: "Create a new workspace",
+    description: "Create a new Flowboard workspace. Workspace IDs get prefix WKSP-. The creator is automatically added as a workspace ADMIN.",
     inputSchema: z.object({
       name: z.string(),
       imageUrl: z.string().optional(),
@@ -328,7 +328,7 @@ server.registerTool(
 server.registerTool(
   "create_project",
   {
-    description: "Create a new project in a workspace",
+    description: "Create a new project within a workspace. Project IDs get prefix PRJ-.",
     inputSchema: z.object({
       workspaceId: z.string(),
       name: z.string(),
@@ -416,31 +416,31 @@ server.registerTool(
 server.registerTool(
   "update_ticket",
   {
-    description: "Update an existing ticket (task)",
+    description: "Update fields on an existing Flowboard ticket (Epic, Story, Spike, or Bug). Only provided fields are updated.",
     inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      name: z.string().optional(),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)"),
+      projectId: z.string().describe("Project ID (PRJ-xxxxxxxx)"),
+      taskId: z.string().describe("Ticket ID (e.g. EPIC-xxxxxxxx, US-xxxxxxxx, SPIKE-xxxxxxxx, BUG-xxxxxxxx)"),
+      name: z.string().optional().describe("Updated ticket title"),
       status: z.enum([
         TaskStatus.BACKLOG,
         TaskStatus.TODO,
         TaskStatus.IN_PROGRESS,
         TaskStatus.UNDER_REVIEW,
         TaskStatus.DONE,
-      ]).optional(),
-      dueDate: z.string().optional(),
-      assigneeId: z.string().optional(),
+      ]).optional().describe("Workflow status: BACKLOG, TODO, IN_PROGRESS, UNDER_REVIEW, or DONE"),
+      dueDate: z.string().optional().describe("ISO date string (e.g. 2026-06-30)"),
+      assigneeId: z.string().optional().describe("Member document $id — use get_members to look up"),
       description: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
+      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe("EPIC, STORY, SPIKE, or BUG"),
       priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-      parentId: z.string().optional(),
-      epicId: z.string().optional(),
-      sprintId: z.string().nullable().optional(),
-      fixVersionId: z.string().optional(),
-      storyPoints: z.number().optional(),
-      originalEstimate: z.number().optional().describe("In minutes"),
-      remainingEstimate: z.number().optional().describe("In minutes"),
+      parentId: z.string().optional().describe("Parent ticket ID for sub-tasks"),
+      epicId: z.string().optional().describe("Parent Epic ID (EPIC-xxxxxxxx) — required for STORY and BUG"),
+      sprintId: z.string().nullable().optional().describe("Sprint ID (SPR-xxxxxxxx), or null to move to the backlog"),
+      fixVersionId: z.string().optional().describe("Release ID (RLS-xxxxxxxx)"),
+      storyPoints: z.number().optional().describe("Story point estimate"),
+      originalEstimate: z.number().optional().describe("Original time estimate in minutes"),
+      remainingEstimate: z.number().optional().describe("Remaining time estimate in minutes"),
       labels: z.array(z.string()).optional(),
     }) as any
   },
@@ -515,7 +515,7 @@ server.registerTool(
 server.registerTool(
   "get_sprints",
   {
-    description: "List sprints in a workspace, optionally filtered by project",
+    description: "List sprints in a workspace. Sprint IDs have prefix SPR-. Each sprint follows a lifecycle: PLANNED → ACTIVE → COMPLETED.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string().optional(),
@@ -537,7 +537,7 @@ server.registerTool(
 server.registerTool(
   "create_sprint",
   {
-    description: "Create a new sprint in a project",
+    description: "Create a new sprint (SPR-xxxxxxxx) in a project. New sprints start in PLANNED status. Use start_sprint to activate.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -595,7 +595,7 @@ server.registerTool(
 server.registerTool(
   "start_sprint",
   {
-    description: "Start a planned sprint, setting its status to ACTIVE",
+    description: "Transition a PLANNED sprint to ACTIVE status. Only one sprint can be active per project at a time.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -616,7 +616,7 @@ server.registerTool(
 server.registerTool(
   "complete_sprint",
   {
-    description: "Complete an active sprint. Incomplete tasks (not DONE) are moved to the backlog (sprintId set to null).",
+    description: "Transition an ACTIVE sprint to COMPLETED status. Tickets that are not in DONE status are automatically moved to the backlog (sprintId set to null).",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -651,7 +651,7 @@ server.registerTool(
 server.registerTool(
   "delete_sprint",
   {
-    description: "Delete a sprint (only PLANNED sprints can be deleted)",
+    description: "Delete a sprint. Only PLANNED sprints (not yet started) can be deleted. Any tickets assigned to the sprint are moved to the backlog.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -685,7 +685,7 @@ server.registerTool(
 server.registerTool(
   "get_versions",
   {
-    description: "List versions (releases) in a workspace, optionally filtered by project",
+    description: "List releases (versions) in a workspace. In Flowboard, 'version' and 'release' are the same concept — a versioned software release like v1.2.0. Release IDs have prefix RLS-. Lifecycle: UNRELEASED → RELEASED (or ARCHIVED).",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string().optional(),
@@ -707,7 +707,7 @@ server.registerTool(
 server.registerTool(
   "create_version",
   {
-    description: "Create a new version (release) in a project",
+    description: "Create a new release (version) in a project. Release IDs get prefix RLS-. New releases start in UNRELEASED status. Use fixVersionId on tickets to associate them with a release.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -739,7 +739,7 @@ server.registerTool(
 server.registerTool(
   "update_version",
   {
-    description: "Update an existing version (release)",
+    description: "Update name, description, or dates of a release (version). Version IDs have prefix RLS-.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -765,7 +765,7 @@ server.registerTool(
 server.registerTool(
   "release_version",
   {
-    description: "Mark a version as released",
+    description: "Transition a release from UNRELEASED to RELEASED status.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -786,7 +786,7 @@ server.registerTool(
 server.registerTool(
   "archive_version",
   {
-    description: "Archive a version",
+    description: "Transition a release to ARCHIVED status.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -807,7 +807,7 @@ server.registerTool(
 server.registerTool(
   "delete_version",
   {
-    description: "Delete a version and clear its fixVersionId from all associated tasks",
+    description: "Delete a release (version) and clear its fixVersionId from all associated tickets.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -841,7 +841,7 @@ server.registerTool(
 server.registerTool(
   "get_worklogs",
   {
-    description: "List work log entries for a task",
+    description: "List time-tracking entries for a ticket. Entries are sorted newest-first.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -986,7 +986,7 @@ server.registerTool(
 server.registerTool(
   "get_task_links",
   {
-    description: "List links (relationships) for a task",
+    description: "List relationship links for a ticket. Each link has a type: BLOCKS, IS_BLOCKED_BY, RELATES_TO, or DUPLICATES.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -1002,13 +1002,13 @@ server.registerTool(
 server.registerTool(
   "add_task_link",
   {
-    description: "Link two tasks together with a relationship type (e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates')",
+    description: "Create a directional relationship between two Flowboard tickets.",
     inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      targetTaskId: z.string().describe("ID of the task to link to"),
-      type: z.string().describe("Relationship type, e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates'"),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)"),
+      projectId: z.string().describe("Project ID (PRJ-xxxxxxxx) of the source ticket"),
+      taskId: z.string().describe("Source ticket ID (e.g. US-xxxxxxxx, BUG-xxxxxxxx)"),
+      targetTaskId: z.string().describe("Target ticket ID to link to (e.g. EPIC-xxxxxxxx, BUG-xxxxxxxx)"),
+      type: z.string().describe("Relationship type — must be one of: BLOCKS, IS_BLOCKED_BY, RELATES_TO, DUPLICATES"),
     }) as any,
   },
   async (args: any) => {
@@ -1040,7 +1040,7 @@ server.registerTool(
 server.registerTool(
   "get_workspace_analytics",
   {
-    description: "Get task metrics for a workspace: total, assigned, incomplete, completed, and overdue counts with month-over-month differences",
+    description: "Get ticket metrics for a workspace: total, assigned-to-me, incomplete, completed, and overdue counts. Each metric includes the current month value and the month-over-month difference.",
     inputSchema: z.object({ workspaceId: z.string() }) as any,
   },
   async (args: any) => {
@@ -1059,7 +1059,7 @@ server.registerTool(
 server.registerTool(
   "get_project_analytics",
   {
-    description: "Get task metrics for a specific project with month-over-month differences",
+    description: "Get ticket metrics for a specific project: total, assigned-to-me, incomplete, completed, and overdue counts with month-over-month differences.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -1079,7 +1079,7 @@ server.registerTool(
 server.registerTool(
   "get_project_members",
   {
-    description: "List members of a specific project",
+    description: "List members of a specific project. Project members are a subset of workspace members and may have different roles.",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
@@ -1094,10 +1094,10 @@ server.registerTool(
 server.registerTool(
   "update_member",
   {
-    description: "Update a workspace member's role (ADMIN or MEMBER). Requires admin role.",
+    description: "Update a workspace member's role. Requires workspace ADMIN role. Note: memberId is the Firestore document $id from get_members, not the Firebase Auth userId.",
     inputSchema: z.object({
-      workspaceId: z.string(),
-      memberId: z.string().describe("The member document ID"),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)"),
+      memberId: z.string().describe("Firestore member document $id (the $id field from get_members, not userId)"),
       role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
     }) as any,
   },
@@ -1110,10 +1110,10 @@ server.registerTool(
 server.registerTool(
   "remove_member",
   {
-    description: "Remove a member from a workspace. Admins can remove anyone; members can only remove themselves.",
+    description: "Remove a member from a workspace. Admins can remove anyone; members can only remove themselves. Note: memberId is the Firestore document $id from get_members, not the Firebase Auth userId.",
     inputSchema: z.object({
-      workspaceId: z.string(),
-      memberId: z.string().describe("The member document ID to remove"),
+      workspaceId: z.string().describe("Workspace ID (WKSP-xxxxxxxx)"),
+      memberId: z.string().describe("Firestore member document $id to remove (the $id field from get_members, not userId)"),
     }) as any,
   },
   async (args: any) => {
@@ -1126,7 +1126,7 @@ server.registerTool(
 server.registerTool(
   "add_project_member",
   {
-    description: "Add a workspace member to a specific project. The user must already be a workspace member. Requires project admin or workspace admin role.",
+    description: "Add an existing workspace member to a specific project. The user must already be a member of the workspace (join via invite). Requires project admin or workspace admin role. Note: userId here is the Firebase Auth uid (the userId field from get_members, not the $id).",
     inputSchema: z.object({
       workspaceId: z.string(),
       projectId: z.string(),
