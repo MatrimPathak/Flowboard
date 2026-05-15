@@ -9,7 +9,7 @@ import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
 import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
-import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { adminDb, adminStorage, adminAuth } from "@/lib/firebase-admin";
 import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
 import {
@@ -30,7 +30,6 @@ import {
 } from "@/lib/mcp-schemas";
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import * as crypto from "crypto";
 
 const mcpContext = new AsyncLocalStorage<{ userId: string }>();
 
@@ -1228,41 +1227,13 @@ async function authenticateAndGetUserId(req: Request) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
-
   const token = authHeader.split(" ")[1];
-
-  // Local development override
-  if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && token === process.env.MCP_SECRET) {
-    return process.env.MCP_USER_ID || "local-dev-user-id";
-  }
-
-  // Hash the token
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-
-  // Use a targeted query to find the token and ensure it's not revoked
-  const snapshot = await adminDb.collection("personal_access_tokens")
-    .where("tokenHash", "==", hash)
-    .where("revoked", "==", false)
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) {
-    console.error("MCP Auth Failed: Token hash not found or revoked", { hash });
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    return decoded.uid;
+  } catch {
     return null;
   }
-
-  const tokenData = snapshot.docs[0].data();
-
-  if (tokenData.expiresAt && new Date(tokenData.expiresAt).getTime() < Date.now()) {
-    console.error("MCP Auth Failed: Token expired", { hash });
-    return null;
-  }
-
-  snapshot.docs[0].ref.update({ lastUsedAt: new Date().toISOString() }).catch((err) => {
-    console.error("Failed to update lastUsedAt for token", snapshot.docs[0].id, err);
-  });
-
-  return tokenData.userId;
 }
 
 /**
