@@ -21,6 +21,16 @@ import {
   updateWorkspaceMember, removeWorkspaceMember,
 } from "./src/lib/mcp-shared";
 import { D } from "./src/lib/mcp-tool-descriptions";
+import {
+  getTicketsSchema, createTicketBaseSchema, updateTicketBaseSchema,
+  createSprintSchema, updateSprintSchema,
+  createVersionSchema, updateVersionSchema,
+  logWorkSchema, updateWorklogSchema,
+  addCommentSchema, updateCommentSchema,
+  addTaskLinkSchema,
+  updateWorkspaceMemberSchema, removeWorkspaceMemberSchema,
+  addProjectMemberSchema, updateProjectMemberSchema, removeProjectMemberSchema,
+} from "./src/lib/mcp-schemas";
 
 const TARGET_USER_ID = process.env.MCP_USER_ID;
 if (!TARGET_USER_ID) {
@@ -51,33 +61,7 @@ server.registerTool(
   "create_ticket",
   {
     description: D.createTicket,
-    inputSchema: z.object({
-      name: z.string().describe(D.ticketName),
-      status: z.enum([
-        TaskStatus.BACKLOG,
-        TaskStatus.TODO,
-        TaskStatus.IN_PROGRESS,
-        TaskStatus.UNDER_REVIEW,
-        TaskStatus.DONE,
-      ]).describe(D.status),
-      workspaceId: z.string().describe(D.workspaceId),
-      projectId: z.string().describe(D.projectId),
-      dueDate: z.string().describe(D.dueDate),
-      assigneeId: z.string().describe(D.assigneeId),
-      description: z.string().optional().describe(D.description),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe(D.issueType),
-      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional().describe(D.priority),
-      parentId: z.string().optional().describe(D.parentId),
-      epicId: z.string().optional().describe(D.epicId),
-      sprintId: z.string().nullable().optional().describe(D.sprintId),
-      fixVersionId: z.string().optional().describe(D.fixVersionId),
-      storyPoints: z.number().optional().describe(D.storyPoints),
-      originalEstimate: z.number().optional().describe(D.originalEstimate),
-      remainingEstimate: z.number().optional().describe(D.remainingEstimate),
-      labels: z.array(z.string()).optional().describe(D.labels),
-      acceptanceCriteria: z.string().optional().describe(D.acceptanceCriteria),
-      rca: z.string().optional().describe(D.rca),
-    }) as any
+    inputSchema: createTicketBaseSchema as any
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -125,24 +109,7 @@ server.registerTool(
   "get_tickets",
   {
     description: D.getTickets,
-    inputSchema: z.object({
-      workspaceId: z.string().describe(D.workspaceId),
-      projectId: z.string().optional().describe(D.projectIdNarrow),
-      assigneeId: z.string().optional().describe(D.assigneeIdFilter),
-      status: z.enum([
-        TaskStatus.BACKLOG,
-        TaskStatus.TODO,
-        TaskStatus.IN_PROGRESS,
-        TaskStatus.UNDER_REVIEW,
-        TaskStatus.DONE,
-      ]).optional().describe(D.statusFilter),
-      search: z.string().optional().describe(D.searchTicket),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe(D.issueTypeFilter),
-      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional().describe(D.priority),
-      sprintId: z.string().nullable().optional().describe(D.sprintIdFilter),
-      epicId: z.string().optional().describe(D.epicIdFilter),
-      fixVersionId: z.string().optional().describe(D.fixVersionIdFilter),
-    }) as any
+    inputSchema: getTicketsSchema as any
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -418,70 +385,17 @@ server.registerTool(
   "update_ticket",
   {
     description: D.updateTicket,
-    inputSchema: z.object({
-      workspaceId: z.string().describe(D.workspaceId),
-      projectId: z.string().describe(D.projectId),
-      taskId: z.string().describe(D.taskId),
-      name: z.string().optional(),
-      status: z.enum([
-        TaskStatus.BACKLOG,
-        TaskStatus.TODO,
-        TaskStatus.IN_PROGRESS,
-        TaskStatus.UNDER_REVIEW,
-        TaskStatus.DONE,
-      ]).optional().describe(D.status),
-      dueDate: z.string().optional().describe(D.dueDate),
-      assigneeId: z.string().optional().describe(D.assigneeIdUpdate),
-      description: z.string().optional(),
-      issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional().describe(D.issueTypeUpdate),
-      priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-      parentId: z.string().optional().describe(D.parentId),
-      epicId: z.string().optional().describe(D.epicIdUpdate),
-      sprintId: z.string().nullable().optional().describe(D.sprintIdMove),
-      fixVersionId: z.string().optional().describe(D.fixVersionIdUpdate),
-      storyPoints: z.number().optional().describe(D.storyPointsUpdate),
-      originalEstimate: z.number().optional().describe(D.originalEstimateShort),
-      remainingEstimate: z.number().optional().describe(D.remainingEstimate),
-      labels: z.array(z.string()).optional(),
-    }) as any
+    inputSchema: updateTicketBaseSchema as any
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
-    const updates: any = {};
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.status !== undefined) updates.status = args.status;
-    if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
-    if (args.assigneeId !== undefined) updates.assigneeId = args.assigneeId;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.issueType !== undefined) updates.issueType = args.issueType;
-    if (args.priority !== undefined) updates.priority = args.priority;
-    if (args.parentId !== undefined) updates.parentId = args.parentId;
-    if (args.epicId !== undefined) updates.epicId = args.epicId;
-    if ("sprintId" in args) updates.sprintId = args.sprintId;
-    if (args.fixVersionId !== undefined) updates.fixVersionId = args.fixVersionId;
-    if (args.storyPoints !== undefined) updates.storyPoints = args.storyPoints;
-    if (args.originalEstimate !== undefined) updates.originalEstimate = args.originalEstimate;
-    if (args.remainingEstimate !== undefined) updates.remainingEstimate = args.remainingEstimate;
-    if (args.labels !== undefined) updates.labels = args.labels;
-    
-    await getAdminDb()
-      .collection("workspaces")
-      .doc(args.workspaceId)
-      .collection("projects")
-      .doc(args.projectId)
-      .collection("tasks")
-      .doc(args.taskId)
-      .update(updates);
-      
-    const doc = await getAdminDb()
-      .collection("workspaces")
-      .doc(args.workspaceId)
-      .collection("projects")
-      .doc(args.projectId)
-      .collection("tasks")
-      .doc(args.taskId)
-      .get();
-      
+    const { workspaceId, projectId, taskId, ...updates } = args;
+    const taskRef = getAdminDb()
+      .collection("workspaces").doc(workspaceId)
+      .collection("projects").doc(projectId)
+      .collection("tasks").doc(taskId);
+    await taskRef.update(updates);
+    const doc = await taskRef.get();
     return { content: [{ type: "text" as const, text: JSON.stringify({ $id: doc.id, ...doc.data() }, null, 2) }] };
   }
 );
@@ -539,14 +453,7 @@ server.registerTool(
   "create_sprint",
   {
     description: D.createSprint,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      name: z.string(),
-      goal: z.string().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }) as any,
+    inputSchema: createSprintSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -571,15 +478,7 @@ server.registerTool(
   "update_sprint",
   {
     description: D.updateSprint,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      sprintId: z.string(),
-      name: z.string().optional(),
-      goal: z.string().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }) as any,
+    inputSchema: updateSprintSchema as any,
   },
   async (args: any) => {
     const { workspaceId, projectId, sprintId, ...updates } = args;
@@ -709,14 +608,7 @@ server.registerTool(
   "create_version",
   {
     description: D.createVersion,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      name: z.string(),
-      description: z.string().optional(),
-      startDate: z.string().optional(),
-      releaseDate: z.string().optional(),
-    }) as any,
+    inputSchema: createVersionSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -741,15 +633,7 @@ server.registerTool(
   "update_version",
   {
     description: D.updateVersion,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      versionId: z.string(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-      startDate: z.string().optional(),
-      releaseDate: z.string().optional(),
-    }) as any,
+    inputSchema: updateVersionSchema as any,
   },
   async (args: any) => {
     const { workspaceId, projectId, versionId, ...updates } = args;
@@ -859,14 +743,7 @@ server.registerTool(
   "log_work",
   {
     description: D.logWork,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      timeSpent: z.number().positive().describe(D.timeSpent),
-      date: z.string().describe(D.workDate),
-      description: z.string().optional().describe(D.workDescription),
-    }) as any,
+    inputSchema: logWorkSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -878,14 +755,7 @@ server.registerTool(
   "update_worklog",
   {
     description: D.updateWorklog,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      worklogId: z.string(),
-      timeSpent: z.number().positive().optional().describe(D.timeSpentUpdate),
-      description: z.string().optional().describe(D.workDescriptionUpdate),
-    }) as any,
+    inputSchema: updateWorklogSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -933,12 +803,7 @@ server.registerTool(
   "add_comment",
   {
     description: D.addComment,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      content: z.string().describe("The comment text"),
-    }) as any,
+    inputSchema: addCommentSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -950,13 +815,7 @@ server.registerTool(
   "update_comment",
   {
     description: D.updateComment,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      taskId: z.string(),
-      commentId: z.string(),
-      content: z.string().describe("The updated comment text"),
-    }) as any,
+    inputSchema: updateCommentSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1004,13 +863,7 @@ server.registerTool(
   "add_task_link",
   {
     description: D.addTaskLink,
-    inputSchema: z.object({
-      workspaceId: z.string().describe(D.workspaceId),
-      projectId: z.string(),
-      taskId: z.string(),
-      targetTaskId: z.string().describe(D.targetTaskId),
-      type: z.string().describe(D.linkType),
-    }) as any,
+    inputSchema: addTaskLinkSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1096,11 +949,7 @@ server.registerTool(
   "update_member",
   {
     description: D.updateMember,
-    inputSchema: z.object({
-      workspaceId: z.string().describe(D.workspaceId),
-      memberId: z.string().describe(D.memberId),
-      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
-    }) as any,
+    inputSchema: updateWorkspaceMemberSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1112,10 +961,7 @@ server.registerTool(
   "remove_member",
   {
     description: D.removeMember,
-    inputSchema: z.object({
-      workspaceId: z.string().describe(D.workspaceId),
-      memberId: z.string().describe(D.memberIdRemove),
-    }) as any,
+    inputSchema: removeWorkspaceMemberSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1128,12 +974,7 @@ server.registerTool(
   "add_project_member",
   {
     description: D.addProjectMember,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      userId: z.string().describe("The userId of the workspace member to add"),
-      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]).describe("Role within the project"),
-    }) as any,
+    inputSchema: addProjectMemberSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1145,12 +986,7 @@ server.registerTool(
   "update_project_member",
   {
     description: D.updateProjectMember,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      userId: z.string().describe("The userId of the project member to update"),
-      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
-    }) as any,
+    inputSchema: updateProjectMemberSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
@@ -1162,11 +998,7 @@ server.registerTool(
   "remove_project_member",
   {
     description: D.removeProjectMember,
-    inputSchema: z.object({
-      workspaceId: z.string(),
-      projectId: z.string(),
-      userId: z.string().describe("The userId of the project member to remove"),
-    }) as any,
+    inputSchema: removeProjectMemberSchema as any,
   },
   async (args: any) => {
     await verifyWorkspaceAccess(args.workspaceId);
