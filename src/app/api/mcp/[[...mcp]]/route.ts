@@ -12,6 +12,13 @@ import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
+import {
+  computeAnalytics, getWorklogs, logWork, updateWorklog, deleteWorklog,
+  getComments, addComment, updateComment, deleteComment,
+  getTaskLinks, addTaskLink, deleteTaskLink,
+  getProjectMembers, addProjectMember, updateProjectMember, removeProjectMember,
+  updateWorkspaceMember, removeWorkspaceMember,
+} from "@/lib/mcp-shared";
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import * as crypto from "crypto";
@@ -366,40 +373,6 @@ function taskDocRef(wId: string, pId: string, taskId: string) { return tasksCol(
 function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collection("sprints"); }
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
 
-async function computeAnalytics(allTasks: any[], workspaceId: string, userId: string) {
-  // Resolve Firestore member doc ID so it matches the assigneeId stored in tasks
-  const memberSnap = await adminDb.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
-    .limit(1)
-    .get();
-  const memberId = memberSnap.empty ? userId : memberSnap.docs[0].id;
-
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-
-  const thisTasks = allTasks.filter((t) => t.$createdAt >= thisMonthStart);
-  const lastTasks = allTasks.filter((t) => t.$createdAt >= lastMonthStart && t.$createdAt < thisMonthStart);
-
-  const metrics = (tasks: any[]) => ({
-    taskCount: tasks.length,
-    assignedTaskCount: tasks.filter((t) => t.assigneeId === memberId).length,
-    incompleteTaskCount: tasks.filter((t) => t.status !== TaskStatus.DONE).length,
-    completedTaskCount: tasks.filter((t) => t.status === TaskStatus.DONE).length,
-    overdueTaskCount: tasks.filter((t) => t.dueDate && t.dueDate < nowIso && t.status !== TaskStatus.DONE).length,
-  });
-
-  const thisM = metrics(thisTasks);
-  const lastM = metrics(lastTasks);
-  return Object.fromEntries(
-    (Object.keys(thisM) as (keyof typeof thisM)[]).map((key) => [
-      key,
-      { value: thisM[key], difference: thisM[key] - lastM[key] },
-    ])
-  );
-}
 
 const handler = globalForMcp.mcpHandler || createMcpHandler(
   (server) => {
@@ -611,9 +584,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const snapshot = await projRef(args.workspaceId, args.projectId).collection("members").get();
-        const members = snapshot.docs.map((doc: any) => docJson(doc));
-        return textResult(members);
+        return textResult(await getProjectMembers(adminDb, args.workspaceId, args.projectId));
       }
     );
 
@@ -1057,7 +1028,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return getTaskSubcollection(args, "worklogs", false);
+        return textResult(await getWorklogs(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1077,29 +1048,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { taskRef, taskDoc } = await resolveTaskRef(args);
-        const worklogRef = await taskRef.collection("worklogs").add({
-          timeSpent: args.timeSpent,
-          date: args.date,
-          description: args.description || null,
-          userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-
-        const task = taskDoc.data()!;
-        const currentTimeSpent = task.timeSpent || 0;
-        const currentRemaining = task.remainingEstimate ?? task.originalEstimate ?? null;
-        const updates: Record<string, unknown> = { timeSpent: currentTimeSpent + args.timeSpent };
-        if (currentRemaining !== null) {
-          updates.remainingEstimate = Math.max(0, currentRemaining - args.timeSpent);
-        }
-        await taskRef.update(updates);
-
-        const worklogDoc = await worklogRef.get();
-        return textResult(docJson(worklogDoc));
+        return textResult(await logWork(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1119,22 +1068,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const { taskRef, worklogRef, worklogDoc } = await resolveWorklogRef(args);
-        const oldTimeSpent = worklogDoc.data()!.timeSpent || 0;
-        const updates: Record<string, unknown> = {};
-        if (args.description !== undefined) updates.description = args.description;
-
-        if (args.timeSpent !== undefined) {
-          updates.timeSpent = args.timeSpent;
-          const taskDoc = await taskRef.get();
-          if (taskDoc.exists) {
-            const diff = args.timeSpent - oldTimeSpent;
-            await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) + diff) });
-          }
-        }
-
-        await worklogRef.update(updates);
-        return textResult(docJson(await worklogRef.get()));
+        return textResult(await updateWorklog(adminDb, args));
       }
     );
 
@@ -1152,13 +1086,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const { taskRef, worklogRef, worklogDoc } = await resolveWorklogRef(args);
-        const timeSpent = worklogDoc.data()!.timeSpent || 0;
-        const taskDoc = await taskRef.get();
-        if (taskDoc.exists) {
-          await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) - timeSpent) });
-        }
-        await worklogRef.delete();
+        await deleteWorklog(adminDb, args);
         return textResult(`Worklog ${args.worklogId} deleted successfully`);
       }
     );
@@ -1178,7 +1106,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return getTaskSubcollection(args, "comments", true);
+        return textResult(await getComments(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1196,17 +1124,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { taskRef } = await resolveTaskRef(args);
-        const commentRef = await taskRef.collection("comments").add({
-          content: args.content,
-          authorId: userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-        const commentDoc = await commentRef.get();
-        return textResult(docJson(commentDoc));
+        return textResult(await addComment(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1225,9 +1143,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const commentRef = await resolveCommentRef(args, getMcpUserId(), "edit it");
-        await commentRef.update({ content: args.content, updatedAt: new Date().toISOString() });
-        return textResult(docJson(await commentRef.get()));
+        return textResult(await updateComment(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1245,8 +1161,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const commentRef = await resolveCommentRef(args, getMcpUserId(), "delete it");
-        await commentRef.delete();
+        await deleteComment(adminDb, getMcpUserId(), args);
         return textResult(`Comment ${args.commentId} deleted successfully`);
       }
     );
@@ -1266,10 +1181,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const snapshot = await taskDocRef(args.workspaceId, args.projectId, args.taskId)
-          .collection("links").get();
-        const links = snapshot.docs.map((doc: any) => (docJson(doc)));
-        return textResult(links);
+        return textResult(await getTaskLinks(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1288,25 +1200,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        if (args.taskId === args.targetTaskId) throw new Error("Cannot link a task to itself");
-        const userId = getMcpUserId();
-        const { taskRef } = await resolveTaskRef(args);
-        const existingLinks = await taskRef.collection("links").get();
-        const duplicate = existingLinks.docs.find(
-          (doc) => doc.data().targetTaskId === args.targetTaskId && doc.data().type === args.type
-        );
-        if (duplicate) throw new Error("This link already exists");
-
-        const linkRef = await taskRef.collection("links").add({
-          targetTaskId: args.targetTaskId,
-          type: args.type,
-          createdBy: userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-        const linkDoc = await linkRef.get();
-        return textResult(docJson(linkDoc));
+        return textResult(await addTaskLink(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1324,11 +1218,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const linkRef = taskDocRef(args.workspaceId, args.projectId, args.taskId)
-          .collection("links").doc(args.linkId);
-        const linkDoc = await linkRef.get();
-        if (!linkDoc.exists) throw new Error("Link not found");
-        await linkRef.delete();
+        await deleteTaskLink(adminDb, args.workspaceId, args.projectId, args.taskId, args.linkId);
         return textResult(`Link ${args.linkId} deleted successfully`);
       }
     );
@@ -1353,7 +1243,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           const tasksSnap = await tasksCol(args.workspaceId, pDoc.id).get();
           allTasks.push(...tasksSnap.docs.map((d: any) => d.data()));
         }
-        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
+        return textResult(await computeAnalytics(adminDb, allTasks, args.workspaceId, userId));
       }
     );
 
@@ -1372,7 +1262,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const tasksSnap = await tasksCol(args.workspaceId, args.projectId).get();
         const allTasks = tasksSnap.docs.map((d: any) => d.data());
-        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
+        return textResult(await computeAnalytics(adminDb, allTasks, args.workspaceId, userId));
       }
     );
 
@@ -1391,12 +1281,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const role = await getCallerWorkspaceRole(args.workspaceId, userId);
-        if (role !== MemberRole.ADMIN) throw new Error("Only workspace admins can update member roles");
-        const { memberRef } = await resolveWorkspaceMember(args.workspaceId, args.memberId);
-        await memberRef.update({ role: args.role });
-        return textResult(docJson(await memberRef.get()));
+        return textResult(await updateWorkspaceMember(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1412,14 +1297,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { memberRef, memberDoc } = await resolveWorkspaceMember(args.workspaceId, args.memberId);
-        const callerRole = await getCallerWorkspaceRole(args.workspaceId, userId);
-        const isSelf = memberDoc.data()!.userId === userId;
-        if (callerRole !== MemberRole.ADMIN && !isSelf) throw new Error("Only admins can remove other members");
-        const allMembers = await adminDb.collection("members").where("workspaceId", "==", args.workspaceId).get();
-        if (allMembers.size <= 1) throw new Error("Cannot remove the only member of a workspace");
-        await memberRef.delete();
+        await removeWorkspaceMember(adminDb, getMcpUserId(), args);
         return textResult(`Member ${args.memberId} removed from workspace successfully`);
       }
     );
@@ -1440,19 +1318,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "add project members");
-
-        const targetRole = await getCallerWorkspaceRole(args.workspaceId, args.userId);
-        if (!targetRole) throw new Error("User is not a member of this workspace");
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if ((await memberRef.get()).exists) throw new Error("User is already a member of this project");
-
-        await memberRef.set({ userId: args.userId, role: args.role, $createdAt: new Date().toISOString() });
-        return textResult({ userId: args.userId, role: args.role });
+        return textResult(await addProjectMember(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1470,17 +1336,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "update project member roles");
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
-
-        await memberRef.update({ role: args.role });
-        const updated = await memberRef.get();
-        return textResult(docJson(updated));
+        return textResult(await updateProjectMember(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1497,17 +1353,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        if (callerId !== args.userId) {
-          await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "remove other project members");
-        }
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
-
-        await memberRef.delete();
+        await removeProjectMember(adminDb, getMcpUserId(), args);
         return textResult(`User ${args.userId} removed from project ${args.projectId} successfully`);
       }
     );
