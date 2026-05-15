@@ -1252,14 +1252,22 @@ function normalizeRequestUrl(req: Request): Request {
 
 export const runtime = "nodejs";
 
+function unauthorizedResponse(req: Request) {
+  const base = new URL(req.url).origin;
+  return new Response("Unauthorized", {
+    status: 401,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "WWW-Authenticate": `Bearer realm="${base}/api/mcp", resource_metadata="${base}/.well-known/oauth-authorization-server"`,
+    },
+  });
+}
+
 export async function GET(req: Request) {
   console.log("MCP GET request received", { url: req.url });
   const userId = await authenticateAndGetUserId(req);
   console.log("MCP Auth result", { userId });
-  if (!userId) return new Response("Unauthorized", {
-    status: 401,
-    headers: { "Access-Control-Allow-Origin": "*" }
-  });
+  if (!userId) return unauthorizedResponse(req);
 
   const relativeReq = normalizeRequestUrl(req);
   console.log("Calling MCP handler");
