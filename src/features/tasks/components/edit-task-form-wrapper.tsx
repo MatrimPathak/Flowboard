@@ -63,15 +63,11 @@ export const EditTaskFormWrapper = ({
 		userId: member.userId,
 	}));
 
-	// Normalize the stored assigneeId: if it's a legacy Firebase UID the resolved
-	// assignee.$id holds the correct Firestore member doc ID to use instead.
-	const normalizedAssigneeId = initialValues?.assignee?.$id ?? initialValues?.assigneeId;
-
 	const memberOptions = (() => {
-		if (!normalizedAssigneeId) return rawMemberOptions;
-		const already = rawMemberOptions.some((m) => m.id === normalizedAssigneeId);
+		if (!initialValues?.assigneeId) return rawMemberOptions;
+		const already = rawMemberOptions.some((m) => m.id === initialValues.assigneeId);
 		if (already) return rawMemberOptions;
-		return [...rawMemberOptions, { id: normalizedAssigneeId, name: "Former member", userId: "" }];
+		return [...rawMemberOptions, { id: initialValues.assigneeId, name: "Former member", userId: "" }];
 	})();
 
 	const versionOptions = (versions?.documents ?? [])
@@ -106,7 +102,7 @@ export const EditTaskFormWrapper = ({
 	}
 	return (
 		<EditTaskForm
-			initalValues={{ ...initialValues, assigneeId: normalizedAssigneeId ?? initialValues.assigneeId }}
+			initalValues={initialValues}
 			onCancel={onCancel}
 			projectOptions={projectOptions ?? []}
 			memberOptions={memberOptions}

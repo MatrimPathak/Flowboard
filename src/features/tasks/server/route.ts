@@ -65,30 +65,16 @@ async function resolveAssigneeName(
 ): Promise<string | undefined> {
 	if (!assigneeId) return undefined;
 	const assigneeDoc = await databases.collection("members").doc(assigneeId).get();
-	if (assigneeDoc.exists) {
-		const ad = assigneeDoc.data();
-		if (ad?.name) return ad.name as string;
-		if (ad?.userId) {
-			try {
-				const au = await adminAuth.getUser(ad.userId as string);
-				return au.displayName || au.email || undefined;
-			} catch (err) {
-				console.error("Failed to resolve assignee name:", err);
-			}
+	if (!assigneeDoc.exists) return undefined;
+	const ad = assigneeDoc.data();
+	if (ad?.name) return ad.name as string;
+	if (ad?.userId) {
+		try {
+			const au = await adminAuth.getUser(ad.userId as string);
+			return au.displayName || au.email || undefined;
+		} catch (err) {
+			console.error("Failed to resolve assignee name:", err);
 		}
-		return undefined;
-	}
-	// Fallback: assigneeId might be a Firebase UID stored by an older code path
-	try {
-		const snap = await databases.collection("members").where("userId", "==", assigneeId).limit(1).get();
-		if (!snap.empty) {
-			const d = snap.docs[0].data();
-			if (d?.name) return d.name as string;
-		}
-		const au = await adminAuth.getUser(assigneeId);
-		return au.displayName || au.email || undefined;
-	} catch (err) {
-		console.error("Failed to resolve assignee name (uid fallback):", err);
 	}
 	return undefined;
 }
@@ -169,18 +155,10 @@ async function resolveAssigneeDoc(
 	normalizeDate: (d: Record<string, unknown> | undefined) => string | undefined
 ): Promise<any> {
 	if (!assigneeId) return null;
-	let memberSnap: FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QueryDocumentSnapshot | null = null;
-	const byId = await databases.collection("members").doc(assigneeId).get();
-	if (byId.exists) {
-		memberSnap = byId;
-	} else {
-		// Fallback: assigneeId might be a Firebase UID stored by an older code path
-		const q = await databases.collection("members").where("userId", "==", assigneeId).limit(1).get();
-		if (!q.empty) memberSnap = q.docs[0];
-	}
-	if (!memberSnap) return null;
-	const mData = memberSnap.data();
-	const memberData = { ...mData, $id: memberSnap.id, $createdAt: normalizeDate(mData) } as any;
+	const memberDoc = await databases.collection("members").doc(assigneeId).get();
+	if (!memberDoc.exists) return null;
+	const mData = memberDoc.data();
+	const memberData = { ...mData, $id: memberDoc.id, $createdAt: normalizeDate(mData) } as any;
 	if (memberData.name) return { ...memberData, email: memberData.email ?? "" };
 	let u: { displayName?: string | null; email?: string } = {};
 	try {
@@ -294,21 +272,10 @@ const app = new Hono()
 				const chunk = assigneeIds.slice(i, i + 30);
 				if (chunk.length === 0) break;
 				const membersSnapshot = await databases.collection("members").where("__name__", "in", chunk).get();
-				const foundDocIds = new Set(membersSnapshot.docs.map((d: any) => d.id));
 				members.push(...membersSnapshot.docs.map((doc: any) => {
 					const data = doc.data();
 					return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
 				}));
-				// Fallback: any IDs not found by doc ID may be Firebase UIDs from an older code path
-				const notFoundIds = chunk.filter((id: string) => !foundDocIds.has(id));
-				for (let j = 0; j < notFoundIds.length; j += 10) {
-					const uidChunk = notFoundIds.slice(j, j + 10);
-					const byUidSnap = await databases.collection("members").where("userId", "in", uidChunk).get();
-					members.push(...byUidSnap.docs.map((doc: any) => {
-						const data = doc.data();
-						return { ...data, $id: doc.id, $createdAt: normalizeDate(data) };
-					}));
-				}
 			}
 
 			const assignees = await Promise.all(
@@ -332,8 +299,7 @@ const app = new Hono()
 
 			const populatedTasks = tasks.map((task: any) => {
 				const project = projects.find((p: any) => p.$id === task.projectId);
-				// Match by Firestore doc ID (normal) or by userId field (legacy tasks that stored Firebase UID)
-				const assignee = assignees.find((a: any) => a.$id === task.assigneeId || a.userId === task.assigneeId);
+				const assignee = assignees.find((a: any) => a.$id === task.assigneeId);
 				return {
 					...task,
 					project,
