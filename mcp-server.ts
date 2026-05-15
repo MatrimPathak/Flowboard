@@ -35,6 +35,60 @@ async function verifyWorkspaceAccess(workspaceId: string) {
   }
 }
 
+async function getCallerWorkspaceRole(workspaceId: string): Promise<string | null> {
+  const snap = await getAdminDb().collection("members")
+    .where("workspaceId", "==", workspaceId)
+    .where("userId", "==", TARGET_USER_ID)
+    .limit(1).get();
+  return snap.empty ? null : (snap.docs[0].data().role as string);
+}
+
+function taskDocRef(workspaceId: string, projectId: string, taskId: string) {
+  return getAdminDb()
+    .collection("workspaces").doc(workspaceId)
+    .collection("projects").doc(projectId)
+    .collection("tasks").doc(taskId);
+}
+
+function projRef(workspaceId: string, projectId: string) {
+  return getAdminDb()
+    .collection("workspaces").doc(workspaceId)
+    .collection("projects").doc(projectId);
+}
+
+async function computeAnalytics(allTasks: any[], workspaceId: string) {
+  const memberSnap = await getAdminDb().collection("members")
+    .where("workspaceId", "==", workspaceId)
+    .where("userId", "==", TARGET_USER_ID)
+    .limit(1).get();
+  const memberId = memberSnap.empty ? TARGET_USER_ID! : memberSnap.docs[0].id;
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+
+  const thisTasks = allTasks.filter((t) => t.$createdAt >= thisMonthStart);
+  const lastTasks = allTasks.filter((t) => t.$createdAt >= lastMonthStart && t.$createdAt < thisMonthStart);
+
+  const metrics = (tasks: any[]) => ({
+    taskCount: tasks.length,
+    assignedTaskCount: tasks.filter((t) => t.assigneeId === memberId).length,
+    incompleteTaskCount: tasks.filter((t) => t.status !== TaskStatus.DONE).length,
+    completedTaskCount: tasks.filter((t) => t.status === TaskStatus.DONE).length,
+    overdueTaskCount: tasks.filter((t) => t.dueDate && t.dueDate < nowIso && t.status !== TaskStatus.DONE).length,
+  });
+
+  const thisM = metrics(thisTasks);
+  const lastM = metrics(lastTasks);
+  return Object.fromEntries(
+    (Object.keys(thisM) as (keyof typeof thisM)[]).map((key) => [
+      key,
+      { value: thisM[key], difference: thisM[key] - lastM[key] },
+    ])
+  );
+}
+
 server.registerTool(
   "create_ticket",
   {
@@ -63,8 +117,8 @@ server.registerTool(
       originalEstimate: z.number().optional().describe("In minutes"),
       remainingEstimate: z.number().optional().describe("In minutes"),
       labels: z.array(z.string()).optional(),
-      acceptanceCriteria: z.string().optional().describe("Required for EPIC, STORY, BUG"),
-      rca: z.string().optional().describe("Root cause analysis — required for BUG"),
+      acceptanceCriteria: z.string().optional().describe("Acceptance Criteria — required for EPIC, STORY, BUG"),
+      rca: z.string().optional().describe("Root Cause Analysis — required for BUG"),
     }) as any
   },
   async (args: any) => {
@@ -250,7 +304,7 @@ server.registerTool(
       $createdAt: new Date().toISOString(),
     });
 
-    await getAdminDb().collection("members").doc(generatePrefixedId("MBR")).set({
+    await getAdminDb().collection("members").add({
       userId: TARGET_USER_ID,
       workspaceId,
       role: MemberRole.ADMIN,
@@ -302,7 +356,7 @@ server.registerTool(
       .get();
     
     const batch = adminDb.batch();
-    membersSnapshot.docs.forEach((doc) => {
+    membersSnapshot.docs.forEach((doc: any) => {
       batch.delete(doc.ref);
     });
     await batch.commit();
@@ -822,6 +876,520 @@ server.registerTool(
     await batch.commit();
 
     return { content: [{ type: "text" as const, text: `Version ${args.versionId} deleted successfully` }] };
+  }
+);
+
+// ── Worklog / Time Tracking Tools ─────────────────────────────────────────────
+
+server.registerTool(
+  "get_worklogs",
+  {
+    description: "List work log entries for a task",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const snap = await taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("worklogs").get();
+    const items = snap.docs
+      .map((doc: any) => ({ $id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime());
+    return { content: [{ type: "text" as const, text: JSON.stringify(items, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "log_work",
+  {
+    description: "Log time spent on a task. Updates the task's timeSpent and remainingEstimate automatically.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      timeSpent: z.number().positive().describe("Time spent in minutes"),
+      date: z.string().describe("ISO date string for when work was done"),
+      description: z.string().optional().describe("What was worked on"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const ref = taskDocRef(args.workspaceId, args.projectId, args.taskId);
+    const taskDoc = await ref.get();
+    if (!taskDoc.exists) throw new Error("Task not found");
+    const worklogRef = await ref.collection("worklogs").add({
+      timeSpent: args.timeSpent,
+      date: args.date,
+      description: args.description || null,
+      userId: TARGET_USER_ID,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      $createdAt: new Date().toISOString(),
+    });
+    const task = taskDoc.data()!;
+    const currentTimeSpent = task.timeSpent || 0;
+    const currentRemaining = task.remainingEstimate ?? task.originalEstimate ?? null;
+    const updates: any = { timeSpent: currentTimeSpent + args.timeSpent };
+    if (currentRemaining !== null) updates.remainingEstimate = Math.max(0, currentRemaining - args.timeSpent);
+    await ref.update(updates);
+    const worklogDoc = await worklogRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: worklogDoc.id, ...worklogDoc.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_worklog",
+  {
+    description: "Edit an existing work log entry. Adjusts the task's timeSpent accordingly.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      worklogId: z.string(),
+      timeSpent: z.number().positive().optional().describe("Updated time spent in minutes"),
+      description: z.string().optional(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const taskRef = taskDocRef(args.workspaceId, args.projectId, args.taskId);
+    const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
+    const worklogDoc = await worklogRef.get();
+    if (!worklogDoc.exists) throw new Error("Worklog not found");
+    const updates: any = {};
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.timeSpent !== undefined) {
+      updates.timeSpent = args.timeSpent;
+      const diff = args.timeSpent - (worklogDoc.data()!.timeSpent || 0);
+      const taskDoc = await taskRef.get();
+      if (taskDoc.exists) {
+        await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) + diff) });
+      }
+    }
+    await worklogRef.update(updates);
+    const updated = await worklogRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "delete_worklog",
+  {
+    description: "Delete a work log entry and reverse its time contribution from the task",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      worklogId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const taskRef = taskDocRef(args.workspaceId, args.projectId, args.taskId);
+    const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
+    const worklogDoc = await worklogRef.get();
+    if (!worklogDoc.exists) throw new Error("Worklog not found");
+    const timeSpent = worklogDoc.data()!.timeSpent || 0;
+    const taskDoc = await taskRef.get();
+    if (taskDoc.exists) {
+      await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) - timeSpent) });
+    }
+    await worklogRef.delete();
+    return { content: [{ type: "text" as const, text: `Worklog ${args.worklogId} deleted successfully` }] };
+  }
+);
+
+// ── Comment Tools ─────────────────────────────────────────────────────────────
+
+server.registerTool(
+  "get_comments",
+  {
+    description: "List comments on a task",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const snap = await taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("comments").get();
+    const items = snap.docs
+      .map((doc: any) => ({ $id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime());
+    return { content: [{ type: "text" as const, text: JSON.stringify(items, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "add_comment",
+  {
+    description: "Add a comment to a task",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      content: z.string().describe("The comment text"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const ref = taskDocRef(args.workspaceId, args.projectId, args.taskId);
+    const taskDoc = await ref.get();
+    if (!taskDoc.exists) throw new Error("Task not found");
+    const commentRef = await ref.collection("comments").add({
+      content: args.content,
+      authorId: TARGET_USER_ID,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      $createdAt: new Date().toISOString(),
+    });
+    const commentDoc = await commentRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: commentDoc.id, ...commentDoc.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_comment",
+  {
+    description: "Edit the content of an existing comment (only the comment author can edit)",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      commentId: z.string(),
+      content: z.string().describe("The updated comment text"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const commentRef = taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("comments").doc(args.commentId);
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) throw new Error("Comment not found");
+    if (commentDoc.data()!.authorId !== TARGET_USER_ID) throw new Error("Only the comment author can edit it");
+    await commentRef.update({ content: args.content, updatedAt: new Date().toISOString() });
+    const updated = await commentRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "delete_comment",
+  {
+    description: "Delete a comment from a task (only the comment author can delete)",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      commentId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const commentRef = taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("comments").doc(args.commentId);
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) throw new Error("Comment not found");
+    if (commentDoc.data()!.authorId !== TARGET_USER_ID) throw new Error("Only the comment author can delete it");
+    await commentRef.delete();
+    return { content: [{ type: "text" as const, text: `Comment ${args.commentId} deleted successfully` }] };
+  }
+);
+
+// ── Task Link Tools ───────────────────────────────────────────────────────────
+
+server.registerTool(
+  "get_task_links",
+  {
+    description: "List links (relationships) for a task",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const snap = await taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("links").get();
+    const links = snap.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() }));
+    return { content: [{ type: "text" as const, text: JSON.stringify(links, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "add_task_link",
+  {
+    description: "Link two tasks together with a relationship type (e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates')",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      targetTaskId: z.string().describe("ID of the task to link to"),
+      type: z.string().describe("Relationship type, e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates'"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    if (args.taskId === args.targetTaskId) throw new Error("Cannot link a task to itself");
+    const ref = taskDocRef(args.workspaceId, args.projectId, args.taskId);
+    const taskDoc = await ref.get();
+    if (!taskDoc.exists) throw new Error("Task not found");
+    const existingLinks = await ref.collection("links").get();
+    const duplicate = existingLinks.docs.find(
+      (doc: any) => doc.data().targetTaskId === args.targetTaskId && doc.data().type === args.type
+    );
+    if (duplicate) throw new Error("This link already exists");
+    const linkRef = await ref.collection("links").add({
+      targetTaskId: args.targetTaskId,
+      type: args.type,
+      createdBy: TARGET_USER_ID,
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      $createdAt: new Date().toISOString(),
+    });
+    const linkDoc = await linkRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: linkDoc.id, ...linkDoc.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "delete_task_link",
+  {
+    description: "Remove a link between tasks",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      taskId: z.string(),
+      linkId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const linkRef = taskDocRef(args.workspaceId, args.projectId, args.taskId)
+      .collection("links").doc(args.linkId);
+    const linkDoc = await linkRef.get();
+    if (!linkDoc.exists) throw new Error("Link not found");
+    await linkRef.delete();
+    return { content: [{ type: "text" as const, text: `Link ${args.linkId} deleted successfully` }] };
+  }
+);
+
+// ── Analytics Tools ───────────────────────────────────────────────────────────
+
+server.registerTool(
+  "get_workspace_analytics",
+  {
+    description: "Get task metrics for a workspace: total, assigned, incomplete, completed, and overdue counts with month-over-month differences",
+    inputSchema: z.object({ workspaceId: z.string() }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const projectsSnap = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").get();
+    const allTasks: any[] = [];
+    for (const pDoc of projectsSnap.docs) {
+      const tasksSnap = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(pDoc.id).collection("tasks").get();
+      allTasks.push(...tasksSnap.docs.map((d: any) => d.data()));
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify(await computeAnalytics(allTasks, args.workspaceId), null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "get_project_analytics",
+  {
+    description: "Get task metrics for a specific project with month-over-month differences",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const tasksSnap = await getAdminDb().collection("workspaces").doc(args.workspaceId).collection("projects").doc(args.projectId).collection("tasks").get();
+    const allTasks = tasksSnap.docs.map((d: any) => d.data());
+    return { content: [{ type: "text" as const, text: JSON.stringify(await computeAnalytics(allTasks, args.workspaceId), null, 2) }] };
+  }
+);
+
+// ── Member Management Tools ───────────────────────────────────────────────────
+
+server.registerTool(
+  "get_project_members",
+  {
+    description: "List members of a specific project",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const snap = await projRef(args.workspaceId, args.projectId).collection("members").get();
+    const members = snap.docs.map((doc: any) => ({ $id: doc.id, ...doc.data() }));
+    return { content: [{ type: "text" as const, text: JSON.stringify(members, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_member",
+  {
+    description: "Update a workspace member's role (ADMIN or MEMBER). Requires admin role.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      memberId: z.string().describe("The member document ID"),
+      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const role = await getCallerWorkspaceRole(args.workspaceId);
+    if (role !== MemberRole.ADMIN) throw new Error("Only workspace admins can update member roles");
+    const memberRef = getAdminDb().collection("members").doc(args.memberId);
+    const memberDoc = await memberRef.get();
+    if (!memberDoc.exists || memberDoc.data()!.workspaceId !== args.workspaceId) {
+      throw new Error("Member not found in this workspace");
+    }
+    await memberRef.update({ role: args.role });
+    const updated = await memberRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "remove_member",
+  {
+    description: "Remove a member from a workspace. Admins can remove anyone; members can only remove themselves.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      memberId: z.string().describe("The member document ID to remove"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const memberRef = getAdminDb().collection("members").doc(args.memberId);
+    const memberDoc = await memberRef.get();
+    if (!memberDoc.exists || memberDoc.data()!.workspaceId !== args.workspaceId) {
+      throw new Error("Member not found in this workspace");
+    }
+    const callerRole = await getCallerWorkspaceRole(args.workspaceId);
+    const isSelf = memberDoc.data()!.userId === TARGET_USER_ID;
+    if (callerRole !== MemberRole.ADMIN && !isSelf) throw new Error("Only admins can remove other members");
+    const allMembers = await getAdminDb().collection("members").where("workspaceId", "==", args.workspaceId).get();
+    if (allMembers.size <= 1) throw new Error("Cannot remove the only member of a workspace");
+    await memberRef.delete();
+    return { content: [{ type: "text" as const, text: `Member ${args.memberId} removed from workspace successfully` }] };
+  }
+);
+
+server.registerTool(
+  "add_project_member",
+  {
+    description: "Add a workspace member to a specific project. The user must already be a workspace member. Requires project admin or workspace admin role.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      userId: z.string().describe("The userId of the workspace member to add"),
+      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]).describe("Role within the project"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const pRef = projRef(args.workspaceId, args.projectId);
+    const pDoc = await pRef.get();
+    if (!pDoc.exists) throw new Error("Project not found");
+
+    const callerRole = await getCallerWorkspaceRole(args.workspaceId);
+    if (callerRole !== MemberRole.ADMIN) {
+      const pm = await pRef.collection("members").doc(TARGET_USER_ID!).get();
+      if (!pm.exists || pm.data()!.role !== MemberRole.ADMIN) {
+        throw new Error("Only workspace admins or project admins can add project members");
+      }
+    }
+
+    const targetMemberSnap = await getAdminDb().collection("members")
+      .where("workspaceId", "==", args.workspaceId)
+      .where("userId", "==", args.userId)
+      .limit(1).get();
+    if (targetMemberSnap.empty) throw new Error("User is not a member of this workspace");
+
+    const memberRef = pRef.collection("members").doc(args.userId);
+    if ((await memberRef.get()).exists) throw new Error("User is already a member of this project");
+
+    await memberRef.set({ userId: args.userId, role: args.role, $createdAt: new Date().toISOString() });
+    return { content: [{ type: "text" as const, text: JSON.stringify({ userId: args.userId, role: args.role }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "update_project_member",
+  {
+    description: "Update a project member's role. Requires project admin or workspace admin role.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      userId: z.string().describe("The userId of the project member to update"),
+      role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const pRef = projRef(args.workspaceId, args.projectId);
+    const pDoc = await pRef.get();
+    if (!pDoc.exists) throw new Error("Project not found");
+
+    const callerRole = await getCallerWorkspaceRole(args.workspaceId);
+    if (callerRole !== MemberRole.ADMIN) {
+      const pm = await pRef.collection("members").doc(TARGET_USER_ID!).get();
+      if (!pm.exists || pm.data()!.role !== MemberRole.ADMIN) {
+        throw new Error("Only workspace admins or project admins can update project member roles");
+      }
+    }
+
+    const memberRef = pRef.collection("members").doc(args.userId);
+    if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
+    await memberRef.update({ role: args.role });
+    const updated = await memberRef.get();
+    return { content: [{ type: "text" as const, text: JSON.stringify({ $id: updated.id, ...updated.data() }, null, 2) }] };
+  }
+);
+
+server.registerTool(
+  "remove_project_member",
+  {
+    description: "Remove a member from a project. Workspace admins and project admins can remove anyone; members can remove themselves.",
+    inputSchema: z.object({
+      workspaceId: z.string(),
+      projectId: z.string(),
+      userId: z.string().describe("The userId of the project member to remove"),
+    }) as any,
+  },
+  async (args: any) => {
+    await verifyWorkspaceAccess(args.workspaceId);
+    const pRef = projRef(args.workspaceId, args.projectId);
+    const pDoc = await pRef.get();
+    if (!pDoc.exists) throw new Error("Project not found");
+
+    const isSelf = args.userId === TARGET_USER_ID;
+    if (!isSelf) {
+      const callerRole = await getCallerWorkspaceRole(args.workspaceId);
+      if (callerRole !== MemberRole.ADMIN) {
+        const pm = await pRef.collection("members").doc(TARGET_USER_ID!).get();
+        if (!pm.exists || pm.data()!.role !== MemberRole.ADMIN) {
+          throw new Error("Only workspace admins or project admins can remove other project members");
+        }
+      }
+    }
+
+    const memberRef = pRef.collection("members").doc(args.userId);
+    if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
+    await memberRef.delete();
+    return { content: [{ type: "text" as const, text: `User ${args.userId} removed from project ${args.projectId} successfully` }] };
   }
 );
 

@@ -600,6 +600,24 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
     );
 
     server.registerTool(
+      "get_project_members",
+      {
+        title: "Get Project Members",
+        description: "List members of a specific project",
+        inputSchema: z.object({
+          workspaceId: z.string(),
+          projectId: z.string(),
+        }) as any,
+      },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        const snapshot = await projRef(args.workspaceId, args.projectId).collection("members").get();
+        const members = snapshot.docs.map((doc: any) => docJson(doc));
+        return textResult(members);
+      }
+    );
+
+    server.registerTool(
       "create_workspace",
       {
         title: "Create Workspace",
@@ -612,7 +630,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         const userId = getMcpUserId();
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
-        const workspaceRef = await adminDb.collection("workspaces").add({
+        const workspaceId = generatePrefixedId(ID_PREFIX.WORKSPACE);
+        const workspaceRef = adminDb.collection("workspaces").doc(workspaceId);
+        await workspaceRef.set({
           name: args.name,
           userId,
           imageUrl,
@@ -621,7 +641,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         });
         await adminDb.collection("members").add({
           userId,
-          workspaceId: workspaceRef.id,
+          workspaceId,
           role: MemberRole.ADMIN,
           $createdAt: new Date().toISOString(),
         });
@@ -692,12 +712,14 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await verifyWorkspaceAccess(args.workspaceId);
         const userId = getMcpUserId();
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
-        const projectRef = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").add({
-            name: args.name,
-            workspaceId: args.workspaceId,
-            imageUrl,
-            $createdAt: new Date().toISOString(),
-          });
+        const projectId = generatePrefixedId(ID_PREFIX.PROJECT);
+        const projectRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(projectId);
+        await projectRef.set({
+          name: args.name,
+          workspaceId: args.workspaceId,
+          imageUrl,
+          $createdAt: new Date().toISOString(),
+        });
         const doc = await projectRef.get();
         return textResult(docJson(doc));
       }
@@ -775,7 +797,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const sprintRef = await sprintsCol(args.workspaceId, args.projectId).add({
+        const sprintId = generatePrefixedId(ID_PREFIX.SPRINT);
+        const sprintRef = sprintsCol(args.workspaceId, args.projectId).doc(sprintId);
+        await sprintRef.set({
           name: args.name,
           goal: args.goal || null,
           startDate: args.startDate || null,
@@ -924,7 +948,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const versionRef = await versionsCol(args.workspaceId, args.projectId).add({
+        const versionId = generatePrefixedId(ID_PREFIX.RELEASE);
+        const versionRef = versionsCol(args.workspaceId, args.projectId).doc(versionId);
+        await versionRef.set({
           name: args.name,
           description: args.description || null,
           startDate: args.startDate || null,
