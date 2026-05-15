@@ -9,12 +9,27 @@ import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
 import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
-import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { adminDb, adminStorage, adminAuth } from "@/lib/firebase-admin";
 import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
+import {
+  computeAnalytics, getWorklogs, logWork, updateWorklog, deleteWorklog,
+  getComments, addComment, updateComment, deleteComment,
+  getTaskLinks, addTaskLink, deleteTaskLink,
+  getProjectMembers, addProjectMember, updateProjectMember, removeProjectMember,
+} from "@/lib/mcp-shared";
+import { D } from "@/lib/mcp-tool-descriptions";
+import {
+  getTicketsSchema, createTicketBaseSchema, updateTicketBaseSchema,
+  createSprintSchema, updateSprintSchema,
+  createVersionSchema, updateVersionSchema,
+  logWorkSchema, updateWorklogSchema,
+  addCommentSchema, updateCommentSchema,
+  addTaskLinkSchema,
+  addProjectMemberSchema, updateProjectMemberSchema, removeProjectMemberSchema,
+} from "@/lib/mcp-schemas";
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import * as crypto from "crypto";
 
 const mcpContext = new AsyncLocalStorage<{ userId: string }>();
 
@@ -169,62 +184,8 @@ async function resolveImageUrl(imageUrl: string | undefined, userId: string): Pr
   return fetchAndUploadImage(imageUrl, userId);
 }
 
-const createTicketSchema = z.object({
-  name: z.string().describe("Title of the ticket"),
-  status: z.enum([
-    TaskStatus.BACKLOG,
-    TaskStatus.TODO,
-    TaskStatus.IN_PROGRESS,
-    TaskStatus.UNDER_REVIEW,
-    TaskStatus.DONE,
-  ]).describe("Status of the ticket"),
-  workspaceId: z.string(),
-  projectId: z.string(),
-  dueDate: z.string().describe("ISO Date string"),
-  assigneeId: z.string().describe("Member ID of the assignee"),
-  description: z.string().optional(),
-  acceptanceCriteria: z.string().optional().describe("Acceptance Criteria (required for Epics, Stories, Bugs)"),
-  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
-  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-  parentId: z.string().optional().describe("Parent task ID for subtasks"),
-  epicId: z.string().optional().describe("Epic task ID this belongs to"),
-  sprintId: z.string().nullable().optional().describe("Sprint ID, or null to put in backlog"),
-  fixVersionId: z.string().optional().describe("Version/release ID this is fixed in"),
-  storyPoints: z.number().optional(),
-  originalEstimate: z.number().optional().describe("Original estimate in minutes"),
-  remainingEstimate: z.number().optional().describe("Remaining estimate in minutes"),
-  labels: z.array(z.string()).optional(),
-  rca: z.string().optional().describe("Root Cause Analysis (required for Bugs)"),
-}).superRefine(taskConditionalRefine);
-
-const updateTicketSchema = z.object({
-  workspaceId: z.string(),
-  projectId: z.string(),
-  taskId: z.string(),
-  name: z.string().optional(),
-  status: z.enum([
-    TaskStatus.BACKLOG,
-    TaskStatus.TODO,
-    TaskStatus.IN_PROGRESS,
-    TaskStatus.UNDER_REVIEW,
-    TaskStatus.DONE,
-  ]).optional(),
-  dueDate: z.string().optional(),
-  assigneeId: z.string().optional(),
-  description: z.string().optional(),
-  acceptanceCriteria: z.string().optional(),
-  issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
-  priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-  parentId: z.string().optional(),
-  epicId: z.string().optional(),
-  sprintId: z.string().nullable().optional(),
-  fixVersionId: z.string().optional(),
-  storyPoints: z.number().optional(),
-  originalEstimate: z.number().optional().describe("In minutes"),
-  remainingEstimate: z.number().optional().describe("In minutes"),
-  labels: z.array(z.string()).optional(),
-  rca: z.string().optional().describe("Root Cause Analysis"),
-}).superRefine(taskConditionalRefine);
+const createTicketSchema = createTicketBaseSchema.superRefine(taskConditionalRefine);
+const updateTicketSchema = updateTicketBaseSchema.superRefine(taskConditionalRefine);
 
 async function findProjectAcrossWorkspaces(projectId: string, userId: string) {
   const membersSnap = await adminDb.collection("members").where("userId", "==", userId).get();
@@ -366,40 +327,6 @@ function taskDocRef(wId: string, pId: string, taskId: string) { return tasksCol(
 function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collection("sprints"); }
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
 
-async function computeAnalytics(allTasks: any[], workspaceId: string, userId: string) {
-  // Resolve Firestore member doc ID so it matches the assigneeId stored in tasks
-  const memberSnap = await adminDb.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
-    .limit(1)
-    .get();
-  const memberId = memberSnap.empty ? userId : memberSnap.docs[0].id;
-
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-
-  const thisTasks = allTasks.filter((t) => t.$createdAt >= thisMonthStart);
-  const lastTasks = allTasks.filter((t) => t.$createdAt >= lastMonthStart && t.$createdAt < thisMonthStart);
-
-  const metrics = (tasks: any[]) => ({
-    taskCount: tasks.length,
-    assignedTaskCount: tasks.filter((t) => t.assigneeId === memberId).length,
-    incompleteTaskCount: tasks.filter((t) => t.status !== TaskStatus.DONE).length,
-    completedTaskCount: tasks.filter((t) => t.status === TaskStatus.DONE).length,
-    overdueTaskCount: tasks.filter((t) => t.dueDate && t.dueDate < nowIso && t.status !== TaskStatus.DONE).length,
-  });
-
-  const thisM = metrics(thisTasks);
-  const lastM = metrics(lastTasks);
-  return Object.fromEntries(
-    (Object.keys(thisM) as (keyof typeof thisM)[]).map((key) => [
-      key,
-      { value: thisM[key], difference: thisM[key] - lastM[key] },
-    ])
-  );
-}
 
 const handler = globalForMcp.mcpHandler || createMcpHandler(
   (server) => {
@@ -407,7 +334,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "create_ticket",
       {
         title: "Create Ticket",
-        description: "Create a new ticket (task) in a project",
+        description: D.createTicket,
         inputSchema: createTicketSchema as any,
       },
       async (args: any) => {
@@ -447,25 +374,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_tickets",
       {
         title: "Get Tickets",
-        description: "Read tickets (tasks) with optional filtering",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string().optional(),
-          assigneeId: z.string().optional(),
-          status: z.enum([
-            TaskStatus.BACKLOG,
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.UNDER_REVIEW,
-            TaskStatus.DONE,
-          ]).optional(),
-          search: z.string().optional().describe("Search by ticket name"),
-          issueType: z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]).optional(),
-          priority: z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]).optional(),
-          sprintId: z.string().nullable().optional().describe("Filter by sprint ID, or null for backlog items"),
-          epicId: z.string().optional().describe("Filter by epic ID"),
-          fixVersionId: z.string().optional().describe("Filter by version/release ID"),
-        }) as any,
+        description: D.getTickets,
+        inputSchema: getTicketsSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
@@ -511,7 +421,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_ticket",
       {
         title: "Update Ticket",
-        description: "Update an existing ticket (task)",
+        description: D.updateTicket,
         inputSchema: updateTicketSchema as any,
       },
       async (args: any) => {
@@ -525,11 +435,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_ticket",
       {
         title: "Delete Ticket",
-        description: "Delete a ticket (task)",
+        description: D.deleteTicket,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
-          taskId: z.string(),
+          taskId: z.string().describe(D.taskId),
         }) as any,
       },
       async (args: any) => {
@@ -544,7 +454,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_workspaces",
       {
         title: "Get Workspaces",
-        description: "List available workspaces. Useful to find workspaceId.",
+        description: D.getWorkspaces,
         inputSchema: z.object({}) as any,
       },
       async () => {
@@ -566,9 +476,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_projects",
       {
         title: "Get Projects",
-        description: "List projects in a workspace. Useful to find projectId.",
+        description: D.getProjects,
         inputSchema: z.object({
-          workspaceId: z.string(),
+          workspaceId: z.string().describe(D.workspaceId),
         }) as any,
       },
       async (args: any) => {
@@ -583,9 +493,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_members",
       {
         title: "Get Members",
-        description: "List members in a workspace. Useful to find assigneeId.",
+        description: D.getMembers,
         inputSchema: z.object({
-          workspaceId: z.string(),
+          workspaceId: z.string().describe(D.workspaceId),
         }) as any,
       },
       async (args: any) => {
@@ -600,10 +510,26 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
     );
 
     server.registerTool(
+      "get_project_members",
+      {
+        title: "Get Project Members",
+        description: D.getProjectMembers,
+        inputSchema: z.object({
+          workspaceId: z.string(),
+          projectId: z.string(),
+        }) as any,
+      },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        return textResult(await getProjectMembers(adminDb, args.workspaceId, args.projectId));
+      }
+    );
+
+    server.registerTool(
       "create_workspace",
       {
         title: "Create Workspace",
-        description: "Create a new workspace",
+        description: D.createWorkspace,
         inputSchema: z.object({
           name: z.string().describe("Name of the workspace"),
           imageUrl: z.string().optional(),
@@ -612,7 +538,9 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         const userId = getMcpUserId();
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
-        const workspaceRef = await adminDb.collection("workspaces").add({
+        const workspaceId = generatePrefixedId(ID_PREFIX.WORKSPACE);
+        const workspaceRef = adminDb.collection("workspaces").doc(workspaceId);
+        await workspaceRef.set({
           name: args.name,
           userId,
           imageUrl,
@@ -621,7 +549,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         });
         await adminDb.collection("members").add({
           userId,
-          workspaceId: workspaceRef.id,
+          workspaceId,
           role: MemberRole.ADMIN,
           $createdAt: new Date().toISOString(),
         });
@@ -634,7 +562,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_workspace",
       {
         title: "Update Workspace",
-        description: "Update an existing workspace",
+        description: D.updateWorkspace,
         inputSchema: z.object({
           workspaceId: z.string(),
           name: z.string().optional(),
@@ -652,7 +580,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_workspace",
       {
         title: "Delete Workspace",
-        description: "Delete a workspace",
+        description: D.deleteWorkspace,
         inputSchema: z.object({
           workspaceId: z.string(),
         }) as any,
@@ -681,7 +609,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "create_project",
       {
         title: "Create Project",
-        description: "Create a new project",
+        description: D.createProject,
         inputSchema: z.object({
           name: z.string().describe("Name of the project"),
           workspaceId: z.string(),
@@ -692,12 +620,14 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await verifyWorkspaceAccess(args.workspaceId);
         const userId = getMcpUserId();
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
-        const projectRef = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").add({
-            name: args.name,
-            workspaceId: args.workspaceId,
-            imageUrl,
-            $createdAt: new Date().toISOString(),
-          });
+        const projectId = generatePrefixedId(ID_PREFIX.PROJECT);
+        const projectRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(projectId);
+        await projectRef.set({
+          name: args.name,
+          workspaceId: args.workspaceId,
+          imageUrl,
+          $createdAt: new Date().toISOString(),
+        });
         const doc = await projectRef.get();
         return textResult(docJson(doc));
       }
@@ -707,7 +637,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_project",
       {
         title: "Update Project",
-        description: "Update an existing project",
+        description: D.updateProject,
         inputSchema: z.object({
           projectId: z.string(),
           name: z.string().optional(),
@@ -727,7 +657,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_project",
       {
         title: "Delete Project",
-        description: "Delete a project",
+        description: D.deleteProject,
         inputSchema: z.object({
           projectId: z.string(),
         }) as any,
@@ -747,7 +677,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_sprints",
       {
         title: "Get Sprints",
-        description: "List sprints in a workspace, optionally filtered by project",
+        description: D.getSprints,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string().optional(),
@@ -763,19 +693,14 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "create_sprint",
       {
         title: "Create Sprint",
-        description: "Create a new sprint in a project",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          name: z.string().describe("Sprint name"),
-          goal: z.string().optional().describe("Sprint goal"),
-          startDate: z.string().optional().describe("ISO date string"),
-          endDate: z.string().optional().describe("ISO date string"),
-        }) as any,
+        description: D.createSprint,
+        inputSchema: createSprintSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const sprintRef = await sprintsCol(args.workspaceId, args.projectId).add({
+        const sprintId = generatePrefixedId(ID_PREFIX.SPRINT);
+        const sprintRef = sprintsCol(args.workspaceId, args.projectId).doc(sprintId);
+        await sprintRef.set({
           name: args.name,
           goal: args.goal || null,
           startDate: args.startDate || null,
@@ -794,16 +719,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_sprint",
       {
         title: "Update Sprint",
-        description: "Update an existing sprint",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          sprintId: z.string(),
-          name: z.string().optional(),
-          goal: z.string().optional(),
-          startDate: z.string().optional().describe("ISO date string"),
-          endDate: z.string().optional().describe("ISO date string"),
-        }) as any,
+        description: D.updateSprint,
+        inputSchema: updateSprintSchema as any,
       },
       async (args: any) => {
         const { workspaceId, projectId, sprintId, ...updates } = args;
@@ -816,7 +733,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "start_sprint",
       {
         title: "Start Sprint",
-        description: "Start a planned sprint, setting its status to ACTIVE",
+        description: D.startSprint,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -842,7 +759,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "complete_sprint",
       {
         title: "Complete Sprint",
-        description: "Complete an active sprint. Incomplete tasks (not DONE) are moved to the backlog (sprintId set to null).",
+        description: D.completeSprint,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -874,7 +791,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_sprint",
       {
         title: "Delete Sprint",
-        description: "Delete a sprint (only PLANNED sprints can be deleted)",
+        description: D.deleteSprint,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -896,7 +813,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_versions",
       {
         title: "Get Versions",
-        description: "List versions (releases) in a workspace, optionally filtered by project",
+        description: D.getVersions,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string().optional(),
@@ -912,19 +829,14 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "create_version",
       {
         title: "Create Version",
-        description: "Create a new version (release) in a project",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          name: z.string().describe("Version name, e.g. 'v1.2.0'"),
-          description: z.string().optional(),
-          startDate: z.string().optional().describe("ISO date string"),
-          releaseDate: z.string().optional().describe("ISO date string"),
-        }) as any,
+        description: D.createVersion,
+        inputSchema: createVersionSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const versionRef = await versionsCol(args.workspaceId, args.projectId).add({
+        const versionId = generatePrefixedId(ID_PREFIX.RELEASE);
+        const versionRef = versionsCol(args.workspaceId, args.projectId).doc(versionId);
+        await versionRef.set({
           name: args.name,
           description: args.description || null,
           startDate: args.startDate || null,
@@ -943,16 +855,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_version",
       {
         title: "Update Version",
-        description: "Update an existing version (release)",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          versionId: z.string(),
-          name: z.string().optional(),
-          description: z.string().optional(),
-          startDate: z.string().optional().describe("ISO date string"),
-          releaseDate: z.string().optional().describe("ISO date string"),
-        }) as any,
+        description: D.updateVersion,
+        inputSchema: updateVersionSchema as any,
       },
       async (args: any) => {
         const { workspaceId, projectId, versionId, ...updates } = args;
@@ -965,7 +869,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "release_version",
       {
         title: "Release Version",
-        description: "Mark a version as released",
+        description: D.releaseVersion,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -982,7 +886,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "archive_version",
       {
         title: "Archive Version",
-        description: "Archive a version",
+        description: D.archiveVersion,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -999,7 +903,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_version",
       {
         title: "Delete Version",
-        description: "Delete a version and clear its fixVersionId from all associated tasks",
+        description: D.deleteVersion,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1022,7 +926,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_worklogs",
       {
         title: "Get Worklogs",
-        description: "List work log entries for a task",
+        description: D.getWorklogs,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1031,7 +935,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return getTaskSubcollection(args, "worklogs", false);
+        return textResult(await getWorklogs(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1039,41 +943,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "log_work",
       {
         title: "Log Work",
-        description: "Log time spent on a task. Updates the task's timeSpent and remainingEstimate automatically.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          timeSpent: z.number().positive().describe("Time spent in minutes"),
-          date: z.string().describe("ISO date string for when work was done"),
-          description: z.string().optional().describe("What was worked on"),
-        }) as any,
+        description: D.logWork,
+        inputSchema: logWorkSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { taskRef, taskDoc } = await resolveTaskRef(args);
-        const worklogRef = await taskRef.collection("worklogs").add({
-          timeSpent: args.timeSpent,
-          date: args.date,
-          description: args.description || null,
-          userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-
-        const task = taskDoc.data()!;
-        const currentTimeSpent = task.timeSpent || 0;
-        const currentRemaining = task.remainingEstimate ?? task.originalEstimate ?? null;
-        const updates: Record<string, unknown> = { timeSpent: currentTimeSpent + args.timeSpent };
-        if (currentRemaining !== null) {
-          updates.remainingEstimate = Math.max(0, currentRemaining - args.timeSpent);
-        }
-        await taskRef.update(updates);
-
-        const worklogDoc = await worklogRef.get();
-        return textResult(docJson(worklogDoc));
+        return textResult(await logWork(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1081,34 +956,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_worklog",
       {
         title: "Update Worklog",
-        description: "Edit an existing work log entry (time spent or description). Adjusts the task's timeSpent accordingly.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          worklogId: z.string(),
-          timeSpent: z.number().positive().optional().describe("Updated time spent in minutes"),
-          description: z.string().optional().describe("Updated description"),
-        }) as any,
+        description: D.updateWorklog,
+        inputSchema: updateWorklogSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const { taskRef, worklogRef, worklogDoc } = await resolveWorklogRef(args);
-        const oldTimeSpent = worklogDoc.data()!.timeSpent || 0;
-        const updates: Record<string, unknown> = {};
-        if (args.description !== undefined) updates.description = args.description;
-
-        if (args.timeSpent !== undefined) {
-          updates.timeSpent = args.timeSpent;
-          const taskDoc = await taskRef.get();
-          if (taskDoc.exists) {
-            const diff = args.timeSpent - oldTimeSpent;
-            await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) + diff) });
-          }
-        }
-
-        await worklogRef.update(updates);
-        return textResult(docJson(await worklogRef.get()));
+        return textResult(await updateWorklog(adminDb, args));
       }
     );
 
@@ -1116,7 +969,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_worklog",
       {
         title: "Delete Worklog",
-        description: "Delete a work log entry and reverse its time contribution from the task",
+        description: D.deleteWorklog,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1126,13 +979,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const { taskRef, worklogRef, worklogDoc } = await resolveWorklogRef(args);
-        const timeSpent = worklogDoc.data()!.timeSpent || 0;
-        const taskDoc = await taskRef.get();
-        if (taskDoc.exists) {
-          await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) - timeSpent) });
-        }
-        await worklogRef.delete();
+        await deleteWorklog(adminDb, args);
         return textResult(`Worklog ${args.worklogId} deleted successfully`);
       }
     );
@@ -1143,7 +990,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_comments",
       {
         title: "Get Comments",
-        description: "List comments on a task",
+        description: D.getComments,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1152,7 +999,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return getTaskSubcollection(args, "comments", true);
+        return textResult(await getComments(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1160,27 +1007,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "add_comment",
       {
         title: "Add Comment",
-        description: "Add a comment to a task",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          content: z.string().describe("The comment text"),
-        }) as any,
+        description: D.addComment,
+        inputSchema: addCommentSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { taskRef } = await resolveTaskRef(args);
-        const commentRef = await taskRef.collection("comments").add({
-          content: args.content,
-          authorId: userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-        const commentDoc = await commentRef.get();
-        return textResult(docJson(commentDoc));
+        return textResult(await addComment(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1188,20 +1020,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_comment",
       {
         title: "Update Comment",
-        description: "Edit the content of an existing comment (only the comment author can edit)",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          commentId: z.string(),
-          content: z.string().describe("The updated comment text"),
-        }) as any,
+        description: D.updateComment,
+        inputSchema: updateCommentSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const commentRef = await resolveCommentRef(args, getMcpUserId(), "edit it");
-        await commentRef.update({ content: args.content, updatedAt: new Date().toISOString() });
-        return textResult(docJson(await commentRef.get()));
+        return textResult(await updateComment(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1209,7 +1033,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_comment",
       {
         title: "Delete Comment",
-        description: "Delete a comment from a task (only the comment author can delete)",
+        description: D.deleteComment,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1219,8 +1043,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const commentRef = await resolveCommentRef(args, getMcpUserId(), "delete it");
-        await commentRef.delete();
+        await deleteComment(adminDb, getMcpUserId(), args);
         return textResult(`Comment ${args.commentId} deleted successfully`);
       }
     );
@@ -1231,7 +1054,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_task_links",
       {
         title: "Get Task Links",
-        description: "List links (relationships) for a task",
+        description: D.getTaskLinks,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1240,10 +1063,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const snapshot = await taskDocRef(args.workspaceId, args.projectId, args.taskId)
-          .collection("links").get();
-        const links = snapshot.docs.map((doc: any) => (docJson(doc)));
-        return textResult(links);
+        return textResult(await getTaskLinks(adminDb, args.workspaceId, args.projectId, args.taskId));
       }
     );
 
@@ -1251,36 +1071,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "add_task_link",
       {
         title: "Add Task Link",
-        description: "Link two tasks together with a relationship type (e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates')",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          taskId: z.string(),
-          targetTaskId: z.string().describe("ID of the task to link to"),
-          type: z.string().describe("Relationship type, e.g. 'blocks', 'is blocked by', 'relates to', 'duplicates'"),
-        }) as any,
+        description: D.addTaskLink,
+        inputSchema: addTaskLinkSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        if (args.taskId === args.targetTaskId) throw new Error("Cannot link a task to itself");
-        const userId = getMcpUserId();
-        const { taskRef } = await resolveTaskRef(args);
-        const existingLinks = await taskRef.collection("links").get();
-        const duplicate = existingLinks.docs.find(
-          (doc) => doc.data().targetTaskId === args.targetTaskId && doc.data().type === args.type
-        );
-        if (duplicate) throw new Error("This link already exists");
-
-        const linkRef = await taskRef.collection("links").add({
-          targetTaskId: args.targetTaskId,
-          type: args.type,
-          createdBy: userId,
-          workspaceId: args.workspaceId,
-          projectId: args.projectId,
-          $createdAt: new Date().toISOString(),
-        });
-        const linkDoc = await linkRef.get();
-        return textResult(docJson(linkDoc));
+        return textResult(await addTaskLink(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1288,7 +1084,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "delete_task_link",
       {
         title: "Delete Task Link",
-        description: "Remove a link between tasks",
+        description: D.deleteTaskLink,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1298,11 +1094,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const linkRef = taskDocRef(args.workspaceId, args.projectId, args.taskId)
-          .collection("links").doc(args.linkId);
-        const linkDoc = await linkRef.get();
-        if (!linkDoc.exists) throw new Error("Link not found");
-        await linkRef.delete();
+        await deleteTaskLink(adminDb, args.workspaceId, args.projectId, args.taskId, args.linkId);
         return textResult(`Link ${args.linkId} deleted successfully`);
       }
     );
@@ -1313,7 +1105,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_workspace_analytics",
       {
         title: "Get Workspace Analytics",
-        description: "Get task metrics for a workspace: total, assigned, incomplete, completed, and overdue counts with month-over-month differences",
+        description: D.getWorkspaceAnalytics,
         inputSchema: z.object({
           workspaceId: z.string(),
         }) as any,
@@ -1327,7 +1119,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
           const tasksSnap = await tasksCol(args.workspaceId, pDoc.id).get();
           allTasks.push(...tasksSnap.docs.map((d: any) => d.data()));
         }
-        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
+        return textResult(await computeAnalytics(adminDb, allTasks, args.workspaceId, userId));
       }
     );
 
@@ -1335,7 +1127,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "get_project_analytics",
       {
         title: "Get Project Analytics",
-        description: "Get task metrics for a specific project with month-over-month differences",
+        description: D.getProjectAnalytics,
         inputSchema: z.object({
           workspaceId: z.string(),
           projectId: z.string(),
@@ -1346,57 +1138,11 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const tasksSnap = await tasksCol(args.workspaceId, args.projectId).get();
         const allTasks = tasksSnap.docs.map((d: any) => d.data());
-        return textResult(await computeAnalytics(allTasks, args.workspaceId, userId));
+        return textResult(await computeAnalytics(adminDb, allTasks, args.workspaceId, userId));
       }
     );
 
     // ── Member Management Tools ───────────────────────────────────────────────
-
-    server.registerTool(
-      "update_member",
-      {
-        title: "Update Member",
-        description: "Update a workspace member's role (ADMIN or MEMBER). Requires admin role.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          memberId: z.string().describe("The member document ID"),
-          role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
-        }) as any,
-      },
-      async (args: any) => {
-        await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const role = await getCallerWorkspaceRole(args.workspaceId, userId);
-        if (role !== MemberRole.ADMIN) throw new Error("Only workspace admins can update member roles");
-        const { memberRef } = await resolveWorkspaceMember(args.workspaceId, args.memberId);
-        await memberRef.update({ role: args.role });
-        return textResult(docJson(await memberRef.get()));
-      }
-    );
-
-    server.registerTool(
-      "remove_member",
-      {
-        title: "Remove Member",
-        description: "Remove a member from a workspace. Admins can remove anyone; members can only remove themselves.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          memberId: z.string().describe("The member document ID to remove"),
-        }) as any,
-      },
-      async (args: any) => {
-        await verifyWorkspaceAccess(args.workspaceId);
-        const userId = getMcpUserId();
-        const { memberRef, memberDoc } = await resolveWorkspaceMember(args.workspaceId, args.memberId);
-        const callerRole = await getCallerWorkspaceRole(args.workspaceId, userId);
-        const isSelf = memberDoc.data()!.userId === userId;
-        if (callerRole !== MemberRole.ADMIN && !isSelf) throw new Error("Only admins can remove other members");
-        const allMembers = await adminDb.collection("members").where("workspaceId", "==", args.workspaceId).get();
-        if (allMembers.size <= 1) throw new Error("Cannot remove the only member of a workspace");
-        await memberRef.delete();
-        return textResult(`Member ${args.memberId} removed from workspace successfully`);
-      }
-    );
 
     // ── Project Member Tools ──────────────────────────────────────────────────
 
@@ -1404,29 +1150,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "add_project_member",
       {
         title: "Add Project Member",
-        description: "Add a workspace member to a specific project with a given role. The user must already be a member of the workspace. Requires project admin or workspace admin role.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          userId: z.string().describe("The userId of the workspace member to add"),
-          role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]).describe("Role within the project"),
-        }) as any,
+        description: D.addProjectMember,
+        inputSchema: addProjectMemberSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "add project members");
-
-        const targetRole = await getCallerWorkspaceRole(args.workspaceId, args.userId);
-        if (!targetRole) throw new Error("User is not a member of this workspace");
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if ((await memberRef.get()).exists) throw new Error("User is already a member of this project");
-
-        await memberRef.set({ userId: args.userId, role: args.role, $createdAt: new Date().toISOString() });
-        return textResult({ userId: args.userId, role: args.role });
+        return textResult(await addProjectMember(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1434,27 +1163,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "update_project_member",
       {
         title: "Update Project Member",
-        description: "Update a project member's role. Requires project admin or workspace admin role.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          userId: z.string().describe("The userId of the project member to update"),
-          role: z.enum([MemberRole.ADMIN, MemberRole.MEMBER]),
-        }) as any,
+        description: D.updateProjectMember,
+        inputSchema: updateProjectMemberSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "update project member roles");
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
-
-        await memberRef.update({ role: args.role });
-        const updated = await memberRef.get();
-        return textResult(docJson(updated));
+        return textResult(await updateProjectMember(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -1462,26 +1176,12 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       "remove_project_member",
       {
         title: "Remove Project Member",
-        description: "Remove a member from a project. Workspace admins and project admins can remove anyone; members can remove themselves.",
-        inputSchema: z.object({
-          workspaceId: z.string(),
-          projectId: z.string(),
-          userId: z.string().describe("The userId of the project member to remove"),
-        }) as any,
+        description: D.removeProjectMember,
+        inputSchema: removeProjectMemberSchema as any,
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const callerId = getMcpUserId();
-        const projectRef = await resolveProjectRef(args.workspaceId, args.projectId);
-
-        if (callerId !== args.userId) {
-          await verifyProjectAdminAccess(args.workspaceId, projectRef, callerId, "remove other project members");
-        }
-
-        const memberRef = projectRef.collection("members").doc(args.userId);
-        if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
-
-        await memberRef.delete();
+        await removeProjectMember(adminDb, getMcpUserId(), args);
         return textResult(`User ${args.userId} removed from project ${args.projectId} successfully`);
       }
     );
@@ -1527,41 +1227,13 @@ async function authenticateAndGetUserId(req: Request) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
-
   const token = authHeader.split(" ")[1];
-
-  // Local development override
-  if (process.env.NODE_ENV !== "production" && process.env.MCP_SECRET && token === process.env.MCP_SECRET) {
-    return process.env.MCP_USER_ID || "local-dev-user-id";
-  }
-
-  // Hash the token
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-
-  // Use a targeted query to find the token and ensure it's not revoked
-  const snapshot = await adminDb.collection("personal_access_tokens")
-    .where("tokenHash", "==", hash)
-    .where("revoked", "==", false)
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) {
-    console.error("MCP Auth Failed: Token hash not found or revoked", { hash });
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    return decoded.uid;
+  } catch {
     return null;
   }
-
-  const tokenData = snapshot.docs[0].data();
-
-  if (tokenData.expiresAt && new Date(tokenData.expiresAt).getTime() < Date.now()) {
-    console.error("MCP Auth Failed: Token expired", { hash });
-    return null;
-  }
-
-  snapshot.docs[0].ref.update({ lastUsedAt: new Date().toISOString() }).catch((err) => {
-    console.error("Failed to update lastUsedAt for token", snapshot.docs[0].id, err);
-  });
-
-  return tokenData.userId;
 }
 
 /**
@@ -1580,14 +1252,22 @@ function normalizeRequestUrl(req: Request): Request {
 
 export const runtime = "nodejs";
 
+function unauthorizedResponse(req: Request) {
+  const base = new URL(req.url).origin;
+  return new Response("Unauthorized", {
+    status: 401,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "WWW-Authenticate": `Bearer realm="${base}/api/mcp", resource_metadata="${base}/.well-known/oauth-authorization-server"`,
+    },
+  });
+}
+
 export async function GET(req: Request) {
   console.log("MCP GET request received", { url: req.url });
   const userId = await authenticateAndGetUserId(req);
   console.log("MCP Auth result", { userId });
-  if (!userId) return new Response("Unauthorized", {
-    status: 401,
-    headers: { "Access-Control-Allow-Origin": "*" }
-  });
+  if (!userId) return unauthorizedResponse(req);
 
   const relativeReq = normalizeRequestUrl(req);
   console.log("Calling MCP handler");
