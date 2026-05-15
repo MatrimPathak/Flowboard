@@ -339,6 +339,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
+        await resolveProjectRef(args.workspaceId, args.projectId);
         const col = tasksCol(args.workspaceId, args.projectId);
 
         const highestPositionSnapshot = await col
@@ -540,19 +541,23 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const workspaceId = generatePrefixedId(ID_PREFIX.WORKSPACE);
         const workspaceRef = adminDb.collection("workspaces").doc(workspaceId);
-        await workspaceRef.set({
+        const memberRef = adminDb.collection("members").doc();
+        const now = new Date().toISOString();
+        const batch = adminDb.batch();
+        batch.set(workspaceRef, {
           name: args.name,
           userId,
           imageUrl,
           inviteCode: generateInviteCode(10),
-          $createdAt: new Date().toISOString(),
+          $createdAt: now,
         });
-        await adminDb.collection("members").add({
+        batch.set(memberRef, {
           userId,
           workspaceId,
           role: MemberRole.ADMIN,
-          $createdAt: new Date().toISOString(),
+          $createdAt: now,
         });
+        await batch.commit();
         const doc = await workspaceRef.get();
         return textResult(docJson(doc));
       }
@@ -698,6 +703,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
+        await resolveProjectRef(args.workspaceId, args.projectId);
         const sprintId = generatePrefixedId(ID_PREFIX.SPRINT);
         const sprintRef = sprintsCol(args.workspaceId, args.projectId).doc(sprintId);
         await sprintRef.set({
@@ -834,6 +840,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
+        await resolveProjectRef(args.workspaceId, args.projectId);
         const versionId = generatePrefixedId(ID_PREFIX.RELEASE);
         const versionRef = versionsCol(args.workspaceId, args.projectId).doc(versionId);
         await versionRef.set({
@@ -961,7 +968,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return textResult(await updateWorklog(adminDb, args));
+        return textResult(await updateWorklog(adminDb, getMcpUserId(), args));
       }
     );
 
@@ -979,7 +986,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        await deleteWorklog(adminDb, args);
+        await deleteWorklog(adminDb, getMcpUserId(), args);
         return textResult(`Worklog ${args.worklogId} deleted successfully`);
       }
     );
@@ -1258,6 +1265,7 @@ function unauthorizedResponse(req: Request) {
     status: 401,
     headers: {
       "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "WWW-Authenticate",
       "WWW-Authenticate": `Bearer realm="${base}/api/mcp", resource_metadata="${base}/.well-known/oauth-authorization-server"`,
     },
   });
@@ -1306,10 +1314,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const userId = await authenticateAndGetUserId(req);
-  if (!userId) return new Response("Unauthorized", {
-    status: 401,
-    headers: { "Access-Control-Allow-Origin": "*" }
-  });
+  if (!userId) return unauthorizedResponse(req);
 
   const relativeReq = normalizeRequestUrl(req);
 

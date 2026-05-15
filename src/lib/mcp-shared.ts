@@ -91,39 +91,49 @@ export async function logWork(
 
 export async function updateWorklog(
   db: any,
+  callerId: string,
   args: { workspaceId: string; projectId: string; taskId: string; worklogId: string; timeSpent?: number; description?: string },
 ) {
   const taskRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
   const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
-  const worklogDoc = await worklogRef.get();
-  if (!worklogDoc.exists) throw new Error("Worklog not found");
 
-  const updates: any = {};
-  if (args.description !== undefined) updates.description = args.description;
-  if (args.timeSpent !== undefined) {
-    updates.timeSpent = args.timeSpent;
-    const diff = args.timeSpent - (worklogDoc.data()!.timeSpent || 0);
-    const taskDoc = await taskRef.get();
-    if (taskDoc.exists) await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) + diff) });
-  }
+  return db.runTransaction(async (tx: any) => {
+    const worklogDoc = await tx.get(worklogRef);
+    if (!worklogDoc.exists) throw new Error("Worklog not found");
+    if (worklogDoc.data()!.userId !== callerId) throw new Error("Only the worklog author can edit it");
 
-  await worklogRef.update(updates);
-  return docJson(await worklogRef.get());
+    const updates: any = {};
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.timeSpent !== undefined) {
+      updates.timeSpent = args.timeSpent;
+      const diff = args.timeSpent - (worklogDoc.data()!.timeSpent || 0);
+      const taskDoc = await tx.get(taskRef);
+      if (taskDoc.exists) tx.update(taskRef, { timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) + diff) });
+    }
+
+    tx.update(worklogRef, updates);
+    return { ...worklogDoc.data(), ...updates, $id: worklogDoc.id };
+  });
 }
 
 export async function deleteWorklog(
   db: any,
+  callerId: string,
   args: { workspaceId: string; projectId: string; taskId: string; worklogId: string },
 ) {
   const taskRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
   const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
-  const worklogDoc = await worklogRef.get();
-  if (!worklogDoc.exists) throw new Error("Worklog not found");
 
-  const timeSpent = worklogDoc.data()!.timeSpent || 0;
-  const taskDoc = await taskRef.get();
-  if (taskDoc.exists) await taskRef.update({ timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) - timeSpent) });
-  await worklogRef.delete();
+  await db.runTransaction(async (tx: any) => {
+    const worklogDoc = await tx.get(worklogRef);
+    if (!worklogDoc.exists) throw new Error("Worklog not found");
+    if (worklogDoc.data()!.userId !== callerId) throw new Error("Only the worklog author can delete it");
+
+    const timeSpent = worklogDoc.data()!.timeSpent || 0;
+    const taskDoc = await tx.get(taskRef);
+    if (taskDoc.exists) tx.update(taskRef, { timeSpent: Math.max(0, (taskDoc.data()!.timeSpent || 0) - timeSpent) });
+    tx.delete(worklogRef);
+  });
 }
 
 // ── Comment operations ────────────────────────────────────────────────────────
@@ -196,6 +206,8 @@ export async function addTaskLink(
   if (args.taskId === args.targetTaskId) throw new Error("Cannot link a task to itself");
   const ref = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
   if (!(await ref.get()).exists) throw new Error("Task not found");
+  const targetRef = taskDocRef(db, args.workspaceId, args.projectId, args.targetTaskId);
+  if (!(await targetRef.get()).exists) throw new Error("Target task not found");
 
   const existingLinks = await ref.collection("links").get();
   const duplicate = existingLinks.docs.find(

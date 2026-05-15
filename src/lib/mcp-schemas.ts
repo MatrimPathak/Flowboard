@@ -169,7 +169,7 @@ export const addTaskLinkSchema = z.object({
   projectId: z.string(),
   taskId: z.string(),
   targetTaskId: z.string().describe(D.targetTaskId),
-  type: z.string().describe(D.linkType),
+  type: z.enum(["BLOCKS", "IS_BLOCKED_BY", "RELATES_TO", "DUPLICATES"]).describe(D.linkType),
 });
 
 // ── Member schemas ────────────────────────────────────────────────────────────

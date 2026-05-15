@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const base = new URL(req.url).origin;
+  const base = (process.env.APP_BASE_URL ?? new URL(req.url).origin).replace(/\/$/, "");
   return NextResponse.json({
     issuer: `${base}/api/mcp`,
     authorization_endpoint: `${base}/api/mcp/authorize`,

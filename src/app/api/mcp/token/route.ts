@@ -26,8 +26,8 @@ async function parseBody(req: NextRequest): Promise<Record<string, string>> {
   return req.json();
 }
 
-function tokenResponse(data: Record<string, unknown>) {
-  return NextResponse.json(data, { headers: CORS_HEADERS });
+function tokenResponse(data: Record<string, unknown>, status = 200) {
+  return NextResponse.json(data, { status, headers: CORS_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
@@ -37,28 +37,28 @@ export async function POST(req: NextRequest) {
   if (grantType === "authorization_code") {
     const { code, code_verifier: codeVerifier, redirect_uri: redirectUri } = body;
 
-    if (!code || !codeVerifier) {
-      return tokenResponse({ error: "invalid_request" });
+    if (!code || !codeVerifier || !redirectUri) {
+      return tokenResponse({ error: "invalid_request" }, 400);
     }
 
     const codeDoc = await adminDb.collection("mcp_auth_codes").doc(code).get();
     if (!codeDoc.exists) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: "invalid_grant" }, 400);
     }
 
     const data = codeDoc.data()!;
 
     if (new Date(data.expiresAt) < new Date()) {
       await codeDoc.ref.delete();
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: "invalid_grant" }, 400);
     }
 
-    if (redirectUri && data.redirectUri !== redirectUri) {
-      return tokenResponse({ error: "invalid_grant" });
+    if (data.redirectUri !== redirectUri) {
+      return tokenResponse({ error: "invalid_grant" }, 400);
     }
 
     if (!verifyPKCE(codeVerifier, data.codeChallenge)) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: "invalid_grant" }, 400);
     }
 
     await codeDoc.ref.delete();
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   if (grantType === "refresh_token") {
     const refreshToken = body.refresh_token;
     if (!refreshToken) {
-      return tokenResponse({ error: "invalid_request" });
+      return tokenResponse({ error: "invalid_request" }, 400);
     }
 
     const res = await fetch(
