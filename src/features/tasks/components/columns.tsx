@@ -10,7 +10,7 @@ import { TaskDate } from "./task-date";
 import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { TaskActions } from "./task-actions";
-import { TaskPriority } from "../types";
+import { TaskPriority, IssueType } from "../types";
 
 export const columns: ColumnDef<Task>[] = [
 	{
@@ -32,6 +32,19 @@ export const columns: ColumnDef<Task>[] = [
 		cell: ({ row }) => {
 			const name = row.original.name;
 			return <p className="line-clamp-1">{name}</p>;
+		},
+	},
+	{
+		header: "Type",
+		accessorKey: "issueType",
+		cell: ({ row }) => {
+			const issueType = row.original.issueType as IssueType | undefined;
+			if (!issueType) return <span className="text-muted-foreground text-xs">—</span>;
+			return (
+				<Badge variant="outline" className="w-14 justify-center">
+					{snakeCaseToTitleCase(issueType)}
+				</Badge>
+			);
 		},
 	},
 	{
@@ -164,10 +177,8 @@ export const columns: ColumnDef<Task>[] = [
 		id: "actions",
 		cell: ({ row }) => {
 			const id = row.original.$id;
-			const projectId = row.original.projectId;
-			const issueType = row.original.issueType;
 			return (
-				<TaskActions id={id} projectId={projectId} issueType={issueType}>
+				<TaskActions id={id}>
 					<Button variant="ghost" className="size-8 p-0">
 						<MoreVertical className="size-4" />
 					</Button>
