@@ -57,7 +57,7 @@ export const TaskLinks = ({ taskId, workspaceId, projectId }: TaskLinksProps) =>
 				<p className="text-lg font-semibold">Links</p>
 				<Button size="sm" variant="secondary" onClick={() => setShowForm((v) => !v)}>
 					<PlusIcon className="size-4 mr-1" />
-					Add Link
+					Add
 				</Button>
 			</div>
 			<DottedSeperator className="my-4" />

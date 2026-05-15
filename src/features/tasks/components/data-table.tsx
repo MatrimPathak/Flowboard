@@ -26,11 +26,13 @@ import {
 interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
+	onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
 	columns,
 	data,
+	onRowClick,
 }: DataTableProps<TData, TValue>) {
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const table = useReactTable({
@@ -76,6 +78,11 @@ export function DataTable<TData, TValue>({
 									data-state={
 										row.getIsSelected() && "selected"
 									}
+									onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+									onKeyDown={onRowClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row.original); } } : undefined}
+									tabIndex={onRowClick ? 0 : undefined}
+									role={onRowClick ? "button" : undefined}
+									className={onRowClick ? "cursor-pointer" : ""}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

@@ -91,7 +91,7 @@ export const TaskAttachments = ({ taskId, workspaceId, projectId }: TaskAttachme
 					disabled={isUploading}
 				>
 					<PlusIcon className="size-4 mr-1" />
-					Add Attachment
+					Add
 				</Button>
 				<input
 					ref={fileInputRef}

@@ -4,19 +4,32 @@ import { formatDistanceToNow } from "date-fns";
 import { DottedSeperator } from "@/components/dotted-seperator";
 import { useGetActivity } from "../api/use-get-activity";
 import { TaskActivity as TaskActivityType } from "../types";
+import { snakeCaseToTitleCase } from "@/lib/utils";
 
 interface TaskActivityProps {
 	taskId: string;
 }
 
+const ENUM_FIELDS = new Set(["status", "priority", "issueType"]);
+
+const formatValue = (field: string | undefined, value: string | undefined): string => {
+	if (!value) return "";
+	if (field && ENUM_FIELDS.has(field)) return snakeCaseToTitleCase(value);
+	return value;
+};
+
 const activityLabel = (entry: TaskActivityType): string => {
 	switch (entry.type) {
-		case "FIELD_CHANGE":
-			if (entry.oldValue && entry.newValue) {
-				return `changed ${entry.field} from "${entry.oldValue}" to "${entry.newValue}"`;
+		case "FIELD_CHANGE": {
+			const fieldLabel = entry.field ? snakeCaseToTitleCase(entry.field) : "field";
+			const oldVal = formatValue(entry.field, entry.oldValue);
+			const newVal = formatValue(entry.field, entry.newValue);
+			if (oldVal && newVal) {
+				return `changed ${fieldLabel} from "${oldVal}" to "${newVal}"`;
 			}
-			if (entry.newValue) return `set ${entry.field} to "${entry.newValue}"`;
-			return `cleared ${entry.field}`;
+			if (newVal) return `set ${fieldLabel} to "${newVal}"`;
+			return `cleared ${fieldLabel}`;
+		}
 		case "COMMENT_ADDED":
 			return "added a comment";
 		case "ATTACHMENT_ADDED":
@@ -31,6 +44,10 @@ const activityLabel = (entry: TaskActivityType): string => {
 			return entry.newValue ? `linked task ${entry.newValue}` : "added a link";
 		case "LINK_REMOVED":
 			return "removed a link";
+		case "WORK_LOGGED":
+			return entry.newValue ? `logged ${entry.newValue} of work` : "logged work";
+		case "WORKLOG_DELETED":
+			return "deleted a work log entry";
 		default:
 			return "performed an action";
 	}

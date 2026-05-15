@@ -14,10 +14,12 @@ import { DataTable } from "./data-table";
 import { columns } from "./columns";
 import { DataKanban } from "./data-kanban";
 import { useCallback } from "react";
-import { TaskStatus } from "../types";
+import { TaskStatus, Task } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { DataCalender } from "./data-calendar";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { useRouter } from "next/navigation";
+import { getTaskRoute } from "@/lib/task-routes";
 
 interface TaskViewSwitcherProps {
 	hideProjectFilter?: boolean;
@@ -34,6 +36,7 @@ export const TaskViewSwitcher = ({
 		defaultValue: "table",
 	});
 	const workspaceId = useWorkspaceId();
+	const router = useRouter();
 	const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
 		workspaceId,
 		projectId: paramProjectId || projectId,
@@ -101,6 +104,7 @@ export const TaskViewSwitcher = ({
 							<DataTable
 								columns={columns}
 								data={tasks?.documents ?? []}
+								onRowClick={(task) => router.push(getTaskRoute(workspaceId, (task as Task).projectId, task as Task))}
 							/>
 						</TabsContent>
 						<TabsContent className="mt-0" value="kanban">

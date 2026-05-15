@@ -66,6 +66,8 @@ export const Navbar = () => {
 		});
 	}
 
+	const isTaskDetailPage = new Set(["epic", "story", "spike", "bug"]).has(pageSegment ?? "");
+
 	const pageLabel = pageSegment
 		? PAGE_LABEL[pageSegment] ?? (pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1))
 		: null;
@@ -78,6 +80,7 @@ export const Navbar = () => {
 
 	return (
 		<nav className="pt-4 px-6 flex items-center justify-between">
+			{!isTaskDetailPage && (
 			<div className="flex-col hidden lg:flex gap-y-1">
 				<h1 className="text-2xl font-semibold">{title}</h1>
 				{crumbs.length > 0 && (
@@ -103,6 +106,7 @@ export const Navbar = () => {
 					</div>
 				)}
 			</div>
+			)}
 			<MobileSidebar />
 			<UserButton />
 		</nav>

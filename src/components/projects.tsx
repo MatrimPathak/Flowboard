@@ -159,7 +159,7 @@ export const Projects = () => {
 								</button>
 							</div>
 							{isExpanded && (
-								<div className="flex flex-col gap-y-0.5 ml-1 pl-2 border-l border-border">
+								<div className="flex flex-col gap-y-0.5 ml-1 pl-2 border-l border-border dark:border-muted-foreground/30">
 									{subItems.map((item) => (
 										<SubItem
 											key={item.label}
