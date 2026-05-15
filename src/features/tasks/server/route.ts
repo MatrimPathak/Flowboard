@@ -139,7 +139,7 @@ const app = new Hono()
 			}
 
 			const uniqueProjectIds = Array.from(new Set(tasks.map((task: any) => task.projectId)));
-			const assigneeIds = Array.from(new Set(tasks.map((task: any) => task.assigneeId)));
+			const assigneeIds = Array.from(new Set(tasks.map((task: any) => task.assigneeId).filter(Boolean)));
 			
 			const projects: Project[] = [];
 			for (const pId of uniqueProjectIds) {
@@ -243,15 +243,16 @@ const app = new Hono()
 			$createdAt: normalizeDate(projectData),
 		} as Project : null;
 		
+		let assignee = null;
+		if (task.assigneeId) {
 		const memberDoc = await databases.collection("members").doc(task.assigneeId).get();
 		const mData = memberDoc.data();
-		const memberData = memberDoc.exists ? { 
+		const memberData = memberDoc.exists ? {
 			...mData,
-			$id: memberDoc.id, 
+			$id: memberDoc.id,
 			$createdAt: normalizeDate(mData),
 		} as any : null;
-		
-		let assignee = null;
+
 		if (memberData) {
 			let u: { displayName?: string | null; email?: string } = {};
 			try {
@@ -265,7 +266,8 @@ const app = new Hono()
 				email: u.email ?? "",
 			};
 		}
-		
+		} // end if (task.assigneeId)
+
 		return c.json({ data: { ...task, project, assignee } });
 	})
 	.post(
@@ -536,6 +538,18 @@ workspaceId,
 			}
 			if (dueDate !== undefined && dueDate.toISOString() !== existingDueDate) {
 				activityEntries.push({ field: "dueDate", oldValue: existingDueDate, newValue: dueDate.toISOString() });
+			}
+			if (storyPoints !== undefined && storyPoints !== existingTask.storyPoints) {
+				activityEntries.push({ field: "storyPoints", oldValue: existingTask.storyPoints?.toString(), newValue: storyPoints.toString() });
+			}
+			if (epicId !== undefined && epicId !== existingTask.epicId) {
+				activityEntries.push({ field: "epicId", oldValue: existingTask.epicId ?? undefined, newValue: epicId ?? undefined });
+			}
+			if (sprintId !== undefined && sprintId !== existingTask.sprintId) {
+				activityEntries.push({ field: "sprintId", oldValue: existingTask.sprintId ?? undefined, newValue: sprintId ?? undefined });
+			}
+			if (fixVersionId !== undefined && fixVersionId !== existingTask.fixVersionId) {
+				activityEntries.push({ field: "fixVersion", oldValue: existingTask.fixVersionId ?? undefined, newValue: fixVersionId ?? undefined });
 			}
 
 			let updateRef = taskDoc.ref;

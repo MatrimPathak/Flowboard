@@ -25,6 +25,7 @@ export const useCreateComment = () => {
 		onSuccess: (_data, { param }) => {
 			toast.success("Comment added");
 			queryClient.invalidateQueries({ queryKey: ["comments", param.taskId] });
+			queryClient.invalidateQueries({ queryKey: ["activity", param.taskId] });
 		},
 		onError: () => {
 			toast.error("Failed to add comment");

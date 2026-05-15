@@ -86,6 +86,13 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							</Badge>
 						</OverviewProperty>
 					)}
+					{task.storyPoints !== undefined && task.storyPoints !== null && (
+						<OverviewProperty label="Story Points">
+							<Badge variant="secondary">
+								{task.storyPoints} pts
+							</Badge>
+						</OverviewProperty>
+					)}
 					{task.fixVersionId && (
 						<OverviewProperty label="Version">
 							<Badge variant="outline">

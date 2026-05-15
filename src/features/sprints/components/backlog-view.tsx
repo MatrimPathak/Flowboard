@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DottedSeperator } from "@/components/dotted-seperator";
+import { snakeCaseToTitleCase } from "@/lib/utils";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { Task, TaskStatus } from "@/features/tasks/types";
 import { useUpdateTask } from "@/features/tasks/api/use-update-task";
@@ -65,8 +66,8 @@ const TaskRow = ({ task, sprints }: TaskRowProps) => {
     <div className="flex items-center gap-x-3 px-4 py-2 hover:bg-muted/50 rounded-md group">
       <div className="flex-1 flex items-center gap-x-2 min-w-0">
         {task.issueType && (
-          <Badge variant="outline" className="text-xs shrink-0">
-            {task.issueType}
+          <Badge variant="outline" className="text-xs shrink-0 w-14 justify-center">
+            {snakeCaseToTitleCase(task.issueType)}
           </Badge>
         )}
         <span className="text-sm truncate">{task.name}</span>

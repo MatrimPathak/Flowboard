@@ -13,7 +13,9 @@ import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
 import { DataTable } from "@/features/tasks/components/data-table";
 import { columns } from "@/features/tasks/components/columns";
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
-import { IssueType } from "@/features/tasks/types";
+import { IssueType, Task } from "@/features/tasks/types";
+import { useRouter } from "next/navigation";
+import { getTaskRoute } from "@/lib/task-routes";
 
 const singularMap: Record<string, string> = {
 	Epics: "Epic",
@@ -34,6 +36,7 @@ interface IssueTypeListProps {
 export const IssueTypeList = ({ issueType, pageTitle }: IssueTypeListProps) => {
 	const projectId = useProjectId();
 	const workspaceId = useWorkspaceId();
+	const router = useRouter();
 	const { open } = useCreateTaskModal();
 
 	const { data: project, isLoading: isLoadingProject } = useGetProject({ projectId });
@@ -89,7 +92,11 @@ export const IssueTypeList = ({ issueType, pageTitle }: IssueTypeListProps) => {
 					<Loader className="size-5 animate-spin text-muted-foreground" />
 				</div>
 			) : (
-				<DataTable columns={columns} data={tasks} />
+				<DataTable
+					columns={columns}
+					data={tasks}
+					onRowClick={(task) => router.push(getTaskRoute(workspaceId, (task as Task).projectId, task as Task))}
+				/>
 			)}
 		</div>
 	);

@@ -16,5 +16,7 @@ export const useGetActivity = ({ taskId }: UseGetActivityProps) => {
 			const { data } = await response.json();
 			return data;
 		},
+		refetchInterval: 5000,
+		refetchOnWindowFocus: true,
 	});
 };
