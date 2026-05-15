@@ -12,6 +12,7 @@ import { Task, WorkLog } from "../types";
 import { LogWorkModal } from "./log-work-modal";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { formatMinutes } from "@/lib/utils";
 
 interface TaskTimeTrackingProps {
   taskId: string;
@@ -19,13 +20,6 @@ interface TaskTimeTrackingProps {
   projectId: string;
   task: Task;
 }
-
-const formatMinutes = (minutes: number): string => {
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-};
 
 export const TaskTimeTracking = ({
   taskId,
@@ -78,7 +72,7 @@ export const TaskTimeTracking = ({
   const saveEstimate = () => {
     if (!editingEstimate) return;
     const hoursNum = parseFloat(estimateInput);
-    const minutes = isNaN(hoursNum) || hoursNum < 0 ? 0 : Math.round(hoursNum * 60);
+    const minutes = Number.isNaN(hoursNum) || hoursNum < 0 ? 0 : Math.round(hoursNum * 60);
 
     updateTask({
       json:

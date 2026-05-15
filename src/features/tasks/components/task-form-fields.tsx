@@ -391,8 +391,12 @@ export const TaskFormFields = ({
 									placeholder="e.g. 3"
 									value={field.value ?? ""}
 									onChange={(e) => {
-										const val = e.target.value === "" ? undefined : Number(e.target.value);
-										field.onChange(Number.isNaN(val as number) ? field.value : val);
+										if (e.target.value === "") {
+											field.onChange(undefined);
+										} else {
+											const val = Number(e.target.value);
+											if (!Number.isNaN(val)) field.onChange(val);
+										}
 									}}
 								/>
 							</FormControl>

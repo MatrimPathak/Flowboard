@@ -5,7 +5,7 @@ import { loginSchema, registerSchema } from "../schemas";
 import { AUTH_COOKIE } from "../constants";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 const verifyPassword = async (email: string, password: string) => {
 	const res = await fetch(
@@ -90,6 +90,7 @@ const app = new Hono()
 		const { idToken } = c.req.valid("json");
 		try {
 			const expiresIn = 60 * 60 * 24 * 14 * 1000; // 14 days
+			const decodedToken = await adminAuth.verifyIdToken(idToken);
 			const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 			setCookie(c, AUTH_COOKIE, sessionCookie, {
 				path: "/",
@@ -98,6 +99,30 @@ const app = new Hono()
 				sameSite: "strict",
 				maxAge: expiresIn / 1000,
 			});
+
+			// Sync the user's name + photo into all their member records so assignee
+			// display works correctly for OAuth (Google/GitHub) sign-ins.
+			try {
+				const firebaseUser = await adminAuth.getUser(decodedToken.uid);
+				const name = firebaseUser.displayName || firebaseUser.email || "";
+				const photoUrl = firebaseUser.photoURL || "";
+				if (name) {
+					const membersSnap = await adminDb
+						.collection("members")
+						.where("userId", "==", decodedToken.uid)
+						.get();
+					if (!membersSnap.empty) {
+						const batch = adminDb.batch();
+						for (const doc of membersSnap.docs) {
+							batch.update(doc.ref, { name, photoUrl });
+						}
+						await batch.commit();
+					}
+				}
+			} catch (syncErr) {
+				console.error("Member name sync error:", syncErr);
+			}
+
 			return c.json({ success: true });
 		} catch (error: any) {
 			console.error("Session error:", error);

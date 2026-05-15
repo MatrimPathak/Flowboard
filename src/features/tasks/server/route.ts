@@ -7,7 +7,7 @@ import { getMember } from "@/features/members/utils";
 import { z } from "zod";
 import { IssueType, Task, TaskComment, TaskPriority, TaskStatus } from "../types";
 import { Project } from "@/features/projects/types";
-import { adminAuth, adminStorage } from "@/lib/firebase-admin";
+import { adminAuth, adminDb, adminStorage } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { fileTypeFromBuffer } from "file-type";
 
@@ -25,18 +25,145 @@ const ALLOWED_MIME_TYPES = new Set([
 	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 	"application/msword",
 ]);
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB (Vercel serverless limit)
 
 const BACKLOG_SPRINT_SENTINEL = "backlog";
 
 /** Resolve a Firebase user's display name for activity log entries. */
 async function resolveMemberName(userId: string): Promise<string> {
 	try {
+		// Prefer name stored in Firestore member record (set on sign-in / workspace join)
+		const memberSnap = await adminDb.collection("members").where("userId", "==", userId).limit(1).get();
+		if (!memberSnap.empty) {
+			const storedName = memberSnap.docs[0].data()?.name;
+			if (storedName) return storedName;
+		}
 		const u = await adminAuth.getUser(userId);
 		return u.displayName || u.email || userId;
-	} catch {
+	} catch (err) {
+		console.error("resolveMemberName failed:", err);
 		return userId;
 	}
+}
+
+function getIdPrefix(issueType: IssueType | undefined): string {
+	switch (issueType) {
+		case IssueType.EPIC: return ID_PREFIX.EPIC;
+		case IssueType.STORY: return ID_PREFIX.STORY;
+		case IssueType.BUG: return ID_PREFIX.BUG;
+		default: return ID_PREFIX.SPIKE;
+	}
+}
+
+function filterDefined(obj: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
+async function resolveAssigneeName(
+	assigneeId: string | null | undefined,
+	databases: FirebaseFirestore.Firestore
+): Promise<string | undefined> {
+	if (!assigneeId) return undefined;
+	const assigneeDoc = await databases.collection("members").doc(assigneeId).get();
+	if (!assigneeDoc.exists) return undefined;
+	const ad = assigneeDoc.data();
+	if (ad?.name) return ad.name as string;
+	if (ad?.userId) {
+		try {
+			const au = await adminAuth.getUser(ad.userId as string);
+			return au.displayName || au.email || undefined;
+		} catch (err) {
+			console.error("Failed to resolve assignee name:", err);
+		}
+	}
+	return undefined;
+}
+
+async function findTaskDoc(userId: string, taskId: string, databases: FirebaseFirestore.Firestore) {
+	const membersSnapshot = await databases.collection("members").where("userId", "==", userId).get();
+	const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId as string);
+	for (const wId of workspaceIds) {
+		const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
+		for (const pDoc of projectsSnapshot.docs) {
+			const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
+			if (tDoc.exists) return tDoc;
+		}
+	}
+	return null;
+}
+
+type ActivityEntry = { field: string; oldValue: string | undefined; newValue: string | undefined };
+
+function buildActivityEntries(existing: any, existingDueDate: string | undefined, incoming: {
+	name?: string; status?: string; priority?: string; assigneeId?: string | null;
+	dueDate?: Date; storyPoints?: number; epicId?: string | null; sprintId?: string | null; fixVersionId?: string | null;
+}): ActivityEntry[] {
+	const entries: ActivityEntry[] = [];
+	const push = (field: string, oldVal: string | undefined, newVal: string | undefined) => {
+		if (newVal !== undefined && newVal !== oldVal) entries.push({ field, oldValue: oldVal, newValue: newVal });
+	};
+	push("name", existing.name, incoming.name);
+	push("status", existing.status, incoming.status);
+	push("priority", existing.priority, incoming.priority);
+	push("assigneeId", existing.assigneeId ?? undefined, incoming.assigneeId ?? undefined);
+	push("dueDate", existingDueDate, incoming.dueDate?.toISOString());
+	push("storyPoints", existing.storyPoints?.toString(), incoming.storyPoints?.toString());
+	push("epicId", existing.epicId ?? undefined, incoming.epicId ?? undefined);
+	push("sprintId", existing.sprintId ?? undefined, incoming.sprintId ?? undefined);
+	push("fixVersion", existing.fixVersionId ?? undefined, incoming.fixVersionId ?? undefined);
+	return entries;
+}
+
+type TaskFilters = {
+	assigneeId?: string | null;
+	status?: TaskStatus | null;
+	priority?: TaskPriority | null;
+	issueType?: IssueType | null;
+	sprintId?: string | null;
+	dueDate?: string | null;
+	search?: string | null;
+};
+
+function applyTaskFilters(tasks: Task[], f: TaskFilters): Task[] {
+	let result = tasks;
+	if (f.assigneeId) result = result.filter((t: any) => t.assigneeId === f.assigneeId);
+	if (f.status) result = result.filter((t: any) => t.status === f.status);
+	if (f.priority) result = result.filter((t: any) => t.priority === f.priority);
+	if (f.issueType) result = result.filter((t: any) => t.issueType === f.issueType);
+	if (f.sprintId === BACKLOG_SPRINT_SENTINEL) {
+		result = result.filter((t: any) => !t.sprintId);
+	} else if (f.sprintId) {
+		result = result.filter((t: any) => t.sprintId === f.sprintId);
+	}
+	if (f.dueDate) {
+		const dDate = new Date(f.dueDate).toISOString();
+		result = result.filter((t: any) => t.dueDate === dDate);
+	}
+	if (f.search) {
+		const lowerSearch = f.search.toLowerCase();
+		result = result.filter((t: any) => t.name.toLowerCase().includes(lowerSearch));
+	}
+	return result;
+}
+
+async function resolveAssigneeDoc(
+	assigneeId: string | null | undefined,
+	databases: FirebaseFirestore.Firestore,
+	normalizeDate: (d: Record<string, unknown> | undefined) => string | undefined
+): Promise<any> {
+	if (!assigneeId) return null;
+	const memberDoc = await databases.collection("members").doc(assigneeId).get();
+	if (!memberDoc.exists) return null;
+	const mData = memberDoc.data();
+	const memberData = { ...mData, $id: memberDoc.id, $createdAt: normalizeDate(mData) } as any;
+	if (memberData.name) return { ...memberData, email: memberData.email ?? "" };
+	let u: { displayName?: string | null; email?: string } = {};
+	try {
+		u = await adminAuth.getUser(memberData.userId);
+	} catch (e) {
+		console.error("getUser failed for", memberData.userId, e);
+	}
+	return { ...memberData, name: u.displayName || u.email || memberData.userId, email: u.email ?? "" };
 }
 
 const normalizeDate = (data: Record<string, unknown> | undefined) => {
@@ -115,28 +242,11 @@ const app = new Hono()
 					};
 				}) as Task[]);
 			}
-			let tasks = allTasks;
+			let tasks = applyTaskFilters(allTasks, { assigneeId, status, priority, issueType, sprintId, dueDate });
 
-			if (assigneeId) tasks = tasks.filter((t: any) => t.assigneeId === assigneeId);
-			if (status) tasks = tasks.filter((t: any) => t.status === status);
-			if (priority) tasks = tasks.filter((t: any) => t.priority === priority);
-			if (issueType) tasks = tasks.filter((t: any) => t.issueType === issueType);
-			if (sprintId === BACKLOG_SPRINT_SENTINEL) {
-				tasks = tasks.filter((t: any) => !t.sprintId);
-			} else if (sprintId) {
-				tasks = tasks.filter((t: any) => t.sprintId === sprintId);
-			}
-			if (dueDate) {
-				const dDate = new Date(dueDate).toISOString();
-				tasks = tasks.filter((t: any) => t.dueDate === dDate);
-			}
-			
 			tasks.sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime());
-			
-			if (search) {
-				const lowerSearch = search.toLowerCase();
-				tasks = tasks.filter((task: any) => task.name.toLowerCase().includes(lowerSearch));
-			}
+
+			if (search) tasks = applyTaskFilters(tasks, { search });
 
 			const uniqueProjectIds = Array.from(new Set(tasks.map((task: any) => task.projectId)));
 			const assigneeIds = Array.from(new Set(tasks.map((task: any) => task.assigneeId).filter(Boolean)));
@@ -171,6 +281,9 @@ const app = new Hono()
 			
 			const assignees = await Promise.all(
 				members.map(async (m) => {
+					if (m.name) {
+						return { ...m, email: m.email ?? "" };
+					}
 					let u: { displayName?: string | null; email?: string } = {};
 					try {
 						u = await adminAuth.getUser(m.userId);
@@ -243,30 +356,7 @@ const app = new Hono()
 			$createdAt: normalizeDate(projectData),
 		} as Project : null;
 		
-		let assignee = null;
-		if (task.assigneeId) {
-		const memberDoc = await databases.collection("members").doc(task.assigneeId).get();
-		const mData = memberDoc.data();
-		const memberData = memberDoc.exists ? {
-			...mData,
-			$id: memberDoc.id,
-			$createdAt: normalizeDate(mData),
-		} as any : null;
-
-		if (memberData) {
-			let u: { displayName?: string | null; email?: string } = {};
-			try {
-				u = await adminAuth.getUser(memberData.userId);
-			} catch (e) {
-				console.error("getUser failed for", memberData.userId, e);
-			}
-			assignee = {
-				...memberData,
-				name: u.displayName || u.email || memberData.userId,
-				email: u.email ?? "",
-			};
-		}
-		} // end if (task.assigneeId)
+		const assignee = await resolveAssigneeDoc(task.assigneeId, databases, normalizeDate);
 
 		return c.json({ data: { ...task, project, assignee } });
 	})
@@ -320,16 +410,7 @@ workspaceId,
 				: (highestPositionSnapshot.docs[0].data().position as number);
 			
 			const newPosition = Number.isFinite(lastPosition) ? lastPosition + 1000 : 1000;
-			
-			const taskIdPrefix = (() => {
-				switch (issueType) {
-					case IssueType.EPIC: return ID_PREFIX.EPIC;
-					case IssueType.STORY: return ID_PREFIX.STORY;
-					case IssueType.BUG: return ID_PREFIX.BUG;
-					default: return ID_PREFIX.SPIKE;
-				}
-			})();
-			const newTaskId = generatePrefixedId(taskIdPrefix);
+			const newTaskId = generatePrefixedId(getIdPrefix(issueType));
 			const taskRef = databases
 				.collection("workspaces")
 				.doc(workspaceId)
@@ -337,28 +418,16 @@ workspaceId,
 				.doc(projectId)
 				.collection("tasks")
 				.doc(newTaskId);
+			const assigneeName = await resolveAssigneeName(assigneeId, databases);
+
 			await taskRef.set({
-					name,
-					status,
-					workspaceId,
-					projectId,
-					dueDate: dueDate.toISOString(),
-					assigneeId,
-					position: newPosition,
-					$createdAt: new Date().toISOString(),
-					description,
-					...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
-					...(issueType !== undefined ? { issueType } : {}),
-					...(priority !== undefined ? { priority } : {}),
-					...(parentId !== undefined ? { parentId } : {}),
-					...(labels !== undefined ? { labels } : {}),
-					...(sprintId !== undefined ? { sprintId } : {}),
-					...(storyPoints !== undefined ? { storyPoints } : {}),
-					...(epicId !== undefined ? { epicId } : {}),
-					...(fixVersionId !== undefined ? { fixVersionId } : {}),
-					...(originalEstimate !== undefined ? { originalEstimate } : {}),
-					...(remainingEstimate !== undefined ? { remainingEstimate } : {}),
-				});
+				name, status, workspaceId, projectId,
+				dueDate: dueDate.toISOString(),
+				assigneeId, position: newPosition,
+				$createdAt: new Date().toISOString(),
+				description,
+				...filterDefined({ assigneeName, acceptanceCriteria, issueType, priority, parentId, labels, sprintId, storyPoints, epicId, fixVersionId, originalEstimate, remainingEstimate }),
+			});
 			const doc = await taskRef.get();
 			const data = doc.data();
 			return c.json({ 
@@ -483,23 +552,8 @@ workspaceId,
 				rca,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
-			
-			const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
-			const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-			
-			let taskDoc = null;
-			for (const wId of workspaceIds) {
-				const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
-				for (const pDoc of projectsSnapshot.docs) {
-					const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
-					if (tDoc.exists) {
-						taskDoc = tDoc;
-						break;
-					}
-				}
-				if (taskDoc) break;
-			}
-			
+
+			const taskDoc = await findTaskDoc(user.$id, taskId, databases);
 			if (!taskDoc) return c.json({ error: "Not found" }, 404);
 			const tData = taskDoc.data();
 			const existingDueDate =
@@ -523,34 +577,7 @@ workspaceId,
 			// Build activity entries for changed fields
 			const memberName = await resolveMemberName(user.$id);
 
-			const activityEntries: Array<{ field: string; oldValue: string | undefined; newValue: string | undefined }> = [];
-			if (name !== undefined && name !== existingTask.name) {
-				activityEntries.push({ field: "name", oldValue: existingTask.name, newValue: name });
-			}
-			if (status !== undefined && status !== existingTask.status) {
-				activityEntries.push({ field: "status", oldValue: existingTask.status, newValue: status });
-			}
-			if (priority !== undefined && priority !== existingTask.priority) {
-				activityEntries.push({ field: "priority", oldValue: existingTask.priority, newValue: priority });
-			}
-			if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId) {
-				activityEntries.push({ field: "assigneeId", oldValue: existingTask.assigneeId, newValue: assigneeId });
-			}
-			if (dueDate !== undefined && dueDate.toISOString() !== existingDueDate) {
-				activityEntries.push({ field: "dueDate", oldValue: existingDueDate, newValue: dueDate.toISOString() });
-			}
-			if (storyPoints !== undefined && storyPoints !== existingTask.storyPoints) {
-				activityEntries.push({ field: "storyPoints", oldValue: existingTask.storyPoints?.toString(), newValue: storyPoints.toString() });
-			}
-			if (epicId !== undefined && epicId !== existingTask.epicId) {
-				activityEntries.push({ field: "epicId", oldValue: existingTask.epicId ?? undefined, newValue: epicId ?? undefined });
-			}
-			if (sprintId !== undefined && sprintId !== existingTask.sprintId) {
-				activityEntries.push({ field: "sprintId", oldValue: existingTask.sprintId ?? undefined, newValue: sprintId ?? undefined });
-			}
-			if (fixVersionId !== undefined && fixVersionId !== existingTask.fixVersionId) {
-				activityEntries.push({ field: "fixVersion", oldValue: existingTask.fixVersionId ?? undefined, newValue: fixVersionId ?? undefined });
-			}
+			const activityEntries = buildActivityEntries(existingTask, existingDueDate, { name, status, priority, assigneeId, dueDate, storyPoints, epicId, sprintId, fixVersionId });
 
 			let updateRef = taskDoc.ref;
 			if (projectId && projectId !== existingTask.projectId) {
@@ -569,25 +596,17 @@ workspaceId,
 				updateRef = newRef;
 			}
 
-			await updateRef.update({
-				...(name !== undefined ? { name } : {}),
-				...(status !== undefined ? { status } : {}),
-				...(dueDate !== undefined ? { dueDate: dueDate.toISOString() } : {}),
-				...(assigneeId !== undefined ? { assigneeId } : {}),
-				...(description !== undefined ? { description } : {}),
-				...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
-				...(issueType !== undefined ? { issueType } : {}),
-				...(priority !== undefined ? { priority } : {}),
-				...(parentId !== undefined ? { parentId } : {}),
-				...(labels !== undefined ? { labels } : {}),
-				...(sprintId !== undefined ? { sprintId } : {}),
-				...(storyPoints !== undefined ? { storyPoints } : {}),
-				...(epicId !== undefined ? { epicId } : {}),
-				...(fixVersionId !== undefined ? { fixVersionId } : {}),
-				...(originalEstimate !== undefined ? { originalEstimate } : {}),
-				...(remainingEstimate !== undefined ? { remainingEstimate } : {}),
-				...(rca !== undefined ? { rca } : {}),
-			});
+			const updatedAssigneeName = await resolveAssigneeName(assigneeId, databases);
+
+			await updateRef.update(filterDefined({
+				name, status,
+				dueDate: dueDate?.toISOString(),
+				assigneeId,
+				assigneeName: updatedAssigneeName,
+				description, acceptanceCriteria, issueType, priority, parentId,
+				labels, sprintId, storyPoints, epicId, fixVersionId,
+				originalEstimate, remainingEstimate, rca,
+			}));
 
 			// Write activity entries after main update
 			if (activityEntries.length > 0) {
@@ -624,39 +643,14 @@ workspaceId,
 		const user = c.get("user");
 		const databases = c.get("databases");
 		const { taskId } = c.req.param();
-		
-		const membersSnapshot = await databases.collection("members").where("userId", "==", user.$id).get();
-		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-		
-		let taskDoc = null;
-		for (const wId of workspaceIds) {
-			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
-			for (const pDoc of projectsSnapshot.docs) {
-				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
-				if (tDoc.exists) {
-					taskDoc = tDoc;
-					break;
-				}
-			}
-			if (taskDoc) break;
-		}
-		
+
+		const taskDoc = await findTaskDoc(user.$id, taskId, databases);
 		if (!taskDoc) return c.json({ error: "Not found" }, 404);
 		const tData = taskDoc.data();
-		const task = {
-			...tData,
-			$id: taskDoc.id,
-			$createdAt: normalizeDate(tData),
-		} as Task;
-		
-		const member = await getMember({
-			databases,
-			workspaceId: task.workspaceId,
-			userId: user.$id,
-		});
-		if (!member) {
-			return c.json({ error: "Unauthorized" }, 401);
-		}
+		const task = { ...tData, $id: taskDoc.id, $createdAt: normalizeDate(tData) } as Task;
+
+		const member = await getMember({ databases, workspaceId: task.workspaceId, userId: user.$id });
+		if (!member) return c.json({ error: "Unauthorized" }, 401);
 		await taskDoc.ref.delete();
 		return c.json({ data: { taskId } });
 	})
@@ -665,23 +659,9 @@ workspaceId,
 		const currentUser = c.get("user");
 		const databases = c.get("databases");
 
-		const membersSnapshot = await databases.collection("members").where("userId", "==", currentUser.$id).get();
-		const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
-
-		let taskRef = null;
-		for (const wId of workspaceIds) {
-			const projectsSnapshot = await databases.collection("workspaces").doc(wId).collection("projects").get();
-			for (const pDoc of projectsSnapshot.docs) {
-				const tDoc = await databases.collection("workspaces").doc(wId).collection("projects").doc(pDoc.id).collection("tasks").doc(taskId).get();
-				if (tDoc.exists) {
-					taskRef = tDoc.ref;
-					break;
-				}
-			}
-			if (taskRef) break;
-		}
-
-		if (!taskRef) return c.json({ error: "Not found" }, 404);
+		const taskDoc2 = await findTaskDoc(currentUser.$id, taskId, databases);
+		if (!taskDoc2) return c.json({ error: "Not found" }, 404);
+		const taskRef = taskDoc2.ref;
 
 		const commentsSnapshot = await taskRef.collection("comments").orderBy("$createdAt", "asc").get();
 		const comments = commentsSnapshot.docs.map((doc: any) => {
@@ -901,8 +881,8 @@ workspaceId,
 							}
 						}
 					}
-				} catch {
-					// leave targetTask null
+				} catch (linkErr) {
+					console.error("Failed to resolve linked task:", linkErr);
 				}
 				return { ...link, targetTask };
 			})
@@ -1189,8 +1169,8 @@ workspaceId,
 		if (storagePath) {
 			try {
 				await adminStorage.bucket().file(storagePath).delete();
-			} catch {
-				// Non-fatal: file may have already been deleted
+			} catch (storageErr) {
+				console.error("Storage delete failed (non-fatal):", storageErr);
 			}
 		}
 

@@ -1,20 +1,24 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { DottedSeperator } from "@/components/dotted-seperator";
 import { useGetActivity } from "../api/use-get-activity";
 import { TaskActivity as TaskActivityType } from "../types";
-import { snakeCaseToTitleCase } from "@/lib/utils";
+import { formatMinutes, snakeCaseToTitleCase } from "@/lib/utils";
 
 interface TaskActivityProps {
 	taskId: string;
 }
 
 const ENUM_FIELDS = new Set(["status", "priority", "issueType"]);
+const DATE_FIELDS = new Set(["dueDate", "startDate", "date"]);
 
 const formatValue = (field: string | undefined, value: string | undefined): string => {
 	if (!value) return "";
 	if (field && ENUM_FIELDS.has(field)) return snakeCaseToTitleCase(value);
+	if (field && DATE_FIELDS.has(field)) {
+		try { return format(new Date(value), "MMM d, yyyy"); } catch (err) { console.error("Date format error:", err); return value; }
+	}
 	return value;
 };
 
@@ -44,8 +48,13 @@ const activityLabel = (entry: TaskActivityType): string => {
 			return entry.newValue ? `linked task ${entry.newValue}` : "added a link";
 		case "LINK_REMOVED":
 			return "removed a link";
-		case "WORK_LOGGED":
-			return entry.newValue ? `logged ${entry.newValue} of work` : "logged work";
+		case "WORK_LOGGED": {
+			if (entry.newValue) {
+				const mins = Number.parseInt(entry.newValue, 10);
+				return `logged ${Number.isNaN(mins) ? entry.newValue : formatMinutes(mins)} of work`;
+			}
+			return "logged work";
+		}
 		case "WORKLOG_DELETED":
 			return "deleted a work log entry";
 		default:

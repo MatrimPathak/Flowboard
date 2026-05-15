@@ -41,7 +41,7 @@ const statusLabel: Record<VersionStatus, string> = {
 function formatDate(val: string | null | undefined): string | null {
   if (!val) return null;
   const d = new Date(val);
-  return isNaN(d.getTime()) ? null : format(d, "MMM d, yyyy");
+  return Number.isNaN(d.getTime()) ? null : format(d, "MMM d, yyyy");
 }
 
 export const VersionsList = ({ workspaceId, projectId }: VersionsListProps) => {

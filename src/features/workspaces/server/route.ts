@@ -102,6 +102,8 @@ const app = new Hono()
 				userId: user.$id,
 				workspaceId: workspaceRef.id,
 				role: MemberRole.ADMIN,
+				name: user.name || "",
+				photoUrl: user.photoUrl || "",
 				$createdAt: new Date().toISOString(),
 			});
 			
@@ -385,6 +387,8 @@ const app = new Hono()
 					workspaceId,
 					userId: user.$id,
 					role: MemberRole.MEMBER,
+					name: user.name || "",
+					photoUrl: user.photoUrl || "",
 					$createdAt: new Date().toISOString(),
 				});
 			});
