@@ -67,7 +67,7 @@ export const TaskIdClient = () => {
 					<Button
 						size="sm"
 						variant="ghost"
-						className="size-7 p-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+						className="size-7 p-0 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity shrink-0"
 						onClick={() => startEditingTitle(data.name)}
 						aria-label="Edit title"
 					>

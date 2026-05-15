@@ -136,8 +136,11 @@ function applyTaskFilters(tasks: Task[], f: TaskFilters): Task[] {
 		result = result.filter((t: any) => t.sprintId === f.sprintId);
 	}
 	if (f.dueDate) {
-		const dDate = new Date(f.dueDate).toISOString();
-		result = result.filter((t: any) => t.dueDate === dDate);
+		const parsed = new Date(f.dueDate);
+		if (!Number.isNaN(parsed.getTime())) {
+			const dDate = parsed.toISOString();
+			result = result.filter((t: any) => t.dueDate === dDate);
+		}
 	}
 	if (f.search) {
 		const lowerSearch = f.search.toLowerCase();
@@ -596,7 +599,7 @@ workspaceId,
 				updateRef = newRef;
 			}
 
-			const updatedAssigneeName = await resolveAssigneeName(assigneeId, databases);
+			const updatedAssigneeName = assigneeId === null ? null : await resolveAssigneeName(assigneeId, databases);
 
 			await updateRef.update(filterDefined({
 				name, status,
@@ -1066,7 +1069,7 @@ workspaceId,
 				return c.json({ error: "workspaceId and projectId are required" }, 400);
 			}
 			if (file.size > MAX_FILE_SIZE) {
-				return c.json({ error: "File exceeds 10 MB limit" }, 400);
+				return c.json({ error: "File exceeds the 4 MB limit" }, 400);
 			}
 			if (file.size === 0) {
 				return c.json({ error: "File is empty" }, 400);
