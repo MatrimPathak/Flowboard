@@ -28,10 +28,21 @@ import {
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 
+const SURFACE = "#0F172A";
+const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
+const TEXT_LABEL = "rgba(255,255,255,0.35)";
+const PRIMARY = "#4F7CFF";
+
 const VIEWS = [
   { label: "List", value: "table", icon: List },
   { label: "Board", value: "kanban", icon: LayoutGrid },
 ] as const;
+
+function getDaysLeftColor(days: number): string {
+  if (days <= 2) return "#EF4444";
+  if (days <= 5) return "#F59E0B";
+  return "#22C55E";
+}
 
 export const ActiveSprintClient = () => {
   const workspaceId = useWorkspaceId();
@@ -91,12 +102,12 @@ export const ActiveSprintClient = () => {
             onClick={() => openCreateModal({ projectId })}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150"
             style={{
-              background: "#4F7CFF",
+              background: PRIMARY,
               color: "#FFFFFF",
               boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "#3d6ae8"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#4F7CFF"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = PRIMARY; }}
           >
             <Plus className="size-4" />
             Add to Sprint
@@ -112,13 +123,13 @@ export const ActiveSprintClient = () => {
         /* ── No active sprint empty state ── */
         <div
           className="flex flex-col items-center justify-center gap-6 py-20 rounded-card"
-          style={{ background: "#0F172A", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
         >
           <div
             className="flex items-center justify-center size-16 rounded-2xl"
             style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
           >
-            <Timer className="size-7" style={{ color: "#4F7CFF" }} />
+            <Timer className="size-7" style={{ color: PRIMARY }} />
           </div>
           <div className="text-center flex flex-col gap-2 max-w-sm">
             <h2 className="text-xl font-bold text-white">No Active Sprint</h2>
@@ -132,7 +143,7 @@ export const ActiveSprintClient = () => {
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
             style={{
               background: "rgba(79,124,255,0.12)",
-              color: "#4F7CFF",
+              color: PRIMARY,
               border: "1px solid rgba(79,124,255,0.25)",
             }}
           >
@@ -145,17 +156,17 @@ export const ActiveSprintClient = () => {
           {/* ── Sprint meta card ── */}
           <div
             className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-card"
-            style={{ background: "#0F172A", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
           >
             <div className="flex flex-col gap-1">
-              <p className="text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
                 Sprint
               </p>
               <p className="text-base font-semibold text-white">{activeSprint.name}</p>
             </div>
             {activeSprint.startDate && activeSprint.endDate && (
               <div className="flex flex-col gap-1">
-                <p className="text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+                <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
                   Duration
                 </p>
                 <p className="text-sm font-medium text-white flex items-center gap-1.5">
@@ -167,19 +178,19 @@ export const ActiveSprintClient = () => {
             )}
             {daysLeft !== null && (
               <div className="flex flex-col gap-1">
-                <p className="text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+                <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
                   Days Left
                 </p>
                 <p
                   className="text-base font-semibold"
-                  style={{ color: daysLeft <= 2 ? "#EF4444" : daysLeft <= 5 ? "#F59E0B" : "#22C55E" }}
+                  style={{ color: getDaysLeftColor(daysLeft) }}
                 >
                   {daysLeft}d
                 </p>
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <p className="text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
                 Progress
               </p>
               <div className="flex items-center gap-2">
@@ -188,13 +199,13 @@ export const ActiveSprintClient = () => {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${completion}%`,
-                      background: completion === 100 ? "#22C55E" : "#4F7CFF",
+                      background: completion === 100 ? "#22C55E" : PRIMARY,
                     }}
                   />
                 </div>
                 <span className="text-xs font-medium text-white shrink-0">{completion}%</span>
               </div>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-xs" style={{ color: TEXT_LABEL }}>
                 {done} / {total} done
               </p>
             </div>
@@ -204,7 +215,7 @@ export const ActiveSprintClient = () => {
           <div className="flex items-center gap-3">
             <div
               className="flex items-center p-1 rounded-btn gap-0.5"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+              style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER_SUBTLE}` }}
             >
               {VIEWS.map(({ label, value, icon: Icon }) => (
                 <button
@@ -232,8 +243,8 @@ export const ActiveSprintClient = () => {
           <div
             className="rounded-card overflow-hidden"
             style={{
-              background: "#0F172A",
-              border: "1px solid rgba(255,255,255,0.06)",
+              background: SURFACE,
+              border: `1px solid ${BORDER_SUBTLE}`,
               boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
             }}
           >

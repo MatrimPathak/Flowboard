@@ -27,6 +27,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
+const PRIMARY = "#4F7CFF";
+const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
+const BG_HOVER = "rgba(255,255,255,0.04)";
+const TEXT_DIM = "rgba(255,255,255,0.3)";
+
 export const MembersList = () => {
   const workspaceId = useWorkspaceId();
   const router = useRouter();
@@ -75,9 +80,9 @@ export const MembersList = () => {
           {/* Search */}
           <div
             className="flex items-center gap-2 px-3 h-9 rounded-btn"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+            style={{ background: BG_HOVER, border: "1px solid rgba(255,255,255,0.07)" }}
           >
-            <Search className="size-3.5 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+            <Search className="size-3.5 shrink-0" style={{ color: TEXT_DIM }} />
             <input
               type="text"
               placeholder="Search members..."
@@ -92,12 +97,12 @@ export const MembersList = () => {
             onClick={() => router.push(`/workspace/${workspaceId}/settings`)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
             style={{
-              background: "#4F7CFF",
+              background: PRIMARY,
               color: "#fff",
               boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#3d6ae8"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#4F7CFF"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = PRIMARY; }}
           >
             <UserPlus className="size-4" />
             Invite Member
@@ -110,14 +115,14 @@ export const MembersList = () => {
         className="rounded-card overflow-hidden"
         style={{
           background: "#0F172A",
-          border: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
+          border: `1px solid ${BORDER_SUBTLE}`,
+          boxShadow: `0 0 0 1px ${BG_HOVER}, 0 8px 30px rgba(0,0,0,0.25)`,
         }}
       >
         {/* Table header */}
         <div
           className="grid grid-cols-[2fr_1fr_1fr_1fr_48px] gap-4 px-6 py-3 text-[11px] font-semibold uppercase tracking-widest"
-          style={{ color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ color: TEXT_DIM, borderBottom: `1px solid ${BORDER_SUBTLE}` }}
         >
           <span>Member</span>
           <span>Role</span>
@@ -141,7 +146,7 @@ export const MembersList = () => {
             <div
               key={member.$id}
               className="group grid grid-cols-[2fr_1fr_1fr_1fr_48px] gap-4 items-center px-6 py-4 hover:bg-white/[0.02] transition-colors"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+              style={{ borderBottom: `1px solid ${BG_HOVER}` }}
             >
               {/* Avatar + Name */}
               <div className="flex items-center gap-3 min-w-0">
@@ -161,8 +166,8 @@ export const MembersList = () => {
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-md"
                   style={
                     member.role === MemberRole.ADMIN
-                      ? { background: "rgba(79,124,255,0.12)", color: "#4F7CFF" }
-                      : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)" }
+                      ? { background: "rgba(79,124,255,0.12)", color: PRIMARY }
+                      : { background: BORDER_SUBTLE, color: "rgba(255,255,255,0.45)" }
                   }
                 >
                   {member.role === MemberRole.ADMIN && <ShieldCheck className="size-3" />}
@@ -178,9 +183,9 @@ export const MembersList = () => {
               {/* Workload placeholder */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <div className="h-1 rounded-full w-1/3" style={{ background: "#4F7CFF" }} />
+                  <div className="h-1 rounded-full w-1/3" style={{ background: PRIMARY }} />
                 </div>
-                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>33%</span>
+                <span className="text-[11px]" style={{ color: TEXT_DIM }}>33%</span>
               </div>
 
               {/* Actions */}

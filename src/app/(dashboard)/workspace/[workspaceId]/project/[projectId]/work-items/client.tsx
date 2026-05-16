@@ -27,6 +27,11 @@ import {
   Loader,
 } from "lucide-react";
 
+const PRIMARY = "#4F7CFF";
+const SUCCESS = "#22C55E";
+const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
+const BG_HOVER = "rgba(255,255,255,0.04)";
+
 /* ── Type filter pills ── */
 const TYPE_FILTERS = [
   { label: "All", value: null, icon: Layers },
@@ -43,10 +48,10 @@ const VIEWS = [
 
 /* ── Type badge colors ── */
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  STORY: { bg: "rgba(34,197,94,0.12)", text: "#22C55E" },
+  STORY: { bg: "rgba(34,197,94,0.12)", text: SUCCESS },
   BUG: { bg: "rgba(239,68,68,0.12)", text: "#EF4444" },
   SPIKE: { bg: "rgba(139,92,246,0.12)", text: "#8B5CF6" },
-  TASK: { bg: "rgba(79,124,255,0.12)", text: "#4F7CFF" },
+  TASK: { bg: "rgba(79,124,255,0.12)", text: PRIMARY },
   EPIC: { bg: "rgba(245,158,11,0.12)", text: "#F59E0B" },
 };
 
@@ -102,9 +107,9 @@ export const WorkItemsClient = () => {
             {activeSprint_display && (
               <span
                 className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
-                style={{ background: "rgba(34,197,94,0.1)", color: "#22C55E", border: "1px solid rgba(34,197,94,0.2)" }}
+                style={{ background: "rgba(34,197,94,0.1)", color: SUCCESS, border: "1px solid rgba(34,197,94,0.2)" }}
               >
-                <span className="size-1.5 rounded-full bg-[#22C55E] inline-block" />
+                <span className="size-1.5 rounded-full inline-block" style={{ background: SUCCESS }} />
                 {activeSprint_display}
               </span>
             )}
@@ -116,12 +121,12 @@ export const WorkItemsClient = () => {
           onClick={() => openCreateModal({ projectId })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150"
           style={{
-            background: "#4F7CFF",
+            background: PRIMARY,
             color: "#FFFFFF",
             boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#3d6ae8"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#4F7CFF"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = PRIMARY; }}
         >
           <Plus className="size-4" />
           New Work Item
@@ -146,11 +151,11 @@ export const WorkItemsClient = () => {
                   isActive
                     ? {
                         background: color?.bg ?? "rgba(79,124,255,0.12)",
-                        color: color?.text ?? "#4F7CFF",
+                        color: color?.text ?? PRIMARY,
                         border: `1px solid ${color?.text ? color.text + "30" : "rgba(79,124,255,0.3)"}`,
                       }
                     : {
-                        background: "rgba(255,255,255,0.04)",
+                        background: BG_HOVER,
                         color: "rgba(255,255,255,0.5)",
                         border: "1px solid rgba(255,255,255,0.06)",
                       }
@@ -166,7 +171,7 @@ export const WorkItemsClient = () => {
         {/* View toggle */}
         <div
           className="flex items-center p-1 rounded-btn gap-0.5"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ background: BG_HOVER, border: `1px solid ${BORDER_SUBTLE}` }}
         >
           {VIEWS.map(({ label, value, icon: Icon }) => (
             <button
@@ -192,8 +197,8 @@ export const WorkItemsClient = () => {
         className="rounded-card overflow-hidden"
         style={{
           background: "#0F172A",
-          border: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
+          border: `1px solid ${BORDER_SUBTLE}`,
+          boxShadow: `0 0 0 1px ${BG_HOVER}, 0 8px 30px rgba(0,0,0,0.25)`,
         }}
       >
         {isLoading ? (
@@ -213,7 +218,7 @@ export const WorkItemsClient = () => {
               type="button"
               onClick={() => openCreateModal({ projectId })}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn transition-all"
-              style={{ background: "rgba(79,124,255,0.12)", color: "#4F7CFF", border: "1px solid rgba(79,124,255,0.2)" }}
+              style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.2)" }}
             >
               <Plus className="size-4" />
               Create Work Item

@@ -32,6 +32,15 @@ import {
 import { useMemo } from "react";
 import { format, subDays, isBefore } from "date-fns";
 
+const SURFACE = "#0F172A";
+const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
+const BG_HOVER = "rgba(255,255,255,0.04)";
+const TEXT_DIM = "rgba(255,255,255,0.3)";
+const PRIMARY = "#4F7CFF";
+const SUCCESS = "#22C55E";
+const DANGER = "#EF4444";
+const BORDER_1PX = `1px solid ${BORDER_SUBTLE}`;
+
 // Helper: hour-based greeting
 function getGreeting(name?: string | null) {
   const h = new Date().getHours();
@@ -82,17 +91,17 @@ function IntelCard({
     trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
   const trendColor =
     trend === "up"
-      ? "#22C55E"
+      ? SUCCESS
       : trend === "down"
-      ? "#EF4444"
-      : "rgba(255,255,255,0.3)";
+      ? DANGER
+      : TEXT_DIM;
 
   return (
     <div
       className="relative flex flex-col justify-between p-5 rounded-card overflow-hidden"
       style={{
-        background: "#0F172A",
-        border: "1px solid rgba(255,255,255,0.06)",
+        background: SURFACE,
+        border: BORDER_1PX,
         boxShadow:
           "0 0 0 1px rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.2)",
         minHeight: 140,
@@ -152,12 +161,12 @@ function IntelCard({
                   >
                     <stop
                       offset="0%"
-                      stopColor={accent ?? "#4F7CFF"}
+                      stopColor={accent ?? PRIMARY}
                       stopOpacity={0.3}
                     />
                     <stop
                       offset="100%"
-                      stopColor={accent ?? "#4F7CFF"}
+                      stopColor={accent ?? PRIMARY}
                       stopOpacity={0}
                     />
                   </linearGradient>
@@ -165,7 +174,7 @@ function IntelCard({
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke={accent ?? "#4F7CFF"}
+                  stroke={accent ?? PRIMARY}
                   strokeWidth={1.5}
                   fill={`url(#grad-${title})`}
                   dot={false}
@@ -256,14 +265,14 @@ export const WorkspaceIdClient = () => {
           subtitle={todayDue.length === 1 ? "item due today" : "items due today"}
           icon={Target}
           iconBg="rgba(79,124,255,0.12)"
-          iconColor="#4F7CFF"
+          iconColor={PRIMARY}
           trend={todayDue.length > 3 ? "down" : "neutral"}
           trendLabel={
             todayDue.length > 0
               ? `${todayDue.length} need attention`
               : "All clear"
           }
-          accent="#4F7CFF"
+          accent={PRIMARY}
           chart={sparkData}
         />
         <IntelCard
@@ -274,10 +283,10 @@ export const WorkspaceIdClient = () => {
           }
           icon={AlertCircle}
           iconBg="rgba(239,68,68,0.12)"
-          iconColor="#EF4444"
+          iconColor={DANGER}
           trend={blocked.length > 0 ? "down" : "neutral"}
           trendLabel={blocked.length > 0 ? "Review blockers" : "No blockers"}
-          accent="#EF4444"
+          accent={DANGER}
         />
         <IntelCard
           title="Sprint Health"
@@ -285,10 +294,10 @@ export const WorkspaceIdClient = () => {
           subtitle={`${inProgress.length} in progress · ${done.length} done`}
           icon={Zap}
           iconBg="rgba(34,197,94,0.12)"
-          iconColor="#22C55E"
+          iconColor={SUCCESS}
           trend={completionPct >= 50 ? "up" : "down"}
           trendLabel={`${tasks.length} total items`}
-          accent="#22C55E"
+          accent={SUCCESS}
         />
         <IntelCard
           title="Upcoming Releases"
@@ -306,11 +315,11 @@ export const WorkspaceIdClient = () => {
           value="—"
           subtitle="GitHub integration coming"
           icon={GitPullRequest}
-          iconBg="rgba(255,255,255,0.06)"
-          iconColor="rgba(255,255,255,0.3)"
+          iconBg={BORDER_SUBTLE}
+          iconColor={TEXT_DIM}
           trend="neutral"
           trendLabel="Connect GitHub"
-          accent="#4F7CFF"
+          accent={PRIMARY}
         />
         <IntelCard
           title="AI Suggestions"
@@ -333,8 +342,8 @@ export const WorkspaceIdClient = () => {
         <div
           className="p-6 rounded-card"
           style={{
-            background: "#0F172A",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: SURFACE,
+            border: BORDER_1PX,
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
           }}
@@ -353,7 +362,7 @@ export const WorkspaceIdClient = () => {
             </div>
             <span
               className="text-xs px-2.5 py-1 rounded-full font-medium"
-              style={{ background: "rgba(34,197,94,0.12)", color: "#22C55E" }}
+              style={{ background: "rgba(34,197,94,0.12)", color: SUCCESS }}
             >
               {completionPct}% complete
             </span>
@@ -374,30 +383,30 @@ export const WorkspaceIdClient = () => {
                   >
                     <stop
                       offset="0%"
-                      stopColor="#22C55E"
+                      stopColor={SUCCESS}
                       stopOpacity={0.25}
                     />
                     <stop
                       offset="100%"
-                      stopColor="#22C55E"
+                      stopColor={SUCCESS}
                       stopOpacity={0}
                     />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.04)"
+                  stroke={BG_HOVER}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 11, fill: TEXT_DIM }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 11, fill: TEXT_DIM }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -413,7 +422,7 @@ export const WorkspaceIdClient = () => {
                 <Area
                   type="monotone"
                   dataKey="completed"
-                  stroke="#22C55E"
+                  stroke={SUCCESS}
                   strokeWidth={2}
                   fill="url(#grad-completed)"
                   dot={false}
@@ -428,8 +437,8 @@ export const WorkspaceIdClient = () => {
         <div
           className="p-6 rounded-card"
           style={{
-            background: "#0F172A",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: SURFACE,
+            border: BORDER_1PX,
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
           }}
@@ -446,7 +455,7 @@ export const WorkspaceIdClient = () => {
             </div>
             <span
               className="text-xs px-2.5 py-1 rounded-full font-medium"
-              style={{ background: "rgba(79,124,255,0.12)", color: "#4F7CFF" }}
+              style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY }}
             >
               {tasks.filter((t) => t.status !== TaskStatus.DONE).length}{" "}
               remaining
@@ -468,30 +477,30 @@ export const WorkspaceIdClient = () => {
                   >
                     <stop
                       offset="0%"
-                      stopColor="#4F7CFF"
+                      stopColor={PRIMARY}
                       stopOpacity={0.25}
                     />
                     <stop
                       offset="100%"
-                      stopColor="#4F7CFF"
+                      stopColor={PRIMARY}
                       stopOpacity={0}
                     />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.04)"
+                  stroke={BG_HOVER}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 11, fill: TEXT_DIM }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 11, fill: TEXT_DIM }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -507,7 +516,7 @@ export const WorkspaceIdClient = () => {
                 <Area
                   type="monotone"
                   dataKey="remaining"
-                  stroke="#4F7CFF"
+                  stroke={PRIMARY}
                   strokeWidth={2}
                   fill="url(#grad-remaining)"
                   dot={false}

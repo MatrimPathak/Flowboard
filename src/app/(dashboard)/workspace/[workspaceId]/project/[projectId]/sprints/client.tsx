@@ -15,6 +15,15 @@ import { Plus, Timer, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import Link from "next/link";
 
+const PRIMARY = "#4F7CFF";
+const TEXT_DIM = "rgba(255,255,255,0.3)";
+
+function getProgressColor(pct: number): string {
+  if (pct >= 70) return "#22C55E";
+  if (pct >= 40) return PRIMARY;
+  return "#F59E0B";
+}
+
 export const SprintsClient = () => {
   const projectId = useProjectId();
   const workspaceId = useWorkspaceId();
@@ -63,12 +72,12 @@ export const SprintsClient = () => {
           onClick={() => openCreateSprint({ projectId })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
           style={{
-            background: "#4F7CFF",
+            background: PRIMARY,
             color: "#fff",
             boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#3d6ae8"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#4F7CFF"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = PRIMARY; }}
         >
           <Plus className="size-4" />
           New Sprint
@@ -108,7 +117,7 @@ export const SprintsClient = () => {
           <div className="w-full h-1.5 rounded-full mb-4" style={{ background: "rgba(255,255,255,0.08)" }}>
             <div
               className="h-1.5 rounded-full transition-all duration-500"
-              style={{ width: `${activePct}%`, background: activePct >= 70 ? "#22C55E" : activePct >= 40 ? "#4F7CFF" : "#F59E0B" }}
+              style={{ width: `${activePct}%`, background: getProgressColor(activePct) }}
             />
           </div>
 
@@ -122,7 +131,7 @@ export const SprintsClient = () => {
                 <p className="text-sm font-semibold text-white">
                   {daysLeft != null ? (daysLeft >= 0 ? `${daysLeft}d left` : "Overdue") : "—"}
                 </p>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Remaining</p>
+                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Remaining</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -131,7 +140,7 @@ export const SprintsClient = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">{activeCompleted}/{activeTasks}</p>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Done</p>
+                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Done</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -140,7 +149,7 @@ export const SprintsClient = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">{activeStats?.blocked ?? 0}</p>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Blocked</p>
+                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Blocked</p>
               </div>
             </div>
           </div>
@@ -149,7 +158,7 @@ export const SprintsClient = () => {
             <Link
               href={`/workspace/${workspaceId}/project/${projectId}/active-sprint`}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-btn transition-all"
-              style={{ background: "#4F7CFF", color: "#fff" }}
+              style={{ background: PRIMARY, color: "#fff" }}
             >
               <Zap className="size-3.5" />
               View Board
@@ -169,7 +178,7 @@ export const SprintsClient = () => {
               className="flex items-center justify-center size-14 rounded-2xl"
               style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
             >
-              <Timer className="size-6" style={{ color: "#4F7CFF" }} />
+              <Timer className="size-6" style={{ color: PRIMARY }} />
             </div>
             <div className="text-center">
               <h3 className="text-base font-semibold text-white">No sprints yet</h3>
@@ -181,7 +190,7 @@ export const SprintsClient = () => {
               type="button"
               onClick={() => openCreateSprint({ projectId })}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn"
-              style={{ background: "rgba(79,124,255,0.12)", color: "#4F7CFF", border: "1px solid rgba(79,124,255,0.2)" }}
+              style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.2)" }}
             >
               <Plus className="size-4" />
               Create Sprint

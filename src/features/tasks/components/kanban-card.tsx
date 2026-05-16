@@ -6,20 +6,24 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
 import { MoreHorizontal, AlertCircle, GitPullRequest } from "lucide-react";
 
+const PRIMARY = "#4F7CFF";
+const DANGER = "#EF4444";
+const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
+
 const TYPE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   EPIC: { label: "Epic", bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },
   STORY: { label: "Story", bg: "rgba(34,197,94,0.12)", color: "#22C55E" },
-  BUG: { label: "Bug", bg: "rgba(239,68,68,0.12)", color: "#EF4444" },
+  BUG: { label: "Bug", bg: "rgba(239,68,68,0.12)", color: DANGER },
   SPIKE: { label: "Spike", bg: "rgba(139,92,246,0.12)", color: "#8B5CF6" },
-  TASK: { label: "Task", bg: "rgba(79,124,255,0.12)", color: "#4F7CFF" },
+  TASK: { label: "Task", bg: "rgba(79,124,255,0.12)", color: PRIMARY },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  CRITICAL: { label: "Critical", color: "#EF4444", dot: "bg-red-400" },
+  CRITICAL: { label: "Critical", color: DANGER, dot: "bg-red-400" },
   HIGH: { label: "High", color: "#F59E0B", dot: "bg-yellow-400" },
-  MEDIUM: { label: "Medium", color: "#4F7CFF", dot: "bg-blue-400" },
+  MEDIUM: { label: "Medium", color: PRIMARY, dot: "bg-blue-400" },
   LOW: { label: "Low", color: "rgba(255,255,255,0.3)", dot: "bg-white/20" },
-  BLOCKER: { label: "Blocker", color: "#EF4444", dot: "bg-red-400" },
+  BLOCKER: { label: "Blocker", color: DANGER, dot: "bg-red-400" },
   TRIVIAL: { label: "Trivial", color: "rgba(255,255,255,0.2)", dot: "bg-white/10" },
 };
 
@@ -38,7 +42,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
       className="group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150"
       style={{
         background: "#0F172A",
-        border: `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.06)"}`,
+        border: `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`,
         boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
       }}
       onMouseEnter={(e) => {
@@ -47,7 +51,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.06)"}`;
+        (e.currentTarget as HTMLDivElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`;
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
         (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
       }}
@@ -85,7 +89,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
         {task.storyPoints != null && (
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}
+            style={{ background: BORDER_SUBTLE, color: "rgba(255,255,255,0.4)" }}
           >
             {task.storyPoints} SP
           </span>
@@ -93,7 +97,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
         {hasLinkedPR && (
           <span
             className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(79,124,255,0.1)", color: "#4F7CFF" }}
+            style={{ background: "rgba(79,124,255,0.1)", color: PRIMARY }}
           >
             <GitPullRequest className="size-3" />
             PR
@@ -102,7 +106,7 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
         {isBlocked && (
           <span
             className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(239,68,68,0.12)", color: "#EF4444" }}
+            style={{ background: "rgba(239,68,68,0.12)", color: DANGER }}
           >
             <AlertCircle className="size-3" />
             Blocked

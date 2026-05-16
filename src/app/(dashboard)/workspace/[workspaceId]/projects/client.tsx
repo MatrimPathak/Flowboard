@@ -11,6 +11,9 @@ import Link from "next/link";
 import { Plus, FolderKanban, Loader } from "lucide-react";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 
+const SURFACE = "#0F172A";
+const PRIMARY = "#4F7CFF";
+
 export const ProjectsClient = () => {
   const workspaceId = useWorkspaceId();
   const { data: projectsData, isLoading } = useGetProjects({ workspaceId });
@@ -43,12 +46,12 @@ export const ProjectsClient = () => {
           onClick={open}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150"
           style={{
-            background: "#4F7CFF",
+            background: PRIMARY,
             color: "#FFFFFF",
             boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#3d6ae8"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#4F7CFF"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = PRIMARY; }}
         >
           <Plus className="size-4" />
           New Project
@@ -63,13 +66,13 @@ export const ProjectsClient = () => {
       ) : projects.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center gap-5 py-20 rounded-card"
-          style={{ background: "#0F172A", border: "1px dashed rgba(255,255,255,0.1)" }}
+          style={{ background: SURFACE, border: "1px dashed rgba(255,255,255,0.1)" }}
         >
           <div
             className="flex items-center justify-center size-16 rounded-2xl"
             style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
           >
-            <FolderKanban className="size-7" style={{ color: "#4F7CFF" }} />
+            <FolderKanban className="size-7" style={{ color: PRIMARY }} />
           </div>
           <div className="text-center flex flex-col gap-2">
             <h2 className="text-xl font-bold text-white">No projects yet</h2>
@@ -81,7 +84,7 @@ export const ProjectsClient = () => {
             type="button"
             onClick={open}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn"
-            style={{ background: "rgba(79,124,255,0.12)", color: "#4F7CFF", border: "1px solid rgba(79,124,255,0.25)" }}
+            style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.25)" }}
           >
             <Plus className="size-4" />
             Create Project
@@ -109,7 +112,7 @@ export const ProjectsClient = () => {
                   <div
                     className="flex flex-col gap-4 p-5 h-full rounded-card transition-all duration-200"
                     style={{
-                      background: "#0F172A",
+                      background: SURFACE,
                       border: "1px solid rgba(255,255,255,0.06)",
                       boxShadow: "0 0 0 1px rgba(255,255,255,0.03)",
                     }}
@@ -154,7 +157,7 @@ export const ProjectsClient = () => {
                             style={{
                               background: "rgba(255,255,255,0.08)",
                               color: "rgba(255,255,255,0.5)",
-                              ringColor: "#0F172A",
+                              ringColor: SURFACE,
                             } as React.CSSProperties}
                           >
                             +{members.length - 4}
@@ -167,7 +170,7 @@ export const ProjectsClient = () => {
                         className="text-[12px] px-2.5 py-1 rounded-full font-medium"
                         style={{
                           background: openCount > 0 ? "rgba(79,124,255,0.1)" : "rgba(255,255,255,0.05)",
-                          color: openCount > 0 ? "#4F7CFF" : "rgba(255,255,255,0.3)",
+                          color: openCount > 0 ? PRIMARY : "rgba(255,255,255,0.3)",
                         }}
                       >
                         {openCount} open
