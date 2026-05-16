@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
-
-
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,8 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-	title: "FlowBoard",
-	description: "FlowBoard is a task management app for teams.",
+	title: "Chronicle",
+	description: "Developer-first project management",
 };
 
 export default function RootLayout({
@@ -26,7 +24,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body className={cn(inter.className, "antialiased min-h-screen")}>
-				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+				<ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
 					<QueryProvider>
 						<Toaster />
 						{children}

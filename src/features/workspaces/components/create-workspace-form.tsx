@@ -4,8 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { createWorkspaceSchema } from "../schemas";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import {
 	Form,
 	FormControl,
@@ -61,19 +59,18 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 	};
 
 	return (
-		<Card className="w-full h-full border-none shadow-none">
-			<CardHeader className="flex p-7">
-				<CardTitle className="text-xl font-bold">
-					Create a new workspace
-				</CardTitle>
-			</CardHeader>
-			<div className="px-7">
-				<DottedSeperator />
+		<div className="bg-card border border-border rounded-lg p-8 w-full">
+			<div className="mb-8">
+				<h2 className="text-2xl font-bold text-foreground">
+					Create your workspace
+				</h2>
+				<p className="text-muted-foreground text-sm mt-1">
+					Give your team a name and a visual identity.
+				</p>
 			</div>
-			<CardContent className="p-7">
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)}>
-						<div className="flex flex-col gap-y-4">
+			<Form {...form}>
+				<form onSubmit={form.handleSubmit(onSubmit)}>
+					<div className="flex flex-col gap-y-6">
 							<FormField
 								control={form.control}
 								name="name"
@@ -175,7 +172,7 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 								)}
 							/>
 						</div>
-						<DottedSeperator className="py-7" />
+						<div className="h-px bg-border my-6" />
 						<div className="flex items-center justify-between">
 							<Button
 								type="button"
@@ -198,7 +195,6 @@ export const CreateWorkspaceForm = ({ onCancel }: CreateWorkspaceFormProps) => {
 						</div>
 					</form>
 				</Form>
-			</CardContent>
-		</Card>
+		</div>
 	);
 };
