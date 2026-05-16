@@ -219,8 +219,9 @@ export const WorkspaceIdClient = () => {
       const d = subDays(now, 13 - i);
       const label = format(d, "MMM d");
       const completed = tasks.filter((t) => {
-        if (t.status !== TaskStatus.DONE || !t.$createdAt) return false;
-        return format(new Date(t.$createdAt), "MMM d") === label;
+        if (t.status !== TaskStatus.DONE) return false;
+        const completedAt = (t as { $updatedAt?: string }).$updatedAt ?? t.$createdAt;
+        return completedAt && format(new Date(completedAt), "MMM d") === label;
       }).length;
       const remaining = tasks.filter((t) => {
         if (t.status === TaskStatus.DONE) return false;

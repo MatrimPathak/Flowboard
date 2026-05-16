@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Fuse from "fuse.js";
 import { useUIStore } from "@/store/ui-store";
@@ -37,7 +37,7 @@ import {
 import { IssueType, Task } from "@/features/tasks/types";
 import { cn } from "@/lib/utils";
 
-const ISSUE_ICON: Record<string, React.ElementType> = {
+const ISSUE_ICON: Record<string, ElementType> = {
   EPIC: Target,
   STORY: BookOpen,
   BUG: Bug,

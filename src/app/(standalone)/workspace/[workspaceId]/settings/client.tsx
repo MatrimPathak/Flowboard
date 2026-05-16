@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { TabsContent } from "@/components/ui/tabs";
 import { SettingsLayout, SettingsTabsList, SettingsCard, IntegrationsPlaceholder } from "@/components/settings-components";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ImageIcon, Copy, RefreshCw, Trash2, Save, Check, TriangleAlert } from "lucide-react";
@@ -45,10 +45,19 @@ export const WorkspaceIdSettingsClient = () => {
   const form = useForm<z.infer<typeof updateWorkspaceSchema>>({
     resolver: zodResolver(updateWorkspaceSchema),
     defaultValues: {
-      ...initialValues,
-      imageUrl: initialValues?.imageUrl ?? "",
+      name: "",
+      imageUrl: "",
     },
   });
+
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        ...initialValues,
+        imageUrl: initialValues.imageUrl ?? "",
+      });
+    }
+  }, [initialValues, form]);
 
   if (isLoading) return <PageLoader />;
   if (!initialValues) return <PageError message="Workspace not found" />;
@@ -89,7 +98,7 @@ export const WorkspaceIdSettingsClient = () => {
   const onSubmit = (values: z.infer<typeof updateWorkspaceSchema>) => {
     const finalValues = {
       ...values,
-      imageUrl: values.imageUrl instanceof File ? values.imageUrl : "",
+      imageUrl: values.imageUrl instanceof File ? values.imageUrl : (initialValues?.imageUrl ?? ""),
     };
     updateWorkspace({
       form: finalValues,

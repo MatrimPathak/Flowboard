@@ -31,14 +31,21 @@ export const SprintsClient = () => {
   const sprints = sprintsData?.documents ?? [];
   const tasks = tasksData?.documents ?? [];
 
-  const getSprintTasks = (sprintId: string) => tasks.filter(t => t.sprintId === sprintId);
-  const getCompletedCount = (sprintId: string) => tasks.filter(t => t.sprintId === sprintId && t.status === TaskStatus.DONE).length;
-  const getBlockedCount = (sprintId: string) => tasks.filter(t => t.sprintId === sprintId && t.blockedBy && t.blockedBy.length > 0).length;
+  const sprintStats = tasks.reduce<Record<string, { total: number; done: number; blocked: number }>>((acc, t) => {
+    if (!t.sprintId) return acc;
+    const bucket = acc[t.sprintId] ?? { total: 0, done: 0, blocked: 0 };
+    bucket.total += 1;
+    if (t.status === TaskStatus.DONE) bucket.done += 1;
+    if (t.blockedBy && t.blockedBy.length > 0) bucket.blocked += 1;
+    acc[t.sprintId] = bucket;
+    return acc;
+  }, {});
 
   const activeSprint = sprints.find(s => s.status === SprintStatus.ACTIVE);
-  const activeTasks = activeSprint ? getSprintTasks(activeSprint.$id) : [];
-  const activeCompleted = activeSprint ? getCompletedCount(activeSprint.$id) : 0;
-  const activePct = activeTasks.length > 0 ? Math.round((activeCompleted / activeTasks.length) * 100) : 0;
+  const activeStats = activeSprint ? (sprintStats[activeSprint.$id] ?? { total: 0, done: 0, blocked: 0 }) : null;
+  const activeTasks = activeStats ? activeStats.total : 0;
+  const activeCompleted = activeStats ? activeStats.done : 0;
+  const activePct = activeTasks > 0 ? Math.round((activeCompleted / activeTasks) * 100) : 0;
   const daysLeft = activeSprint?.endDate ? differenceInDays(new Date(activeSprint.endDate), new Date()) : null;
 
   return (
@@ -112,7 +119,9 @@ export const SprintsClient = () => {
                 <Timer className="size-3.5 text-white/40" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{daysLeft != null ? (daysLeft > 0 ? `${daysLeft}d left` : "Overdue") : "—"}</p>
+                <p className="text-sm font-semibold text-white">
+                  {daysLeft != null ? (daysLeft >= 0 ? `${daysLeft}d left` : "Overdue") : "—"}
+                </p>
                 <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Remaining</p>
               </div>
             </div>
@@ -121,7 +130,7 @@ export const SprintsClient = () => {
                 <CheckCircle2 className="size-3.5 text-green-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{activeCompleted}/{activeTasks.length}</p>
+                <p className="text-sm font-semibold text-white">{activeCompleted}/{activeTasks}</p>
                 <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Done</p>
               </div>
             </div>
@@ -130,7 +139,7 @@ export const SprintsClient = () => {
                 <AlertCircle className="size-3.5 text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{getBlockedCount(activeSprint.$id)}</p>
+                <p className="text-sm font-semibold text-white">{activeStats?.blocked ?? 0}</p>
                 <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Blocked</p>
               </div>
             </div>
@@ -183,8 +192,8 @@ export const SprintsClient = () => {
             <SprintHeader
               key={sprint.$id}
               sprint={sprint}
-              taskCount={getSprintTasks(sprint.$id).length}
-              completedCount={getCompletedCount(sprint.$id)}
+              taskCount={sprintStats[sprint.$id]?.total ?? 0}
+              completedCount={sprintStats[sprint.$id]?.done ?? 0}
             />
           ))
         )}

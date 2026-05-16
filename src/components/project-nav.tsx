@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ElementType, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,7 +37,7 @@ interface NavSection {
 interface NavItem {
   label: string;
   hrefSuffix: string;
-  icon: React.ElementType;
+  icon: ElementType;
   soon?: boolean;
   onCreate?: "task" | "sprint" | "release";
 }
@@ -99,7 +99,7 @@ function ProjectNavItem({ item, projectHref, projectId }: ProjectItemProps) {
   const { open: openSprintModal } = useCreateSprintModal();
   const { open: openVersionModal } = useCreateVersionModal();
 
-  const handleCreate = (e: React.MouseEvent) => {
+  const handleCreate = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (item.onCreate === "sprint") openSprintModal({ projectId });
@@ -155,14 +155,17 @@ export function ProjectNav() {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
-  const toggle = (projectId: string) => {
-    setExpanded((prev) => ({ ...prev, [projectId]: !getExpanded(projectId) }));
-  };
-
   const getExpanded = (projectId: string) => {
     return expanded[projectId] !== undefined
       ? expanded[projectId]
       : isProjectActive(projectId);
+  };
+
+  const toggle = (projectId: string) => {
+    setExpanded((prev) => {
+      const current = prev[projectId] !== undefined ? prev[projectId] : isProjectActive(projectId);
+      return { ...prev, [projectId]: !current };
+    });
   };
 
   return (

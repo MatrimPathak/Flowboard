@@ -24,10 +24,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
 export const MembersList = () => {
   const workspaceId = useWorkspaceId();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const { data, isLoading } = useGetMembers({ workspaceId });
   const { mutate: deleteMember, isPending: isDeleting } = useDeleteMember();
@@ -87,6 +89,7 @@ export const MembersList = () => {
           {/* Invite button */}
           <button
             type="button"
+            onClick={() => router.push(`/workspace/${workspaceId}/settings`)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
             style={{
               background: "#4F7CFF",
@@ -183,7 +186,7 @@ export const MembersList = () => {
               {/* Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center size-8 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/[0.06] transition-all">
+                  <button className="flex items-center justify-center size-8 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:bg-white/[0.06] hover:bg-white/[0.06] transition-all">
                     <MoreHorizontal className="size-4 text-white/40" />
                   </button>
                 </DropdownMenuTrigger>
