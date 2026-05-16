@@ -16,6 +16,8 @@ import {
 import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
 
+const LINK_CLS = "text-primary hover:text-primary/80 font-medium";
+
 export const SignUpCard = () => {
 	const { mutate, isPending } = useRegister();
 	const form = useForm<z.infer<typeof registerSchema>>({
@@ -103,11 +105,11 @@ export const SignUpCard = () => {
 
 			<p className="text-center text-sm text-muted-foreground mt-6">
 				By signing up, you agree to our{" "}
-				<Link href="/privacy" className="text-primary hover:text-primary/80 font-medium">
+				<Link href="/privacy" className={LINK_CLS}>
 					Privacy Policy
 				</Link>{" "}
 				and{" "}
-				<Link href="/terms" className="text-primary hover:text-primary/80 font-medium">
+				<Link href="/terms" className={LINK_CLS}>
 					Terms of Service
 				</Link>
 				.
@@ -119,7 +121,7 @@ export const SignUpCard = () => {
 				Already have an account?{" "}
 				<Link
 					href="/sign-in"
-					className="text-primary hover:text-primary/80 font-medium"
+					className={LINK_CLS}
 				>
 					Sign in
 				</Link>

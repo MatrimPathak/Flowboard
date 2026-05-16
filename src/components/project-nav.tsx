@@ -42,22 +42,26 @@ interface NavItem {
   onCreate?: "task" | "sprint" | "release";
 }
 
+const TASK = "task" as const;
+const SPRINT = "sprint" as const;
+const RELEASE = "release" as const;
+
 const PROJECT_SECTIONS: NavSection[] = [
   {
     group: "",
     items: [
       { label: "Overview", hrefSuffix: "", icon: LayoutDashboard },
-      { label: "Backlog", hrefSuffix: "/backlog", icon: List, onCreate: "task" },
-      { label: "Active Sprint", hrefSuffix: "/active-sprint", icon: SprintIcon, onCreate: "sprint" },
+      { label: "Backlog", hrefSuffix: "/backlog", icon: List, onCreate: TASK },
+      { label: "Active Sprint", hrefSuffix: "/active-sprint", icon: SprintIcon, onCreate: SPRINT },
       { label: "Roadmap", hrefSuffix: "/roadmap", icon: GitBranch, soon: true },
-      { label: "Releases", hrefSuffix: "/releases", icon: Rocket, onCreate: "release" },
+      { label: "Releases", hrefSuffix: "/releases", icon: Rocket, onCreate: RELEASE },
     ],
   },
   {
     group: "Work Items",
     items: [
-      { label: "Epics", hrefSuffix: "/epics", icon: Target, onCreate: "task" },
-      { label: "Work Items", hrefSuffix: "/work-items", icon: ListTodo, onCreate: "task" },
+      { label: "Epics", hrefSuffix: "/epics", icon: Target, onCreate: TASK },
+      { label: "Work Items", hrefSuffix: "/work-items", icon: ListTodo, onCreate: TASK },
     ],
   },
   {
@@ -102,9 +106,9 @@ function ProjectNavItem({ item, projectHref, projectId }: ProjectItemProps) {
   const handleCreate = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (item.onCreate === "sprint") openSprintModal({ projectId });
-    else if (item.onCreate === "release") openVersionModal({ projectId });
-    else if (item.onCreate === "task") openTaskModal({ projectId });
+    if (item.onCreate === SPRINT) openSprintModal({ projectId });
+    else if (item.onCreate === RELEASE) openVersionModal({ projectId });
+    else if (item.onCreate === TASK) openTaskModal({ projectId });
   };
 
   return (

@@ -85,6 +85,7 @@ export const MembersList = () => {
             <Search className="size-3.5 shrink-0" style={{ color: TEXT_DIM }} />
             <input
               type="text"
+              aria-label="Search members"
               placeholder="Search members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -191,7 +192,10 @@ export const MembersList = () => {
               {/* Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center size-8 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:bg-white/[0.06] hover:bg-white/[0.06] transition-all">
+                  <button
+                    aria-label={`Member actions for ${member.name ?? member.email ?? "member"}`}
+                    className="flex items-center justify-center size-8 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:bg-white/[0.06] hover:bg-white/[0.06] transition-all"
+                  >
                     <MoreHorizontal className="size-4 text-white/40" />
                   </button>
                 </DropdownMenuTrigger>

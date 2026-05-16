@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
@@ -62,12 +61,11 @@ export const WorkItemsClient = () => {
   const { open: openCreateModal } = useCreateTaskModal();
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
-  const [typeParam] = useQueryState("type");
-  const [activeType, setActiveType] = useState<IssueType | null>(
+  const [typeParam, setTypeParam] = useQueryState("type");
+  const activeType: IssueType | null =
     typeParam && Object.values(IssueType).includes(typeParam as IssueType)
       ? (typeParam as IssueType)
-      : null
-  );
+      : null;
   const [view, setView] = useQueryState("view", { defaultValue: "table" });
 
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -145,7 +143,7 @@ export const WorkItemsClient = () => {
               <button
                 key={label}
                 type="button"
-                onClick={() => setActiveType(value)}
+                onClick={() => setTypeParam(value)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-sm font-medium transition-all duration-150"
                 style={
                   isActive

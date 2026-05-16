@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import crypto from "crypto";
 
+const INVALID_GRANT = "invalid_grant";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -27,7 +29,10 @@ async function parseBody(req: NextRequest): Promise<Record<string, string>> {
 }
 
 function tokenResponse(data: Record<string, unknown>, status = 200) {
-  return NextResponse.json(data, { status, headers: CORS_HEADERS });
+  return NextResponse.json(data, {
+    status,
+    headers: CORS_HEADERS
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -35,30 +40,58 @@ export async function POST(req: NextRequest) {
   const grantType = body.grant_type;
 
   if (grantType === "authorization_code") {
-    const { code, code_verifier: codeVerifier, redirect_uri: redirectUri } = body;
+    const {
+      code,
+      code_verifier: codeVerifier,
+      redirect_uri: redirectUri
+    } = body;
 
     if (!code || !codeVerifier || !redirectUri) {
-      return tokenResponse({ error: "invalid_request" }, 400);
+      return tokenResponse(
+        { error: "invalid_request" },
+        400
+      );
     }
 
-    const codeDoc = await adminDb.collection("mcp_auth_codes").doc(code).get();
+    const codeDoc =
+      await adminDb
+        .collection("mcp_auth_codes")
+        .doc(code)
+        .get();
+
     if (!codeDoc.exists) {
-      return tokenResponse({ error: "invalid_grant" }, 400);
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
     const data = codeDoc.data()!;
 
     if (new Date(data.expiresAt) < new Date()) {
       await codeDoc.ref.delete();
-      return tokenResponse({ error: "invalid_grant" }, 400);
+
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
     if (data.redirectUri !== redirectUri) {
-      return tokenResponse({ error: "invalid_grant" }, 400);
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
-    if (!verifyPKCE(codeVerifier, data.codeChallenge)) {
-      return tokenResponse({ error: "invalid_grant" }, 400);
+    if (!verifyPKCE(
+      codeVerifier,
+      data.codeChallenge
+    )) {
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
     await codeDoc.ref.delete();
@@ -67,37 +100,12 @@ export async function POST(req: NextRequest) {
       access_token: data.idToken,
       token_type: "bearer",
       expires_in: 3600,
-      ...(data.refreshToken ? { refresh_token: data.refreshToken } : {}),
+      ...(data.refreshToken
+        ? {
+            refresh_token:
+              data.refreshToken
+          }
+        : {})
     });
   }
-
-  if (grantType === "refresh_token") {
-    const refreshToken = body.refresh_token;
-    if (!refreshToken) {
-      return tokenResponse({ error: "invalid_request" }, 400);
-    }
-
-    const res = await fetch(
-      `https://securetoken.googleapis.com/v1/token?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken }),
-      }
-    );
-
-    if (!res.ok) {
-      return tokenResponse({ error: "invalid_grant" });
-    }
-
-    const refreshed = await res.json();
-    return tokenResponse({
-      access_token: refreshed.id_token,
-      token_type: "bearer",
-      expires_in: parseInt(refreshed.expires_in),
-      refresh_token: refreshed.refresh_token,
-    });
-  }
-
-  return tokenResponse({ error: "unsupported_grant_type" });
 }

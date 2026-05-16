@@ -37,6 +37,11 @@ import {
 import { IssueType, Task } from "@/features/tasks/types";
 import { cn } from "@/lib/utils";
 
+const GROUP_HEADING_CLS = "px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold";
+const ITEM_CLS = "flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors";
+const ITEM_CONTENT_CLS = "flex-1 min-w-0";
+const ITEM_TITLE_CLS = "text-sm text-white/80 font-medium truncate";
+
 const ISSUE_ICON: Record<string, ElementType> = {
   EPIC: Target,
   STORY: BookOpen,
@@ -221,18 +226,18 @@ export function CommandPalette() {
                   {/* Actions */}
                   {actions.length > 0 && (
                     <CommandGroup
-                      heading={<span className="px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold">Actions</span>}
+                      heading={<span className={GROUP_HEADING_CLS}>Actions</span>}
                     >
                       {actions.map((action) => (
                         <CommandItem
                           key={action.label}
                           onSelect={action.action}
-                          className="flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors"
+                          className={ITEM_CLS}
                         >
                           <div className="flex items-center justify-center size-7 rounded-lg bg-primary/10 shrink-0">
                             <action.icon className="size-3.5 text-primary" />
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className={ITEM_CONTENT_CLS}>
                             <p className="text-sm text-white/80 font-medium">{action.label}</p>
                             <p className="text-xs text-white/30">{action.description}</p>
                           </div>
@@ -249,19 +254,19 @@ export function CommandPalette() {
                   {/* Projects */}
                   {filteredProjects.length > 0 && (
                     <CommandGroup
-                      heading={<span className="px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold">Projects</span>}
+                      heading={<span className={GROUP_HEADING_CLS}>Projects</span>}
                     >
                       {filteredProjects.map((project) => (
                         <CommandItem
                           key={project.$id}
                           onSelect={() => handleSelectProject(project.$id)}
-                          className="flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors"
+                          className={ITEM_CLS}
                         >
                           <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06] shrink-0">
                             <FolderKanban className="size-3.5 text-white/50" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white/80 font-medium truncate">{project.name}</p>
+                          <div className={ITEM_CONTENT_CLS}>
+                            <p className={ITEM_TITLE_CLS}>{project.name}</p>
                           </div>
                           <ArrowRight className="size-3.5 text-white/20" />
                         </CommandItem>
@@ -272,7 +277,7 @@ export function CommandPalette() {
                   {/* Work Items */}
                   {filteredTasks.length > 0 && (
                     <CommandGroup
-                      heading={<span className="px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold">Work Items</span>}
+                      heading={<span className={GROUP_HEADING_CLS}>Work Items</span>}
                     >
                       {filteredTasks.map((task) => {
                         const type = task.issueType ?? IssueType.TASK;
@@ -282,13 +287,13 @@ export function CommandPalette() {
                           <CommandItem
                             key={task.$id}
                             onSelect={() => handleSelectTask(task)}
-                            className="flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors"
+                            className={ITEM_CLS}
                           >
                             <div className={cn("flex items-center justify-center size-7 rounded-lg bg-white/[0.06] shrink-0")}>
                               <Icon className={cn("size-3.5", colorClass)} />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white/80 font-medium truncate">{task.name}</p>
+                            <div className={ITEM_CONTENT_CLS}>
+                              <p className={ITEM_TITLE_CLS}>{task.name}</p>
                               <p className="text-xs text-white/30 capitalize">{type.toLowerCase()} · {task.status.replace(/_/g, " ").toLowerCase()}</p>
                             </div>
                           </CommandItem>
@@ -300,7 +305,7 @@ export function CommandPalette() {
                   {/* Members (only when searching) */}
                   {filteredMembers.length > 0 && (
                     <CommandGroup
-                      heading={<span className="px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold">Members</span>}
+                      heading={<span className={GROUP_HEADING_CLS}>Members</span>}
                     >
                       {filteredMembers.map((member) => (
                         <CommandItem
@@ -309,13 +314,13 @@ export function CommandPalette() {
                             closeCommandPalette();
                             router.push(`/workspace/${workspaceId}/members`);
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors"
+                          className={ITEM_CLS}
                         >
                           <div className="flex items-center justify-center size-7 rounded-full bg-primary/20 shrink-0 text-xs font-bold text-primary">
                             {(member.name ?? member.email ?? "?")[0].toUpperCase()}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white/80 font-medium truncate">{member.name ?? member.email}</p>
+                          <div className={ITEM_CONTENT_CLS}>
+                            <p className={ITEM_TITLE_CLS}>{member.name ?? member.email}</p>
                             <p className="text-xs text-white/30 capitalize">{member.role.toLowerCase()}</p>
                           </div>
                         </CommandItem>
