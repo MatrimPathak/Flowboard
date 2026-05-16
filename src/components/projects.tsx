@@ -15,13 +15,13 @@ import { useCreateVersionModal } from "@/features/versions/hooks/use-create-vers
 import { IssueType } from "@/features/tasks/types";
 
 const subItems = [
-	{ label: "Backlog", icon: List, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
-	{ label: "Sprints", icon: Timer, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
-	{ label: "Releases", icon: Rocket, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "release" as const },
-	{ label: "Epics", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
-	{ label: "Stories", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
-	{ label: "Spikes", icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: "task" as const },
-	{ label: "Bugs", icon: Bug, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
+	{ label: "Backlog", icon: List, color: "text-blue-400", bg: "bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
+	{ label: "Sprints", icon: Timer, color: "text-green-400", bg: "bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
+	{ label: "Releases", icon: Rocket, color: "text-purple-400", bg: "bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "release" as const },
+	{ label: "Epics", icon: Target, color: "text-amber-400", bg: "bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
+	{ label: "Stories", icon: BookOpen, color: "text-emerald-400", bg: "bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
+	{ label: "Spikes", icon: Zap, color: "text-yellow-400", bg: "bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: "task" as const },
+	{ label: "Bugs", icon: Bug, color: "text-red-400", bg: "bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
 ];
 
 interface SubItemProps {
@@ -58,10 +58,10 @@ const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, mod
 		<div className="relative group">
 			<Link href={href} className="block">
 				<div className={cn(
-					"flex items-center justify-between p-1.5 rounded-lg transition-all",
+					"flex items-center justify-between p-1.5 rounded-md transition-all",
 					isActive
-						? "bg-background border border-border text-foreground shadow-sm"
-						: "hover:bg-background hover:border-border hover:shadow-sm border border-transparent"
+						? "bg-card border-l-2 border-primary text-foreground shadow-sm"
+						: "hover:bg-accent border border-transparent hover:text-foreground"
 				)}>
 					<div className="flex items-center gap-x-2">
 						<div className={cn("p-1.5 rounded-md", bg)}>
@@ -111,10 +111,12 @@ export const Projects = () => {
 		}
 	};
 
+	if (!workspaceId) return null;
+
 	return (
 		<div className="flex flex-col gap-y-4">
 			<div className="flex items-center justify-between">
-				<p className="text-xs uppercase text-muted-foreground tracking-tight">Projects</p>
+				<p className="text-xs uppercase text-muted-foreground tracking-widest">Projects</p>
 				<button
 					onClick={open}
 					aria-label="Create project"
@@ -135,22 +137,25 @@ export const Projects = () => {
 								<Link href={href} className="flex-1">
 									<div
 										className={cn(
-											"flex items-center gap-3 p-2.5 rounded-xl transition cursor-pointer group",
+											"flex items-center gap-3 p-2.5 rounded-md transition cursor-pointer group",
 											isActive
-												? "bg-background border border-border text-foreground shadow-sm"
-												: "hover:bg-muted/50 text-muted-foreground"
+												? "bg-card border-l-2 border-primary text-foreground shadow-sm"
+												: "hover:bg-accent text-muted-foreground hover:text-foreground"
 										)}
 									>
 										<ProjectAvatar
 											imageUrl={project.imageUrl}
 											name={project.name}
 										/>
-										<span className="truncate font-medium">{project.name}</span>
+										<span className="truncate font-medium text-sm">{project.name}</span>
 									</div>
 								</Link>
 								<button
+									type="button"
 									onClick={(e) => toggleExpand(e, project.$id)}
-									className="p-1.5 hover:bg-muted rounded-lg transition"
+									aria-label={isExpanded ? `Collapse ${project.name}` : `Expand ${project.name}`}
+									aria-expanded={isExpanded}
+									className="p-1.5 hover:bg-accent rounded-md transition"
 								>
 									<ChevronDown className={cn(
 										"size-4 text-muted-foreground transition-transform duration-200",
@@ -159,7 +164,7 @@ export const Projects = () => {
 								</button>
 							</div>
 							{isExpanded && (
-								<div className="flex flex-col gap-y-0.5 ml-1 pl-2 border-l border-border dark:border-muted-foreground/30">
+								<div className="flex flex-col gap-y-0.5 ml-1 pl-2 border-l border-border">
 									{subItems.map((item) => (
 										<SubItem
 											key={item.label}

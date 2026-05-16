@@ -1,5 +1,4 @@
 import { FaCaretDown, FaCaretUp } from "react-icons/fa";
-import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { cn } from "@/lib/utils";
 
 interface AnalyticsCardProps {
@@ -7,6 +6,7 @@ interface AnalyticsCardProps {
 	value: number;
 	variant: "up" | "down";
 	increaseValue: number;
+	inverted?: boolean;
 }
 
 export const AnalyticsCard = ({
@@ -14,34 +14,29 @@ export const AnalyticsCard = ({
 	value,
 	variant,
 	increaseValue,
+	inverted = false,
 }: AnalyticsCardProps) => {
-	const iconColor = variant === "up" ? "text-emerald-500" : "text-red-500";
-	const increaseValueColor =
-		variant === "up" ? "text-emerald-500" : "text-red-500";
 	const Icon = variant === "up" ? FaCaretUp : FaCaretDown;
+	const isPositiveOutcome = inverted ? variant === "down" : variant === "up";
 	return (
-		<Card className="shadow-none border-none w-full">
-			<CardHeader>
-				<div className="flex items-center gap-x-2.5">
-					<CardDescription className="flex items-center gap-x-2 font-medium overflow-hidden">
-						<span className="truncate text-base">{title}</span>
-					</CardDescription>
-					<div className="flex items-center gap-x-1">
-						<Icon className={cn(iconColor, "size-4")} />
-						<span
-							className={cn(
-								increaseValueColor,
-								"truncate text-base font-medium"
-							)}
-						>
-							{increaseValue}
-						</span>
-					</div>
-				</div>
-				<CardTitle className="text-3xl font-semibold">
+		<div className="p-5">
+			<p className="text-muted-foreground text-xs font-medium uppercase tracking-wide mb-2">
+				{title}
+			</p>
+			<div className="flex items-end gap-3">
+				<span className="text-3xl font-bold text-foreground">
 					{value}
-				</CardTitle>
-			</CardHeader>
-		</Card>
+				</span>
+				<div
+					className={cn(
+						"flex items-center gap-1 text-sm mb-0.5",
+						isPositiveOutcome ? "text-success" : "text-destructive"
+					)}
+				>
+					<Icon className="size-3.5" />
+					<span>{Math.abs(increaseValue)}</span>
+				</div>
+			</div>
+		</div>
 	);
 };

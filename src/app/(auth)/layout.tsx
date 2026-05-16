@@ -1,33 +1,34 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { ChronicleLogoFull } from "@/components/chronicle-logo";
+import { ReactNode } from "react";
 
 interface AuthLayoutProps {
-	children: React.ReactNode;
+	children: ReactNode;
 }
 
 const AuthLayout = ({ children }: AuthLayoutProps) => {
-	const pathname = usePathname();
-	const isSignIn = pathname === "/sign-in";
 	return (
-		<main className="bg-muted min-h-screen">
-			<div className="mx-auto max-w-screen-2xl p-4">
-				<nav className="flex justify-between items-center">
-					<Image src="/logo.svg" alt="Logo" width={152} height={56} priority />
-					<Button asChild variant="secondary">
-						<Link href={isSignIn ? "/sign-up" : "/sign-in"}>
-							{isSignIn ? "Sign Up" : "Sign In"}
-						</Link>
-					</Button>
-				</nav>
-				<div className="flex flex-col items-center justify-center pt-4 md:pt-14">
-					{children}
+		<div className="min-h-screen flex bg-background">
+			<div className="hidden lg:flex flex-col w-[55%] bg-card border-r border-border p-12">
+				<ChronicleLogoFull />
+				<div className="flex-1 flex flex-col justify-center gap-4">
+					<h1 className="text-4xl font-bold text-foreground leading-tight">
+						Build products
+						<br />
+						with context.
+					</h1>
+					<p className="text-muted-foreground text-base max-w-sm">
+						Tasks, docs, AI memory, and releases unified in one
+						workspace.
+					</p>
 				</div>
+				<p className="text-muted-foreground text-xs">
+					Chronicle · Built for engineering teams
+				</p>
 			</div>
-		</main>
+			<div className="flex-1 flex items-center justify-center bg-surface p-8">
+				<div className="w-full max-w-[420px]">{children}</div>
+			</div>
+		</div>
 	);
 };
 

@@ -7,8 +7,9 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useGetWorkspace } from "@/features/workspaces/api/use-get-workspace";
 import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useSidebarCollapsed } from "@/contexts/sidebar-context";
 import Link from "next/link";
-import { ChevronRightIcon } from "lucide-react";
+import { Bell, ChevronRightIcon, PanelLeft, Search, Sparkles } from "lucide-react";
 
 const PAGE_LABEL: Record<string, string> = {
 	backlog: "Backlog",
@@ -32,20 +33,24 @@ export const Navbar = () => {
 	const pathname = usePathname();
 	const workspaceId = useWorkspaceId();
 	const projectId = useProjectId();
+	const { toggleSidebar } = useSidebarCollapsed();
 
-	const { data: workspace } = useGetWorkspace({ workspaceId: workspaceId ?? "", enabled: !!workspaceId });
-	const { data: project } = useGetProject({ projectId: projectId ?? "", enabled: !!projectId });
+	const { data: workspace } = useGetWorkspace({
+		workspaceId: workspaceId ?? "",
+		enabled: !!workspaceId,
+	});
+	const { data: project } = useGetProject({
+		projectId: projectId ?? "",
+		enabled: !!projectId,
+	});
 
 	const parts = pathname.split("/").filter(Boolean);
-	// parts: ["workspace", workspaceId, "project"?, projectId?, page?]
 
 	const pageSegment = (() => {
-		// Detail pages: epic/[id], story/[id], spike/[id], bug/[id]
 		const detailTypes = new Set(["epic", "story", "spike", "bug"]);
 		for (let i = parts.length - 2; i >= 0; i--) {
 			if (detailTypes.has(parts[i])) return parts[i];
 		}
-		// List page or root
 		const last = parts[parts.length - 1];
 		return PAGE_LABEL[last] ? last : null;
 	})();
@@ -66,30 +71,43 @@ export const Navbar = () => {
 		});
 	}
 
-	const isTaskDetailPage = new Set(["epic", "story", "spike", "bug"]).has(pageSegment ?? "");
+	// Placeholder: wire up to a command palette modal when implementing
+	const handleCommandPalette = () => {
+		return;
+	};
+
+	const isTaskDetailPage = new Set(["epic", "story", "spike", "bug"]).has(
+		pageSegment ?? ""
+	);
 
 	const pageLabel = pageSegment
-		? PAGE_LABEL[pageSegment] ?? (pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1))
+		? PAGE_LABEL[pageSegment] ??
+		  pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1)
 		: null;
 
-	const title =
-		pageLabel ??
-		(project ? project.name : null) ??
-		(workspace ? workspace.name : null) ??
-		"Home";
-
 	return (
-		<nav className="pt-4 px-6 flex items-center justify-between">
-			{!isTaskDetailPage && (
-			<div className="flex-col hidden lg:flex gap-y-1">
-				<h1 className="text-2xl font-semibold">{title}</h1>
-				{crumbs.length > 0 && (
-					<div className="flex items-center gap-x-1 text-sm text-muted-foreground">
+		<nav className="h-[60px] px-6 flex items-center gap-4 border-b border-border bg-card sticky top-0 z-30">
+			<div className="flex items-center gap-3 min-w-0">
+				<MobileSidebar />
+				<button
+					onClick={toggleSidebar}
+					className="hidden lg:flex p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition"
+					aria-label="Toggle sidebar"
+				>
+					<PanelLeft className="size-4" />
+				</button>
+				{!isTaskDetailPage && (
+					<div className="hidden lg:flex items-center gap-x-1 text-sm text-muted-foreground">
 						{crumbs.map((crumb, i) => (
 							<span key={i} className="flex items-center gap-x-1">
-								{i > 0 && <ChevronRightIcon className="size-3" />}
+								{i > 0 && (
+									<ChevronRightIcon className="size-3" />
+								)}
 								{crumb.href ? (
-									<Link href={crumb.href} className="hover:text-foreground transition">
+									<Link
+										href={crumb.href}
+										className="hover:text-foreground transition"
+									>
 										{crumb.label}
 									</Link>
 								) : (
@@ -100,15 +118,54 @@ export const Navbar = () => {
 						{pageLabel && (
 							<>
 								<ChevronRightIcon className="size-3" />
-								<span className="text-foreground font-medium">{pageLabel}</span>
+								<span className="text-foreground font-medium">
+									{pageLabel}
+								</span>
 							</>
 						)}
 					</div>
 				)}
 			</div>
-			)}
-			<MobileSidebar />
-			<UserButton />
+
+			<div className="flex-1" />
+
+			<div className="flex items-center gap-2 shrink-0">
+				<button
+					type="button"
+					onClick={handleCommandPalette}
+					className="hidden md:flex items-center gap-2 h-9 w-[220px] px-3 rounded-md bg-muted border border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+				>
+					<Search className="size-4 shrink-0" />
+					<span className="flex-1 text-left">Search...</span>
+					<kbd className="text-[10px] bg-background px-1.5 py-0.5 rounded border border-border font-mono shrink-0">
+						⌘K
+					</kbd>
+				</button>
+				<button
+					type="button"
+					onClick={handleCommandPalette}
+					className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition"
+					aria-label="Search"
+				>
+					<Search className="size-4" />
+				</button>
+
+				<button
+					className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition"
+					aria-label="Notifications"
+				>
+					<Bell className="size-4" />
+				</button>
+
+				<button
+					className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition"
+					aria-label="AI actions"
+				>
+					<Sparkles className="size-4" />
+				</button>
+
+				<UserButton />
+			</div>
 		</nav>
 	);
 };
