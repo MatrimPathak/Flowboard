@@ -87,9 +87,9 @@ export function CommandPalette() {
     if (commandPaletteOpen) setQuery("");
   }, [commandPaletteOpen]);
 
-  const tasks = tasksData?.documents ?? [];
-  const projects = projectsData?.documents ?? [];
-  const members = membersData?.documents ?? [];
+  const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
+  const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
+  const members = useMemo(() => membersData?.documents ?? [], [membersData]);
 
   // Fuse instances
   const taskFuse = useMemo(

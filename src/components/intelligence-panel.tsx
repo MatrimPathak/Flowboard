@@ -6,7 +6,7 @@ import { useGetDashboardSuggestions, DashboardSuggestion } from "@/features/ai/a
 import { TaskStatus } from "@/features/tasks/types";
 import { format, isAfter, isBefore, addDays } from "date-fns";
 import { Clock, AlertCircle, Bot, Loader, Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 interface IntelligencePanelProps {
   embedded?: boolean;
@@ -17,22 +17,29 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
   const { data: tasksData, isLoading } = useGetTasks({ workspaceId });
   const { mutate: fetchSuggestions, data: aiSuggestions, isPending: aiLoading } = useGetDashboardSuggestions();
   const hasFetched = useRef(false);
+  const fetchRef = useRef(fetchSuggestions);
+  fetchRef.current = fetchSuggestions;
 
-  const tasks = tasksData?.documents ?? [];
-  const now = new Date();
+  const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
+  const now = useMemo(() => new Date(), []);
 
-  const recent = [...tasks]
-    .sort((a, b) => (b.$createdAt > a.$createdAt ? 1 : -1))
-    .slice(0, 8);
+  const recent = useMemo(
+    () => [...tasks].sort((a, b) => (b.$createdAt > a.$createdAt ? 1 : -1)).slice(0, 8),
+    [tasks]
+  );
 
-  const upcoming = tasks
-    .filter((t) => {
-      if (!t.dueDate || t.status === TaskStatus.DONE) return false;
-      const due = new Date(t.dueDate);
-      return isAfter(due, now) && isBefore(due, addDays(now, 7));
-    })
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    .slice(0, 5);
+  const upcoming = useMemo(
+    () =>
+      tasks
+        .filter((t) => {
+          if (!t.dueDate || t.status === TaskStatus.DONE) return false;
+          const due = new Date(t.dueDate);
+          return isAfter(due, now) && isBefore(due, addDays(now, 7));
+        })
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+        .slice(0, 5),
+    [tasks, now]
+  );
 
   useEffect(() => {
     if (hasFetched.current || tasks.length === 0 || !workspaceId) return;
@@ -44,14 +51,14 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
     ).length;
     const blockedCount = tasks.filter((t) => t.blockedBy && t.blockedBy.length > 0).length;
 
-    fetchSuggestions({
+    fetchRef.current({
       workspaceName: workspaceId,
       totalTasks: tasks.length,
       doneTasks,
       overdueCount,
       blockedCount,
     });
-  }, [tasks.length, workspaceId]);
+  }, [tasks, now, workspaceId]);
 
   const suggestionColors: Record<string, { bg: string; border: string; text: string; dot: string }> = {
     warning: { bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)", text: "#EF4444", dot: "bg-red-400" },
