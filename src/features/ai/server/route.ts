@@ -4,7 +4,9 @@ import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrent } from "@/features/auth/queries";
 
-const client = new Anthropic();
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 const app = new Hono()
   .post(
