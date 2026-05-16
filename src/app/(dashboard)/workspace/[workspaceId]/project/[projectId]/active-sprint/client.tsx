@@ -13,7 +13,7 @@ import { DataKanban } from "@/features/tasks/components/data-kanban";
 import { DataTable } from "@/features/tasks/components/data-table";
 import { columns } from "@/features/tasks/components/columns";
 import { getTaskRoute } from "@/lib/task-routes";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useQueryState } from "nuqs";
 import Link from "next/link";
 import {
@@ -23,7 +23,6 @@ import {
   List,
   Loader,
   Calendar,
-  CheckCircle2,
   ArrowRight,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
@@ -84,6 +83,165 @@ export const ActiveSprintClient = () => {
 
   const isLoading = loadingSprints || (!!activeSprint && loadingTasks);
 
+  let mainContent: React.ReactNode;
+  if (isLoading) {
+    mainContent = (
+      <div className="flex items-center justify-center h-64">
+        <Loader className="size-5 animate-spin" style={{ color: "rgba(255,255,255,0.3)" }} />
+      </div>
+    );
+  } else if (activeSprint) {
+    mainContent = (
+      <>
+        {/* ── Sprint meta card ── */}
+        <div
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-card"
+          style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
+        >
+          <div className={STAT_COL_CLS}>
+            <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
+              Sprint
+            </p>
+            <p className="text-base font-semibold text-white">{activeSprint.name}</p>
+          </div>
+          {activeSprint.startDate && activeSprint.endDate && (
+            <div className={STAT_COL_CLS}>
+              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
+                Duration
+              </p>
+              <p className="text-sm font-medium text-white flex items-center gap-1.5">
+                <Calendar className="size-3.5" style={{ color: "rgba(255,255,255,0.4)" }} />
+                {format(new Date(activeSprint.startDate), "MMM d")} –{" "}
+                {format(new Date(activeSprint.endDate), "MMM d")}
+              </p>
+            </div>
+          )}
+          {daysLeft !== null && (
+            <div className={STAT_COL_CLS}>
+              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
+                Days Left
+              </p>
+              <p
+                className="text-base font-semibold"
+                style={{ color: getDaysLeftColor(daysLeft) }}
+              >
+                {daysLeft}d
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
+              Progress
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${completion}%`,
+                    background: completion === 100 ? "#22C55E" : PRIMARY,
+                  }}
+                />
+              </div>
+              <span className="text-xs font-medium text-white shrink-0">{completion}%</span>
+            </div>
+            <p className="text-xs" style={{ color: TEXT_LABEL }}>
+              {done} / {total} done
+            </p>
+          </div>
+        </div>
+
+        {/* ── View toggle ── */}
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center p-1 rounded-btn gap-0.5"
+            style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER_SUBTLE}` }}
+          >
+            {VIEWS.map(({ label, value, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setView(value)}
+                className="flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-all duration-150"
+                style={
+                  view === value
+                    ? { background: "rgba(255,255,255,0.08)", color: "#FFFFFF" }
+                    : { color: "rgba(255,255,255,0.4)" }
+                }
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+            {total} items
+          </p>
+        </div>
+
+        {/* ── Work items ── */}
+        <div
+          className="rounded-card overflow-hidden"
+          style={{
+            background: SURFACE,
+            border: `1px solid ${BORDER_SUBTLE}`,
+            boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
+          }}
+        >
+          {view === "kanban" ? (
+            <div className="p-4">
+              <DataKanban data={tasks} onChange={onKanbanChange} />
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={tasks}
+              onRowClick={(task) =>
+                router.push(
+                  getTaskRoute(workspaceId, (task as Task).projectId, task as Task)
+                )
+              }
+            />
+          )}
+        </div>
+      </>
+    );
+  } else {
+    mainContent = (
+      /* ── No active sprint empty state ── */
+      <div
+        className="flex flex-col items-center justify-center gap-6 py-20 rounded-card"
+        style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
+      >
+        <div
+          className="flex items-center justify-center size-16 rounded-2xl"
+          style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
+        >
+          <Timer className="size-7" style={{ color: PRIMARY }} />
+        </div>
+        <div className="text-center flex flex-col gap-2 max-w-sm">
+          <h2 className="text-xl font-bold text-white">No Active Sprint</h2>
+          <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+            Start a sprint from the Backlog to begin tracking your team&apos;s
+            progress here.
+          </p>
+        </div>
+        <Link
+          href={`/workspace/${workspaceId}/project/${projectId}/backlog`}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
+          style={{
+            background: "rgba(79,124,255,0.12)",
+            color: PRIMARY,
+            border: "1px solid rgba(79,124,255,0.25)",
+          }}
+        >
+          Go to Backlog
+          <ArrowRight className="size-4" />
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── Page header ── */}
@@ -117,157 +275,7 @@ export const ActiveSprintClient = () => {
         )}
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader className="size-5 animate-spin" style={{ color: "rgba(255,255,255,0.3)" }} />
-        </div>
-      ) : !activeSprint ? (
-        /* ── No active sprint empty state ── */
-        <div
-          className="flex flex-col items-center justify-center gap-6 py-20 rounded-card"
-          style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-        >
-          <div
-            className="flex items-center justify-center size-16 rounded-2xl"
-            style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
-          >
-            <Timer className="size-7" style={{ color: PRIMARY }} />
-          </div>
-          <div className="text-center flex flex-col gap-2 max-w-sm">
-            <h2 className="text-xl font-bold text-white">No Active Sprint</h2>
-            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-              Start a sprint from the Backlog to begin tracking your team&apos;s
-              progress here.
-            </p>
-          </div>
-          <Link
-            href={`/workspace/${workspaceId}/project/${projectId}/backlog`}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all"
-            style={{
-              background: "rgba(79,124,255,0.12)",
-              color: PRIMARY,
-              border: "1px solid rgba(79,124,255,0.25)",
-            }}
-          >
-            Go to Backlog
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      ) : (
-        <>
-          {/* ── Sprint meta card ── */}
-          <div
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-card"
-            style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-          >
-            <div className={STAT_COL_CLS}>
-              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
-                Sprint
-              </p>
-              <p className="text-base font-semibold text-white">{activeSprint.name}</p>
-            </div>
-            {activeSprint.startDate && activeSprint.endDate && (
-              <div className={STAT_COL_CLS}>
-                <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
-                  Duration
-                </p>
-                <p className="text-sm font-medium text-white flex items-center gap-1.5">
-                  <Calendar className="size-3.5" style={{ color: "rgba(255,255,255,0.4)" }} />
-                  {format(new Date(activeSprint.startDate), "MMM d")} –{" "}
-                  {format(new Date(activeSprint.endDate), "MMM d")}
-                </p>
-              </div>
-            )}
-            {daysLeft !== null && (
-              <div className={STAT_COL_CLS}>
-                <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
-                  Days Left
-                </p>
-                <p
-                  className="text-base font-semibold"
-                  style={{ color: getDaysLeftColor(daysLeft) }}
-                >
-                  {daysLeft}d
-                </p>
-              </div>
-            )}
-            <div className="flex flex-col gap-2">
-              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
-                Progress
-              </p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${completion}%`,
-                      background: completion === 100 ? "#22C55E" : PRIMARY,
-                    }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-white shrink-0">{completion}%</span>
-              </div>
-              <p className="text-xs" style={{ color: TEXT_LABEL }}>
-                {done} / {total} done
-              </p>
-            </div>
-          </div>
-
-          {/* ── View toggle ── */}
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center p-1 rounded-btn gap-0.5"
-              style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER_SUBTLE}` }}
-            >
-              {VIEWS.map(({ label, value, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setView(value)}
-                  className="flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-all duration-150"
-                  style={
-                    view === value
-                      ? { background: "rgba(255,255,255,0.08)", color: "#FFFFFF" }
-                      : { color: "rgba(255,255,255,0.4)" }
-                  }
-                >
-                  <Icon className="size-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
-              {total} items
-            </p>
-          </div>
-
-          {/* ── Work items ── */}
-          <div
-            className="rounded-card overflow-hidden"
-            style={{
-              background: SURFACE,
-              border: `1px solid ${BORDER_SUBTLE}`,
-              boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
-            }}
-          >
-            {view === "kanban" ? (
-              <div className="p-4">
-                <DataKanban data={tasks} onChange={onKanbanChange} />
-              </div>
-            ) : (
-              <DataTable
-                columns={columns}
-                data={tasks}
-                onRowClick={(task) =>
-                  router.push(
-                    getTaskRoute(workspaceId, (task as Task).projectId, task as Task)
-                  )
-                }
-              />
-            )}
-          </div>
-        </>
-      )}
+      {mainContent}
     </div>
   );
 };

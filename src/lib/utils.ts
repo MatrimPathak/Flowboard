@@ -8,13 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 export function generateInviteCode(length: number) {
 	const characters =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	let result = "";
-	for (let i = 0; i < length; i++) {
-		result += characters.charAt(
-			Math.floor(Math.random() * characters.length)
-		);
-	}
-	return result;
+	const bytes = new Uint32Array(length);
+	crypto.getRandomValues(bytes);
+	return Array.from(bytes, (b) => characters[b % characters.length]).join("");
 }
 
 export function snakeCaseToTitleCase(value: string) {

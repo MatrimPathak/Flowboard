@@ -87,9 +87,9 @@ const PROJECT_SECTIONS: NavSection[] = [
 ];
 
 interface ProjectItemProps {
-  item: NavItem;
-  projectHref: string;
-  projectId: string;
+  readonly item: NavItem;
+  readonly projectHref: string;
+  readonly projectId: string;
 }
 
 function ProjectNavItem({ item, projectHref, projectId }: ProjectItemProps) {
@@ -160,14 +160,14 @@ export function ProjectNav() {
   };
 
   const getExpanded = (projectId: string) => {
-    return expanded[projectId] !== undefined
-      ? expanded[projectId]
-      : isProjectActive(projectId);
+    return expanded[projectId] === undefined
+      ? isProjectActive(projectId)
+      : expanded[projectId];
   };
 
   const toggle = (projectId: string) => {
     setExpanded((prev) => {
-      const current = prev[projectId] !== undefined ? prev[projectId] : isProjectActive(projectId);
+      const current = prev[projectId] === undefined ? isProjectActive(projectId) : prev[projectId];
       return { ...prev, [projectId]: !current };
     });
   };
@@ -238,7 +238,7 @@ export function ProjectNav() {
                 >
                   <div className="pl-3 ml-2 border-l border-white/[0.06] mt-0.5 space-y-0.5 pb-1">
                     {PROJECT_SECTIONS.map((section, si) => (
-                      <div key={si} className={si > 0 ? "pt-2" : ""}>
+                      <div key={section.group ?? si} className={si > 0 ? "pt-2" : ""}>
                         {section.group && (
                           <p className="px-2.5 text-[9px] uppercase tracking-widest text-white/20 font-semibold mb-1">
                             {section.group}

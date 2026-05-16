@@ -5,7 +5,7 @@ import { MainNav } from "./main-nav";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { ProjectNav } from "./project-nav";
 import { useTheme } from "next-themes";
-import { Sun, Moon, User } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { UserButton } from "@/features/auth/components/user-button";
 
 export const Sidebar = () => {

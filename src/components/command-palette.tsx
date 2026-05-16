@@ -25,7 +25,6 @@ import {
   Search,
   FolderKanban,
   ListTodo,
-  Users2,
   Zap,
   Bug,
   BookOpen,
@@ -83,8 +82,8 @@ export function CommandPalette() {
         closeCommandPalette();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    globalThis.addEventListener("keydown", handler);
+    return () => globalThis.removeEventListener("keydown", handler);
   }, [commandPaletteOpen, toggleCommandPalette, closeCommandPalette]);
 
   // Reset query on open
@@ -294,7 +293,7 @@ export function CommandPalette() {
                             </div>
                             <div className={ITEM_CONTENT_CLS}>
                               <p className={ITEM_TITLE_CLS}>{task.name}</p>
-                              <p className="text-xs text-white/30 capitalize">{type.toLowerCase()} · {task.status.replace(/_/g, " ").toLowerCase()}</p>
+                              <p className="text-xs text-white/30 capitalize">{type.toLowerCase()} · {task.status.replaceAll("_", " ").toLowerCase()}</p>
                             </div>
                           </CommandItem>
                         );

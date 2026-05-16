@@ -80,7 +80,7 @@ export const WorkspaceIdSettingsClient = () => {
   if (isLoading) return <PageLoader />;
   if (!initialValues) return <PageError message="Workspace not found" />;
 
-  const fullInviteLink = `${window.location.origin}/workspace/${initialValues.$id}/join/${initialValues.inviteCode}`;
+  const fullInviteLink = `${globalThis.location.origin}/workspace/${initialValues.$id}/join/${initialValues.inviteCode}`;
 
   const handleCopyInviteLink = () => {
     navigator.clipboard.writeText(fullInviteLink).then(() => {
@@ -113,17 +113,17 @@ export const WorkspaceIdSettingsClient = () => {
   };
 
   const onSubmit = (values: z.infer<typeof updateWorkspaceSchema>) => {
-    const finalValues = {
-      ...values,
-      imageUrl:
-        values.imageUrl instanceof File
-          ? values.imageUrl
-          : values.imageUrl === null
-            ? ""
-            : typeof values.imageUrl === "string"
-              ? values.imageUrl
-              : (initialValues?.imageUrl ?? ""),
-    };
+    let imageUrl: File | string;
+    if (values.imageUrl instanceof File) {
+      imageUrl = values.imageUrl;
+    } else if (values.imageUrl === null) {
+      imageUrl = "";
+    } else if (typeof values.imageUrl === "string") {
+      imageUrl = values.imageUrl;
+    } else {
+      imageUrl = initialValues?.imageUrl ?? "";
+    }
+    const finalValues = { ...values, imageUrl };
     updateWorkspace({
       form: finalValues,
       param: { workspaceId: initialValues.$id },

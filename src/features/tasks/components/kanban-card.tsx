@@ -1,6 +1,6 @@
 "use client";
 
-import { Task, TaskPriority, IssueType } from "../types";
+import { Task } from "../types";
 import { TaskActions } from "./task-actions";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,8 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className="group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150"
       style={{
         background: "#0F172A",

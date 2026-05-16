@@ -32,14 +32,21 @@ const app = new Hono()
           ? Math.round(((body.doneCount ?? 0) / body.childCount) * 100)
           : null;
 
+      const descLine = body.description ? `Description: ${body.description}` : "";
+      const labelsLine = body.labels && body.labels.length > 0 ? `Labels: ${body.labels.join(", ")}` : "";
+      const progressSuffix = progressPct == null ? "" : ` (${progressPct}%)`;
+      const workItemsLine = body.childCount == null
+        ? ""
+        : `Work Items: ${body.childCount} total, ${body.doneCount ?? 0} done${progressSuffix}`;
+
       const prompt = `You are a technical project assistant helping a software team with their epic.
 
 Epic: "${body.epicName}"
 Status: ${body.status ?? "unknown"}
 Priority: ${body.priority ?? "unknown"}
-${body.description ? `Description: ${body.description}` : ""}
-${body.labels && body.labels.length > 0 ? `Labels: ${body.labels.join(", ")}` : ""}
-${body.childCount != null ? `Work Items: ${body.childCount} total, ${body.doneCount ?? 0} done${progressPct != null ? ` (${progressPct}%)` : ""}` : ""}
+${descLine}
+${labelsLine}
+${workItemsLine}
 
 Provide concise, actionable AI notes for this epic. Include:
 1. **Summary** (2-3 sentences): What this epic is about and its current state.
@@ -86,15 +93,22 @@ Keep each section tight. No filler. Use markdown.`;
 
       const body = c.req.valid("json");
 
+      const sprintLine = body.activeSprintName == null ? "No active sprint" : `Active Sprint: ${body.activeSprintName}`;
+      const totalTasksLine = body.totalTasks == null ? "" : `Total Tasks: ${body.totalTasks}`;
+      const doneTasksLine = body.doneTasks == null ? "" : `Completed: ${body.doneTasks}`;
+      const overdueCountLine = body.overdueCount == null ? "" : `Overdue: ${body.overdueCount}`;
+      const blockedCountLine = body.blockedCount == null ? "" : `Blocked: ${body.blockedCount}`;
+      const sprintProgressLine = body.sprintProgress == null ? "" : `Sprint Progress: ${body.sprintProgress}%`;
+
       const prompt = `You are a technical project assistant for a software team.
 
 Workspace: "${body.workspaceName}"
-${body.activeSprintName ? `Active Sprint: ${body.activeSprintName}` : "No active sprint"}
-${body.totalTasks != null ? `Total Tasks: ${body.totalTasks}` : ""}
-${body.doneTasks != null ? `Completed: ${body.doneTasks}` : ""}
-${body.overdueCount != null ? `Overdue: ${body.overdueCount}` : ""}
-${body.blockedCount != null ? `Blocked: ${body.blockedCount}` : ""}
-${body.sprintProgress != null ? `Sprint Progress: ${body.sprintProgress}%` : ""}
+${sprintLine}
+${totalTasksLine}
+${doneTasksLine}
+${overdueCountLine}
+${blockedCountLine}
+${sprintProgressLine}
 
 Generate 3 short, actionable AI insights for the team dashboard. Each insight should be one sentence, specific and helpful.`;
 
@@ -134,7 +148,7 @@ Generate 3 short, actionable AI insights for the team dashboard. Each insight sh
         });
 
         const toolUseBlock = response.content.find((b) => b.type === "tool_use");
-        if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
+        if (toolUseBlock?.type !== "tool_use") {
           return c.json({ error: "AI service returned unexpected response" }, 502);
         }
 

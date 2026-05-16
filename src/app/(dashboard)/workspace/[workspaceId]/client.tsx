@@ -45,10 +45,20 @@ const SUCCESS = "#22C55E";
 const DANGER = "#EF4444";
 const BORDER_1PX = `1px solid ${BORDER_SUBTLE}`;
 
+const TREND_ICON = { up: TrendingUp, down: TrendingDown, neutral: Minus } as const;
+const TREND_COLOR = { up: SUCCESS, down: DANGER, neutral: TEXT_DIM } as const;
+
 // Helper: hour-based greeting
 function getGreeting(name?: string | null) {
   const h = new Date().getHours();
-  const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  let g: string;
+  if (h < 12) {
+    g = "Good morning";
+  } else if (h < 18) {
+    g = "Good afternoon";
+  } else {
+    g = "Good evening";
+  }
   return name ? `${g}, ${name.split(" ")[0]} 👋` : `${g} 👋`;
 }
 
@@ -67,16 +77,16 @@ function buildSparklineData(tasks: { $createdAt: string; status: string }[]) {
 }
 
 interface IntelCardProps {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  trend?: "up" | "down" | "neutral";
-  trendLabel?: string;
-  accent?: string;
-  chart?: { day: string; count: number }[];
+  readonly title: string;
+  readonly value: string | number;
+  readonly subtitle: string;
+  readonly icon: React.ElementType;
+  readonly iconBg: string;
+  readonly iconColor: string;
+  readonly trend?: "up" | "down" | "neutral";
+  readonly trendLabel?: string;
+  readonly accent?: string;
+  readonly chart?: { day: string; count: number }[];
 }
 
 function IntelCard({
@@ -91,14 +101,8 @@ function IntelCard({
   accent,
   chart,
 }: IntelCardProps) {
-  const TrendIcon =
-    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor =
-    trend === "up"
-      ? SUCCESS
-      : trend === "down"
-      ? DANGER
-      : TEXT_DIM;
+  const TrendIcon = TREND_ICON[trend ?? TREND_NEUTRAL];
+  const trendColor = TREND_COLOR[trend ?? TREND_NEUTRAL];
 
   return (
     <div
@@ -198,7 +202,7 @@ export const WorkspaceIdClient = () => {
     workspaceId,
     enabled: !!workspaceId,
   });
-  const { data: analytics, isLoading: loadingAnalytics } =
+  const { isLoading: loadingAnalytics } =
     useGetWorkspaceAnalytics({ workspaceId });
   const { data: tasksData, isLoading: loadingTasks } = useGetTasks({
     workspaceId,
