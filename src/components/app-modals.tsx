@@ -4,16 +4,18 @@ import { EditTaskModal } from "@/features/tasks/components/edit-task-model";
 import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
 import { CreateSprintModal } from "@/features/sprints/components/create-sprint-modal";
 import { CreateVersionModal } from "@/features/versions/components/create-version-modal";
+import { CommandPalette } from "./command-palette";
 
 export function AppModals() {
-	return (
-		<>
-			<CreateWorkspaceModal />
-			<CreateProjectModal />
-			<CreateTaskModal />
-			<EditTaskModal />
-			<CreateSprintModal />
-			<CreateVersionModal />
-		</>
-	);
+  return (
+    <>
+      <CreateWorkspaceModal />
+      <CreateProjectModal />
+      <CreateTaskModal />
+      <EditTaskModal />
+      <CreateSprintModal />
+      <CreateVersionModal />
+      <CommandPalette />
+    </>
+  );
 }

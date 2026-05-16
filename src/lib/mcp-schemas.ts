@@ -18,7 +18,7 @@ const statusEnum = z.enum([
 ]);
 
 const issueTypeEnum = z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]);
-const priorityEnum = z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]);
+const priorityEnum = z.enum([TaskPriority.CRITICAL, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW]);
 const roleEnum = z.enum([MemberRole.ADMIN, MemberRole.MEMBER]);
 
 // ── Ticket schemas ────────────────────────────────────────────────────────────
