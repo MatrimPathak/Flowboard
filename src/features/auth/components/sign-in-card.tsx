@@ -17,7 +17,7 @@ import { loginSchema } from "../schemas";
 import { useLogin } from "../api/use-login";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, type AuthProvider } from "firebase/auth";
 import { auth, googleProvider, githubProvider } from "@/lib/firebase";
 import { client } from "@/lib/rpc";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ export const SignInCard = () => {
 		mutate({ json: values });
 	};
 
-	const signInWithOAuthProvider = async (provider: any, providerName: string) => {
+	const signInWithOAuthProvider = async (provider: AuthProvider, providerName: string) => {
 		try {
 			const result = await signInWithPopup(auth, provider);
 			const idToken = await result.user.getIdToken();
