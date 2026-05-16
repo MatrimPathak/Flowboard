@@ -35,6 +35,7 @@ export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 					value={data.overdueTaskCount}
 					variant={data.overdueTaskDifference > 0 ? "up" : "down"}
 					increaseValue={data.overdueTaskDifference}
+					inverted
 				/>
 			</div>
 			<div className="bg-card border border-border rounded-lg col-span-2 lg:col-span-1">
@@ -43,6 +44,7 @@ export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 					value={data.incompleteTaskCount}
 					variant={data.incompleteTaskDifference > 0 ? "up" : "down"}
 					increaseValue={data.incompleteTaskDifference}
+					inverted
 				/>
 			</div>
 		</div>

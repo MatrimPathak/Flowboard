@@ -151,7 +151,10 @@ export const Projects = () => {
 									</div>
 								</Link>
 								<button
+									type="button"
 									onClick={(e) => toggleExpand(e, project.$id)}
+									aria-label={isExpanded ? `Collapse ${project.name}` : `Expand ${project.name}`}
+									aria-expanded={isExpanded}
 									className="p-1.5 hover:bg-accent rounded-md transition"
 								>
 									<ChevronDown className={cn(
