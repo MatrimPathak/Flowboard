@@ -14,6 +14,9 @@ export enum TaskPriority {
 	HIGH = "HIGH",
 	MEDIUM = "MEDIUM",
 	LOW = "LOW",
+	// Legacy values — kept for backward compat with existing Firestore documents
+	BLOCKER = "BLOCKER",
+	TRIVIAL = "TRIVIAL",
 }
 
 export enum IssueType {

@@ -57,7 +57,12 @@ export const WorkItemsClient = () => {
   const { open: openCreateModal } = useCreateTaskModal();
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
-  const [activeType, setActiveType] = useState<IssueType | null>(null);
+  const [typeParam] = useQueryState("type");
+  const [activeType, setActiveType] = useState<IssueType | null>(
+    typeParam && Object.values(IssueType).includes(typeParam as IssueType)
+      ? (typeParam as IssueType)
+      : null
+  );
   const [view, setView] = useQueryState("view", { defaultValue: "table" });
 
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
