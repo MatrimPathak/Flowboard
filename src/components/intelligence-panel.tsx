@@ -13,7 +13,7 @@ const SECTION_LABEL_CLS = "text-xs font-semibold uppercase tracking-widest text-
 const EMPTY_CLS = "text-[13px] text-white/25 text-center py-4";
 
 interface IntelligencePanelProps {
-  embedded?: boolean;
+  readonly embedded?: boolean;
 }
 
 export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProps) {
@@ -113,11 +113,11 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
           {!aiLoading && displaySuggestions.length === 0 && !aiSuggestions && (
             <p className={EMPTY_CLS}>No data yet</p>
           )}
-          {!aiLoading && displaySuggestions.map((s, i) => {
+          {!aiLoading && displaySuggestions.map((s) => {
             const c = suggestionColors[s.type] ?? suggestionColors.info;
             return (
               <div
-                key={i}
+                key={`${s.title}-${s.type}`}
                 className="flex items-start gap-2.5 p-3 rounded-xl text-[13px] leading-snug"
                 style={{ background: c.bg, border: `1px solid ${c.border}` }}
               >

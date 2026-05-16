@@ -80,7 +80,7 @@ function getButtonLabel(isPending: boolean, hasNotes: boolean): string {
   return hasNotes ? "Regenerate" : "Generate AI Notes";
 }
 
-function ProgressBar({ value }: { value: number }) {
+function ProgressBar({ value }: { readonly value: number }) {
   return (
     <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: BORDER_SUBTLE }}>
       <div
@@ -91,7 +91,7 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-function WorkItemRow({ task, workspaceId, projectId }: { task: Task; workspaceId: string; projectId: string }) {
+function WorkItemRow({ task, workspaceId, projectId }: { readonly task: Task; readonly workspaceId: string; readonly projectId: string }) {
   const href = getTaskRoute(workspaceId, projectId, task);
   const typeCfg = task.issueType ? TYPE_CONFIG[task.issueType] : TYPE_CONFIG[IssueType.TASK];
   const statusCfg = STATUS_CONFIG[task.status];
@@ -155,7 +155,27 @@ function TimelineTab() {
   );
 }
 
-function AiNotesTab({ epic, childTasks }: { epic: Task; childTasks: Task[] }) {
+const MdH2 = ({ children }: { children?: React.ReactNode }) => (
+  <h2 className="text-[14px] font-semibold text-white mt-5 mb-2 first:mt-0">{children}</h2>
+);
+const MdP = ({ children }: { children?: React.ReactNode }) => (
+  <p className="text-[13px] leading-relaxed mb-3" style={{ color: TEXT_BODY }}>{children}</p>
+);
+const MdUl = ({ children }: { children?: React.ReactNode }) => (
+  <ul className="list-none pl-0 flex flex-col gap-1.5 mb-3">{children}</ul>
+);
+const MdLi = ({ children }: { children?: React.ReactNode }) => (
+  <li className="flex items-start gap-2 text-[13px]" style={{ color: TEXT_BODY }}>
+    <span className="mt-1.5 size-1.5 rounded-full bg-blue-500/60 shrink-0" />
+    <span>{children}</span>
+  </li>
+);
+const MdStrong = ({ children }: { children?: React.ReactNode }) => (
+  <strong className="text-white font-semibold">{children}</strong>
+);
+const MD_COMPONENTS = { h2: MdH2, p: MdP, ul: MdUl, li: MdLi, strong: MdStrong };
+
+function AiNotesTab({ epic, childTasks }: { readonly epic: Task; readonly childTasks: Task[] }) {
   const { mutate: generateNotes, isPending, data: notes, isIdle, isError } = useGetEpicNotes();
 
   const doneCount = childTasks.filter((t) => t.status === TaskStatus.DONE).length;
@@ -236,24 +256,7 @@ function AiNotesTab({ epic, childTasks }: { epic: Task; childTasks: Task[] }) {
           style={{ background: SURFACE, border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown
-              components={{
-                h2: ({ children }) => (
-                  <h2 className="text-[14px] font-semibold text-white mt-5 mb-2 first:mt-0">{children}</h2>
-                ),
-                p: ({ children }) => (
-                  <p className="text-[13px] leading-relaxed mb-3" style={{ color: TEXT_BODY }}>{children}</p>
-                ),
-                ul: ({ children }) => <ul className="list-none pl-0 flex flex-col gap-1.5 mb-3">{children}</ul>,
-                li: ({ children }) => (
-                  <li className="flex items-start gap-2 text-[13px]" style={{ color: TEXT_BODY }}>
-                    <span className="mt-1.5 size-1.5 rounded-full bg-blue-500/60 shrink-0" />
-                    <span>{children}</span>
-                  </li>
-                ),
-                strong: ({ children }) => <strong className="text-white font-semibold">{children}</strong>,
-              }}
-            >
+            <ReactMarkdown components={MD_COMPONENTS}>
               {notes}
             </ReactMarkdown>
           </div>
@@ -411,14 +414,12 @@ export const EpicDetailClient = () => {
               )}
 
               {epic.acceptanceCriteria && (
-                <>
-                  <div style={{ borderTop: `1px solid ${BORDER_SUBTLE}` }} className="pt-4">
-                    <h4 className="text-[13px] font-semibold text-white mb-2">Acceptance Criteria</h4>
-                    <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: TEXT_BODY }}>
-                      {epic.acceptanceCriteria}
-                    </p>
-                  </div>
-                </>
+                <div style={{ borderTop: `1px solid ${BORDER_SUBTLE}` }} className="pt-4">
+                  <h4 className="text-[13px] font-semibold text-white mb-2">Acceptance Criteria</h4>
+                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: TEXT_BODY }}>
+                    {epic.acceptanceCriteria}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -450,12 +451,13 @@ export const EpicDetailClient = () => {
                 style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
               >
                 <h3 className="text-[13px] font-semibold text-white/50 uppercase tracking-wider">Details</h3>
-                {[
-                  { label: "Status", value: statusCfg.label, color: statusCfg.color },
-                  priorityCfg ? { label: "Priority", value: priorityCfg.label, color: priorityCfg.color } : null,
-                  epic.storyPoints != null ? { label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY } : null,
-                ].filter((item): item is { label: string; value: string; color: string } => item !== null)
-                .map((item) => (
+                {(
+                  [
+                    { label: "Status", value: statusCfg.label, color: statusCfg.color },
+                    ...(priorityCfg ? [{ label: "Priority", value: priorityCfg.label, color: priorityCfg.color }] : []),
+                    ...(epic.storyPoints != null ? [{ label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY }] : []),
+                  ] as { label: string; value: string; color: string }[]
+                ).map((item) => (
                   <div key={item.label} className={FLEX_BETWEEN}>
                     <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>{item.label}</span>
                     <span className="text-[12px] font-medium" style={{ color: item.color }}>{item.value}</span>

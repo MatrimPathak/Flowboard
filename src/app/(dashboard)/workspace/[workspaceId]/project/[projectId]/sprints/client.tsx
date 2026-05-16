@@ -60,6 +60,7 @@ export const SprintsClient = () => {
   const activeCompleted = activeStats ? activeStats.done : 0;
   const activePct = activeTasks > 0 ? Math.round((activeCompleted / activeTasks) * 100) : 0;
   const daysLeft = activeSprint?.endDate ? differenceInDays(new Date(activeSprint.endDate), new Date()) : null;
+  const daysLeftText = daysLeft == null ? "—" : daysLeft >= 0 ? `${daysLeft}d left` : "Overdue";
 
   return (
     <div className="flex flex-col gap-6">
@@ -133,7 +134,7 @@ export const SprintsClient = () => {
               </div>
               <div>
                 <p className={STAT_VAL_CLS}>
-                  {daysLeft != null ? (daysLeft >= 0 ? `${daysLeft}d left` : "Overdue") : "—"}
+                  {daysLeftText}
                 </p>
                 <p className={TEXT_TINY_CLS} style={{ color: TEXT_DIM }}>Remaining</p>
               </div>

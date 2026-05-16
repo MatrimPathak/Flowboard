@@ -5,8 +5,8 @@ import { Sidebar } from "./sidebar";
 import { CommandBar } from "./command-bar";
 
 interface DashboardShellProps {
-  children: ReactNode;
-  rightRail?: ReactNode;
+  readonly children: ReactNode;
+  readonly rightRail?: ReactNode;
 }
 
 export function DashboardShell({ children, rightRail }: DashboardShellProps) {

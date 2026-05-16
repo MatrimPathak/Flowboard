@@ -3,7 +3,7 @@ import { getCurrent } from "@/features/auth/queries";
 import { WorkItemsClient } from "./client";
 
 interface Props {
-  params: { workspaceId: string; projectId: string };
+  readonly params: { workspaceId: string; projectId: string };
 }
 
 export default async function WorkItemsPage({ params }: Props) {

@@ -92,6 +92,54 @@ export const WorkItemsClient = () => {
     ? `${activeSprint.name} · active`
     : null;
 
+  let contentArea: React.ReactNode;
+  if (isLoading) {
+    contentArea = (
+      <div className="flex items-center justify-center h-64">
+        <Loader className="size-5 animate-spin" style={{ color: "rgba(255,255,255,0.3)" }} />
+      </div>
+    );
+  } else if (tasks.length === 0) {
+    contentArea = (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <Layers className="size-8" style={{ color: "rgba(255,255,255,0.15)" }} />
+        <div className="text-center">
+          <p className="text-sm font-medium text-white">No work items yet</p>
+          <p className="text-[13px] mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Create your first work item to get started
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => openCreateModal({ projectId })}
+          className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn transition-all"
+          style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.2)" }}
+        >
+          <Plus className="size-4" />
+          Create Work Item
+        </button>
+      </div>
+    );
+  } else if (view === "kanban") {
+    contentArea = (
+      <div className="p-4">
+        <DataKanban data={tasks} onChange={onKanbanChange} />
+      </div>
+    );
+  } else {
+    contentArea = (
+      <DataTable
+        columns={columns}
+        data={tasks}
+        onRowClick={(task) =>
+          router.push(
+            getTaskRoute(workspaceId, (task as Task).projectId, task as Task)
+          )
+        }
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── Page header ── */}
@@ -199,44 +247,7 @@ export const WorkItemsClient = () => {
           boxShadow: `0 0 0 1px ${BG_HOVER}, 0 8px 30px rgba(0,0,0,0.25)`,
         }}
       >
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader className="size-5 animate-spin" style={{ color: "rgba(255,255,255,0.3)" }} />
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <Layers className="size-8" style={{ color: "rgba(255,255,255,0.15)" }} />
-            <div className="text-center">
-              <p className="text-sm font-medium text-white">No work items yet</p>
-              <p className="text-[13px] mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Create your first work item to get started
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => openCreateModal({ projectId })}
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn transition-all"
-              style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.2)" }}
-            >
-              <Plus className="size-4" />
-              Create Work Item
-            </button>
-          </div>
-        ) : view === "kanban" ? (
-          <div className="p-4">
-            <DataKanban data={tasks} onChange={onKanbanChange} />
-          </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={tasks}
-            onRowClick={(task) =>
-              router.push(
-                getTaskRoute(workspaceId, (task as Task).projectId, task as Task)
-              )
-            }
-          />
-        )}
+        {contentArea}
       </div>
     </div>
   );
