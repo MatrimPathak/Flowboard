@@ -14,14 +14,18 @@ import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint
 import { useCreateVersionModal } from "@/features/versions/hooks/use-create-version-modal";
 import { IssueType } from "@/features/tasks/types";
 
+const TASK = "task" as const;
+const SPRINT = "sprint" as const;
+const RELEASE = "release" as const;
+
 const subItems = [
-	{ label: "Backlog", icon: List, color: "text-blue-400", bg: "bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: "task" as const },
-	{ label: "Sprints", icon: Timer, color: "text-green-400", bg: "bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: "sprint" as const },
-	{ label: "Releases", icon: Rocket, color: "text-purple-400", bg: "bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: "release" as const },
-	{ label: "Epics", icon: Target, color: "text-amber-400", bg: "bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: "task" as const },
-	{ label: "Stories", icon: BookOpen, color: "text-emerald-400", bg: "bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: "task" as const },
-	{ label: "Spikes", icon: Zap, color: "text-yellow-400", bg: "bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: "task" as const },
-	{ label: "Bugs", icon: Bug, color: "text-red-400", bg: "bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: "task" as const },
+	{ label: "Backlog", icon: List, color: "text-blue-400", bg: "bg-blue-950", hrefSuffix: "/backlog", issueType: undefined, modalType: TASK },
+	{ label: "Sprints", icon: Timer, color: "text-green-400", bg: "bg-green-950", hrefSuffix: "/sprints", issueType: undefined, modalType: SPRINT },
+	{ label: "Releases", icon: Rocket, color: "text-purple-400", bg: "bg-purple-950", hrefSuffix: "/releases", issueType: undefined, modalType: RELEASE },
+	{ label: "Epics", icon: Target, color: "text-amber-400", bg: "bg-amber-950", hrefSuffix: "/epics", issueType: "EPIC" as IssueType, modalType: TASK },
+	{ label: "Stories", icon: BookOpen, color: "text-emerald-400", bg: "bg-emerald-950", hrefSuffix: "/stories", issueType: "STORY" as IssueType, modalType: TASK },
+	{ label: "Spikes", icon: Zap, color: "text-yellow-400", bg: "bg-yellow-950", hrefSuffix: "/spikes", issueType: "SPIKE" as IssueType, modalType: TASK },
+	{ label: "Bugs", icon: Bug, color: "text-red-400", bg: "bg-red-950", hrefSuffix: "/bugs", issueType: "BUG" as IssueType, modalType: TASK },
 ];
 
 interface SubItemProps {
@@ -45,9 +49,9 @@ const SubItem = ({ label, icon: Icon, color, bg, href, projectId, issueType, mod
 	const handleCreate = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if (modalType === "sprint") {
+		if (modalType === SPRINT) {
 			openSprintModal({ projectId });
-		} else if (modalType === "release") {
+		} else if (modalType === RELEASE) {
 			openVersionModal({ projectId });
 		} else {
 			openTaskModal({ projectId, issueType });

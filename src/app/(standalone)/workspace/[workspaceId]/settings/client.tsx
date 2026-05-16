@@ -21,6 +21,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ImageIcon, Copy, RefreshCw, Trash2, Save, Check, TriangleAlert } from "lucide-react";
 
+const BORDER = "1px solid rgba(255,255,255,0.08)";
+const BG_HOVER = "rgba(255,255,255,0.04)";
+const DANGER = "#EF4444";
+const TEXT_DIM = "rgba(255,255,255,0.4)";
+const SIZE_SM = "size-3.5";
+const BTN = "button";
+
 export const WorkspaceIdSettingsClient = () => {
   const workspaceId = useWorkspaceId();
   const router = useRouter();
@@ -29,6 +36,7 @@ export const WorkspaceIdSettingsClient = () => {
   const { mutate: deleteWorkspace, isPending: isDeleting } = useDeleteWorkspace();
   const { mutate: resetInviteCode, isPending: isResetting } = useResetInviteCode();
   const [copied, setCopied] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [DeleteDialog, confirmDelete] = useConfirm(
@@ -59,6 +67,16 @@ export const WorkspaceIdSettingsClient = () => {
     }
   }, [initialValues, form]);
 
+  const imageValue = form.watch("imageUrl");
+  useEffect(() => {
+    if (imageValue instanceof File) {
+      const url = URL.createObjectURL(imageValue);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreviewUrl(typeof imageValue === "string" ? imageValue : "");
+  }, [imageValue]);
+
   if (isLoading) return <PageLoader />;
   if (!initialValues) return <PageError message="Workspace not found" />;
 
@@ -88,8 +106,7 @@ export const WorkspaceIdSettingsClient = () => {
       { param: { workspaceId: initialValues.$id } },
       {
         onSuccess: () => {
-          router.push("/");
-          window.location.href = "/";
+          router.replace("/");
         },
       }
     );
@@ -98,7 +115,14 @@ export const WorkspaceIdSettingsClient = () => {
   const onSubmit = (values: z.infer<typeof updateWorkspaceSchema>) => {
     const finalValues = {
       ...values,
-      imageUrl: values.imageUrl instanceof File ? values.imageUrl : (initialValues?.imageUrl ?? ""),
+      imageUrl:
+        values.imageUrl instanceof File
+          ? values.imageUrl
+          : values.imageUrl === null
+            ? ""
+            : typeof values.imageUrl === "string"
+              ? values.imageUrl
+              : (initialValues?.imageUrl ?? ""),
     };
     updateWorkspace({
       form: finalValues,
@@ -135,9 +159,9 @@ export const WorkspaceIdSettingsClient = () => {
                         {...field}
                         placeholder="Enter workspace name"
                         className="w-full px-3 py-2.5 rounded-lg text-sm text-white outline-none transition-all"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        style={{ background: BG_HOVER, border: BORDER }}
                         onFocus={e => { (e.currentTarget as HTMLInputElement).style.border = "1px solid rgba(79,124,255,0.4)"; }}
-                        onBlur={e => { (e.currentTarget as HTMLInputElement).style.border = "1px solid rgba(255,255,255,0.08)"; }}
+                        onBlur={e => { (e.currentTarget as HTMLInputElement).style.border = BORDER; }}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 text-xs mt-1" />
@@ -154,10 +178,10 @@ export const WorkspaceIdSettingsClient = () => {
                       Workspace Icon
                     </span>
                     <div className="flex items-center gap-4">
-                      {field.value ? (
+                      {previewUrl ? (
                         <div className="size-16 relative rounded-xl overflow-hidden ring-1 ring-white/10">
                           <Image
-                            src={field.value instanceof File ? URL.createObjectURL(field.value) : field.value}
+                            src={previewUrl}
                             alt="Workspace icon"
                             fill
                             className="object-cover"
@@ -166,7 +190,7 @@ export const WorkspaceIdSettingsClient = () => {
                       ) : (
                         <div
                           className="flex items-center justify-center size-16 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.12)" }}
+                          style={{ background: BG_HOVER, border: "1px dashed rgba(255,255,255,0.12)" }}
                         >
                           <ImageIcon className="size-6" style={{ color: "rgba(255,255,255,0.2)" }} />
                         </div>
@@ -183,21 +207,21 @@ export const WorkspaceIdSettingsClient = () => {
                         />
                         <div className="flex items-center gap-2">
                           <button
-                            type="button"
+                            type={BTN}
                             disabled={isUpdating}
                             onClick={() => inputRef.current?.click()}
                             className="px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all"
-                            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: BORDER }}
                           >
                             Upload Image
                           </button>
                           {field.value && (
                             <button
-                              type="button"
+                              type={BTN}
                               disabled={isUpdating}
                               onClick={() => { field.onChange(null); if (inputRef.current) inputRef.current.value = ""; }}
                               className="px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all"
-                              style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
+                              style={{ background: "rgba(239,68,68,0.1)", color: DANGER, border: "1px solid rgba(239,68,68,0.2)" }}
                             >
                               Remove
                             </button>
@@ -216,7 +240,7 @@ export const WorkspaceIdSettingsClient = () => {
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all disabled:opacity-50"
                   style={{ background: "#4F7CFF", color: "#fff", boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)" }}
                 >
-                  <Save className="size-3.5" />
+                  <Save className={SIZE_SM} />
                   {isUpdating ? "Saving…" : "Save Changes"}
                 </button>
               </div>
@@ -230,19 +254,19 @@ export const WorkspaceIdSettingsClient = () => {
           <div className="flex items-center gap-2">
             <div
               className="flex-1 flex items-center px-3 py-2.5 rounded-lg overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ background: BG_HOVER, border: BORDER }}
             >
               <span className="text-[13px] truncate" style={{ color: "rgba(255,255,255,0.5)" }}>
                 {fullInviteLink}
               </span>
             </div>
             <button
-              type="button"
+              type={BTN}
               onClick={handleCopyInviteLink}
               className="flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium rounded-lg shrink-0 transition-all"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: BORDER }}
             >
-              {copied ? <Check className="size-3.5 text-green-400" /> : <Copy className="size-3.5" />}
+              {copied ? <Check className={`${SIZE_SM} text-green-400`} /> : <Copy className={SIZE_SM} />}
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
@@ -251,18 +275,18 @@ export const WorkspaceIdSettingsClient = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[14px] font-medium text-white">Reset Invite Link</p>
-                <p className="text-[13px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <p className="text-[13px] mt-0.5" style={{ color: TEXT_DIM }}>
                   Invalidates the current link and generates a new one.
                 </p>
               </div>
               <button
-                type="button"
+                type={BTN}
                 disabled={isResetting}
                 onClick={handleResetInviteCode}
                 className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg transition-all disabled:opacity-50"
-                style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
+                style={{ background: "rgba(239,68,68,0.1)", color: DANGER, border: "1px solid rgba(239,68,68,0.2)" }}
               >
-                <RefreshCw className="size-3.5" />
+                <RefreshCw className={SIZE_SM} />
                 Reset Link
               </button>
             </div>
@@ -282,7 +306,7 @@ export const WorkspaceIdSettingsClient = () => {
             <TriangleAlert className="size-4 text-red-400" />
             <h2 className="text-[15px] font-semibold text-white">Danger Zone</h2>
           </div>
-          <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-[13px] mb-6" style={{ color: TEXT_DIM }}>
             Irreversible actions that affect the entire workspace.
           </p>
           <div
@@ -291,18 +315,18 @@ export const WorkspaceIdSettingsClient = () => {
           >
             <div>
               <p className="text-[14px] font-medium text-white">Delete Workspace</p>
-              <p className="text-[13px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-[13px] mt-0.5" style={{ color: TEXT_DIM }}>
                 Permanently deletes this workspace and all associated data.
               </p>
             </div>
             <button
-              type="button"
+              type={BTN}
               disabled={isDeleting}
               onClick={handleDelete}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all disabled:opacity-50 shrink-0 ml-4"
-              style={{ background: "#EF4444", color: "#fff", boxShadow: "0 0 0 1px rgba(239,68,68,0.3), 0 4px 12px rgba(239,68,68,0.25)" }}
+              style={{ background: DANGER, color: "#fff", boxShadow: "0 0 0 1px rgba(239,68,68,0.3), 0 4px 12px rgba(239,68,68,0.25)" }}
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className={SIZE_SM} />
               {isDeleting ? "Deleting…" : "Delete Workspace"}
             </button>
           </div>

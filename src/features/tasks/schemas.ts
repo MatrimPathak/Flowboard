@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { IssueType, LinkType, TaskPriority, TaskStatus } from "./types";
 
+const REQUIRED = "Required";
+
 const ACCEPTANCE_CRITERIA_TYPES = new Set([IssueType.EPIC, IssueType.STORY, IssueType.BUG]);
 const EPIC_REQUIRED_TYPES = new Set([IssueType.STORY, IssueType.SPIKE, IssueType.BUG]);
 
@@ -35,13 +37,13 @@ export const taskConditionalRefine = (data: Record<string, unknown>, ctx: z.Refi
 };
 
 export const createTaskSchema = z.object({
-	name: z.string().trim().min(1, "Required"),
-	status: z.nativeEnum(TaskStatus, { required_error: "Required" }),
-	workspaceId: z.string().trim().min(1, "Required"),
-	projectId: z.string().trim().min(1, "Required"),
+	name: z.string().trim().min(1, REQUIRED),
+	status: z.nativeEnum(TaskStatus, { required_error: REQUIRED }),
+	workspaceId: z.string().trim().min(1, REQUIRED),
+	projectId: z.string().trim().min(1, REQUIRED),
 	dueDate: z.coerce.date(),
-	assigneeId: z.string().trim().min(1, "Required"),
-	description: z.string().trim().min(1, "Required"),
+	assigneeId: z.string().trim().min(1, REQUIRED),
+	description: z.string().trim().min(1, REQUIRED),
 	acceptanceCriteria: z.string().optional(),
 	issueType: z.nativeEnum(IssueType).optional(),
 	priority: z.nativeEnum(TaskPriority).optional(),
@@ -62,14 +64,14 @@ export const createTaskSchema = z.object({
 }).superRefine(taskConditionalRefine);
 
 export const createCommentSchema = z.object({
-	content: z.string().trim().min(1, "Required"),
+	content: z.string().trim().min(1, REQUIRED),
 });
 
 export const addLinkSchema = z.object({
-	targetTaskId: z.string().trim().min(1, "Required"),
+	targetTaskId: z.string().trim().min(1, REQUIRED),
 	type: z.nativeEnum(LinkType),
-	workspaceId: z.string().trim().min(1, "Required"),
-	projectId: z.string().trim().min(1, "Required"),
+	workspaceId: z.string().trim().min(1, REQUIRED),
+	projectId: z.string().trim().min(1, REQUIRED),
 });
 
 export const addAttachmentSchema = z.object({
@@ -87,20 +89,20 @@ export const addAttachmentSchema = z.object({
 			},
 			{ message: "Only http(s) URLs are allowed" }
 		),
-	name: z.string().trim().min(1, "Required"),
-	workspaceId: z.string().trim().min(1, "Required"),
-	projectId: z.string().trim().min(1, "Required"),
+	name: z.string().trim().min(1, REQUIRED),
+	workspaceId: z.string().trim().min(1, REQUIRED),
+	projectId: z.string().trim().min(1, REQUIRED),
 });
 
 export const watchTaskSchema = z.object({
-	workspaceId: z.string().trim().min(1, "Required"),
-	projectId: z.string().trim().min(1, "Required"),
+	workspaceId: z.string().trim().min(1, REQUIRED),
+	projectId: z.string().trim().min(1, REQUIRED),
 });
 
 export const logWorkSchema = z.object({
 	timeSpent: z.number().int().min(1, "Must be at least 1 minute"),
 	date: z.coerce.date(),
 	description: z.string().optional(),
-	workspaceId: z.string().trim().min(1, "Required"),
-	projectId: z.string().trim().min(1, "Required"),
+	workspaceId: z.string().trim().min(1, REQUIRED),
+	projectId: z.string().trim().min(1, REQUIRED),
 });

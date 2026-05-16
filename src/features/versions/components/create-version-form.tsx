@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/date-picker";
 import { useCreateVersion } from "../api/use-create-version";
 
+const FIELD_CLS = "flex flex-col gap-y-1";
+
 interface CreateVersionFormProps {
   workspaceId: string;
   projectId: string;
@@ -65,7 +67,7 @@ export const CreateVersionForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-y-4">
-      <div className="flex flex-col gap-y-1">
+      <div className={FIELD_CLS}>
         <Label htmlFor="version-name">Name *</Label>
         <Input
           id="version-name"
@@ -75,7 +77,7 @@ export const CreateVersionForm = ({
           required
         />
       </div>
-      <div className="flex flex-col gap-y-1">
+      <div className={FIELD_CLS}>
         <Label htmlFor="version-description">Description (optional)</Label>
         <Textarea
           id="version-description"
@@ -86,7 +88,7 @@ export const CreateVersionForm = ({
         />
       </div>
       <div className="grid grid-cols-2 gap-x-4">
-        <div className="flex flex-col gap-y-1">
+        <div className={FIELD_CLS}>
           <Label>Start Date (optional)</Label>
           <DatePicker
             value={startDate}
@@ -97,7 +99,7 @@ export const CreateVersionForm = ({
             placeholder="Start Date"
           />
         </div>
-        <div className="flex flex-col gap-y-1">
+        <div className={FIELD_CLS}>
           <Label>Release Date (optional)</Label>
           <DatePicker
             value={releaseDate}

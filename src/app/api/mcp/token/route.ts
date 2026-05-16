@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import crypto from "crypto";
 
+const INVALID_GRANT = "invalid_grant";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -43,22 +45,22 @@ export async function POST(req: NextRequest) {
 
     const codeDoc = await adminDb.collection("mcp_auth_codes").doc(code).get();
     if (!codeDoc.exists) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: INVALID_GRANT });
     }
 
     const data = codeDoc.data()!;
 
     if (new Date(data.expiresAt) < new Date()) {
       await codeDoc.ref.delete();
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: INVALID_GRANT });
     }
 
     if (redirectUri && data.redirectUri !== redirectUri) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: INVALID_GRANT });
     }
 
     if (!verifyPKCE(codeVerifier, data.codeChallenge)) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: INVALID_GRANT });
     }
 
     await codeDoc.ref.delete();
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (!res.ok) {
-      return tokenResponse({ error: "invalid_grant" });
+      return tokenResponse({ error: INVALID_GRANT });
     }
 
     const refreshed = await res.json();

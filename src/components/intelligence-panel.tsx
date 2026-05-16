@@ -8,6 +8,10 @@ import { format, isAfter, isBefore, addDays } from "date-fns";
 import { Clock, AlertCircle, Bot, Loader, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 
+const SECTION_HEADER_CLS = "flex items-center gap-2 mb-3";
+const SECTION_LABEL_CLS = "text-xs font-semibold uppercase tracking-widest text-white/30";
+const EMPTY_CLS = "text-[13px] text-white/25 text-center py-4";
+
 interface IntelligencePanelProps {
   embedded?: boolean;
 }
@@ -21,7 +25,6 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
   fetchRef.current = fetchSuggestions;
 
   const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
-  const now = useMemo(() => new Date(), []);
 
   const recent = useMemo(
     () => [...tasks].sort((a, b) => (b.$createdAt > a.$createdAt ? 1 : -1)).slice(0, 8),
@@ -29,16 +32,18 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
   );
 
   const upcoming = useMemo(
-    () =>
-      tasks
+    () => {
+      const now = new Date();
+      return tasks
         .filter((t) => {
           if (!t.dueDate || t.status === TaskStatus.DONE) return false;
           const due = new Date(t.dueDate);
           return isAfter(due, now) && isBefore(due, addDays(now, 7));
         })
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-        .slice(0, 5),
-    [tasks, now]
+        .slice(0, 5);
+    },
+    [tasks]
   );
 
   useEffect(() => {
@@ -48,6 +53,7 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
   useEffect(() => {
     if (hasFetched.current || tasks.length === 0 || !workspaceId) return;
     hasFetched.current = true;
+    const now = new Date();
 
     const doneTasks = tasks.filter((t) => t.status === TaskStatus.DONE).length;
     const overdueCount = tasks.filter(
@@ -62,7 +68,7 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
       overdueCount,
       blockedCount,
     });
-  }, [tasks, now, workspaceId]);
+  }, [tasks, workspaceId]);
 
   const suggestionColors: Record<string, { bg: string; border: string; text: string; dot: string }> = {
     warning: { bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)", text: "#EF4444", dot: "bg-red-400" },
@@ -84,11 +90,11 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
     <div className="flex flex-col h-full px-4 py-5 gap-6">
       {/* AI Suggestions */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
+        <div className={SECTION_HEADER_CLS}>
           <div className="flex items-center justify-center size-6 rounded-md" style={{ background: "rgba(139,92,246,0.1)" }}>
             <Bot className="size-3.5" style={{ color: "#8B5CF6" }} />
           </div>
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30">AI Insights</h3>
+          <h3 className={SECTION_LABEL_CLS}>AI Insights</h3>
           {aiLoading && <Loader className="size-3 animate-spin text-white/20 ml-auto" />}
           {!aiLoading && aiSuggestions && (
             <Sparkles className="size-3 ml-auto" style={{ color: "rgba(139,92,246,0.5)" }} />
@@ -105,7 +111,7 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
             </div>
           )}
           {!aiLoading && displaySuggestions.length === 0 && !aiSuggestions && (
-            <p className="text-[13px] text-white/25 text-center py-4">No data yet</p>
+            <p className={EMPTY_CLS}>No data yet</p>
           )}
           {!aiLoading && displaySuggestions.map((s, i) => {
             const c = suggestionColors[s.type] ?? suggestionColors.info;
@@ -128,11 +134,11 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
 
       {/* Recent Activity */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
+        <div className={SECTION_HEADER_CLS}>
           <div className="flex items-center justify-center size-6 rounded-md bg-white/[0.05]">
             <Clock className="size-3.5 text-white/40" />
           </div>
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30">Recent Activity</h3>
+          <h3 className={SECTION_LABEL_CLS}>Recent Activity</h3>
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
@@ -155,7 +161,7 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
               </div>
             ))}
             {recent.length === 0 && (
-              <p className="text-[13px] text-white/25 text-center py-4">No recent activity</p>
+              <p className={EMPTY_CLS}>No recent activity</p>
             )}
           </div>
         )}
@@ -163,11 +169,11 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
 
       {/* Upcoming Deadlines */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
+        <div className={SECTION_HEADER_CLS}>
           <div className="flex items-center justify-center size-6 rounded-md" style={{ background: "rgba(245,158,11,0.1)" }}>
             <AlertCircle className="size-3.5" style={{ color: "#F59E0B" }} />
           </div>
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30">Upcoming Deadlines</h3>
+          <h3 className={SECTION_LABEL_CLS}>Upcoming Deadlines</h3>
         </div>
         <div className="space-y-1.5">
           {upcoming.map((task) => (
@@ -187,7 +193,7 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
             </div>
           ))}
           {upcoming.length === 0 && (
-            <p className="text-[13px] text-white/25 text-center py-4">No upcoming deadlines</p>
+            <p className={EMPTY_CLS}>No upcoming deadlines</p>
           )}
         </div>
       </div>

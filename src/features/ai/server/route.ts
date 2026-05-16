@@ -138,10 +138,21 @@ Generate 3 short, actionable AI insights for the team dashboard. Each insight sh
           return c.json({ error: "AI service returned unexpected response" }, 502);
         }
 
-        const suggestions =
-          (toolUseBlock.input as { suggestions: { title: string; body: string; type: string }[] }).suggestions ?? [];
+        const suggestionsSchema = z.array(
+          z.object({
+            title: z.string(),
+            body: z.string(),
+            type: z.enum(["info", "warning", "success"]),
+          })
+        );
+        const parseResult = suggestionsSchema.safeParse(
+          (toolUseBlock.input as { suggestions?: unknown }).suggestions
+        );
+        if (!parseResult.success) {
+          return c.json({ error: "AI service returned invalid suggestions" }, 502);
+        }
 
-        return c.json({ data: suggestions });
+        return c.json({ data: parseResult.data });
       } catch {
         return c.json({ error: "AI service unavailable" }, 502);
       }

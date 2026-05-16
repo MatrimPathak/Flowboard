@@ -29,8 +29,12 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { format, subDays, isBefore } from "date-fns";
+
+const DATE_FMT = "MMM d";
+const TREND_NEUTRAL = "neutral";
+const AREA_TYPE = "monotone";
 
 const SURFACE = "#0F172A";
 const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
@@ -52,10 +56,10 @@ function getGreeting(name?: string | null) {
 function buildSparklineData(tasks: { $createdAt: string; status: string }[]) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i);
-    const label = format(d, "MMM d");
+    const label = format(d, DATE_FMT);
     const count = tasks.filter((t) => {
       const c = new Date(t.$createdAt);
-      return format(c, "MMM d") === label;
+      return format(c, DATE_FMT) === label;
     }).length;
     return { day: label, count };
   });
@@ -172,7 +176,7 @@ function IntelCard({
                   </linearGradient>
                 </defs>
                 <Area
-                  type="monotone"
+                  type={AREA_TYPE}
                   dataKey="count"
                   stroke={accent ?? PRIMARY}
                   strokeWidth={1.5}
@@ -205,7 +209,11 @@ export const WorkspaceIdClient = () => {
   const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
   const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
   const members = useMemo(() => membersData?.documents ?? [], [membersData]);
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const sparkData = useMemo(() => buildSparklineData(tasks), [tasks]);
 
@@ -226,17 +234,17 @@ export const WorkspaceIdClient = () => {
   const burndownData = useMemo(() => {
     return Array.from({ length: 14 }, (_, i) => {
       const d = subDays(now, 13 - i);
-      const label = format(d, "MMM d");
+      const label = format(d, DATE_FMT);
       const completed = tasks.filter((t) => {
         if (t.status !== TaskStatus.DONE) return false;
         const completedAt = (t as { $updatedAt?: string }).$updatedAt ?? t.$createdAt;
-        return completedAt && format(new Date(completedAt), "MMM d") === label;
+        return completedAt && format(new Date(completedAt), DATE_FMT) === label;
       }).length;
       const remaining = tasks.filter((t) => {
         if (t.status === TaskStatus.DONE) return false;
         return isBefore(new Date(t.$createdAt), d);
       }).length;
-      return { day: format(d, "MMM d"), completed, remaining };
+      return { day: format(d, DATE_FMT), completed, remaining };
     });
   }, [tasks, now]);
 
@@ -266,7 +274,7 @@ export const WorkspaceIdClient = () => {
           icon={Target}
           iconBg="rgba(79,124,255,0.12)"
           iconColor={PRIMARY}
-          trend={todayDue.length > 3 ? "down" : "neutral"}
+          trend={todayDue.length > 3 ? "down" : TREND_NEUTRAL}
           trendLabel={
             todayDue.length > 0
               ? `${todayDue.length} need attention`
@@ -284,7 +292,7 @@ export const WorkspaceIdClient = () => {
           icon={AlertCircle}
           iconBg="rgba(239,68,68,0.12)"
           iconColor={DANGER}
-          trend={blocked.length > 0 ? "down" : "neutral"}
+          trend={blocked.length > 0 ? "down" : TREND_NEUTRAL}
           trendLabel={blocked.length > 0 ? "Review blockers" : "No blockers"}
           accent={DANGER}
         />
@@ -306,7 +314,7 @@ export const WorkspaceIdClient = () => {
           icon={Rocket}
           iconBg="rgba(139,92,246,0.12)"
           iconColor="#8B5CF6"
-          trend="neutral"
+          trend={TREND_NEUTRAL}
           trendLabel={`${members.length} team members`}
           accent="#8B5CF6"
         />
@@ -317,7 +325,7 @@ export const WorkspaceIdClient = () => {
           icon={GitPullRequest}
           iconBg={BORDER_SUBTLE}
           iconColor={TEXT_DIM}
-          trend="neutral"
+          trend={TREND_NEUTRAL}
           trendLabel="Connect GitHub"
           accent={PRIMARY}
         />
@@ -420,7 +428,7 @@ export const WorkspaceIdClient = () => {
                   }}
                 />
                 <Area
-                  type="monotone"
+                  type={AREA_TYPE}
                   dataKey="completed"
                   stroke={SUCCESS}
                   strokeWidth={2}
@@ -514,7 +522,7 @@ export const WorkspaceIdClient = () => {
                   }}
                 />
                 <Area
-                  type="monotone"
+                  type={AREA_TYPE}
                   dataKey="remaining"
                   stroke={PRIMARY}
                   strokeWidth={2}
