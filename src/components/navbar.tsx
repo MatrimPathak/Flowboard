@@ -71,6 +71,11 @@ export const Navbar = () => {
 		});
 	}
 
+	// Placeholder: wire up to a command palette modal when implementing
+	const handleCommandPalette = () => {
+		return;
+	};
+
 	const isTaskDetailPage = new Set(["epic", "story", "spike", "bug"]).has(
 		pageSegment ?? ""
 	);
@@ -127,7 +132,7 @@ export const Navbar = () => {
 			<div className="flex items-center gap-2 shrink-0">
 				<button
 					type="button"
-					onClick={() => { /* setCommandOpen(true) */ }}
+					onClick={handleCommandPalette}
 					className="hidden md:flex items-center gap-2 h-9 w-[220px] px-3 rounded-md bg-muted border border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
 				>
 					<Search className="size-4 shrink-0" />
@@ -138,7 +143,7 @@ export const Navbar = () => {
 				</button>
 				<button
 					type="button"
-					onClick={() => { /* setCommandOpen(true) */ }}
+					onClick={handleCommandPalette}
 					className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition"
 					aria-label="Search"
 				>
