@@ -52,8 +52,7 @@ export const SignInCard = () => {
 			} else {
 				toast.error("Failed to create session");
 			}
-		} catch (error) {
-			console.error(error);
+		} catch {
 			toast.error(`Failed to log in with ${providerName}`);
 		}
 	};

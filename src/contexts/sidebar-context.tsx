@@ -38,7 +38,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 	const isTablet = useMedia("(min-width: 1024px) and (max-width: 1279px)");
 
 	useEffect(() => {
-		const saved = globalThis.localStorage.getItem("chronicle-sidebar");
+		const saved = localStorage.getItem("chronicle-sidebar");
 		if (saved !== null) {
 			setIsCollapsed(saved === "true");
 		} else {
@@ -57,7 +57,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 	const toggleSidebar = useCallback(() => {
 		setIsCollapsed((prev) => {
 			const next = !prev;
-			globalThis.localStorage.setItem("chronicle-sidebar", String(next));
+			localStorage.setItem("chronicle-sidebar", String(next));
 			return next;
 		});
 	}, []);
