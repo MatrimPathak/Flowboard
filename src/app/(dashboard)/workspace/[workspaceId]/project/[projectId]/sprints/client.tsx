@@ -17,6 +17,10 @@ import Link from "next/link";
 
 const PRIMARY = "#4F7CFF";
 const TEXT_DIM = "rgba(255,255,255,0.3)";
+const FLEX_ROW = "flex items-center gap-2";
+const STAT_ICON_CLS = "flex items-center justify-center size-7 rounded-lg bg-white/[0.06]";
+const STAT_VAL_CLS = "text-sm font-semibold text-white";
+const TEXT_TINY_CLS = "text-[11px]";
 
 function getProgressColor(pct: number): string {
   if (pct >= 70) return "#22C55E";
@@ -123,33 +127,33 @@ export const SprintsClient = () => {
 
           {/* Sprint stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06]">
+            <div className={FLEX_ROW}>
+              <div className={STAT_ICON_CLS}>
                 <Timer className="size-3.5 text-white/40" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">
+                <p className={STAT_VAL_CLS}>
                   {daysLeft != null ? (daysLeft >= 0 ? `${daysLeft}d left` : "Overdue") : "—"}
                 </p>
-                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Remaining</p>
+                <p className={TEXT_TINY_CLS} style={{ color: TEXT_DIM }}>Remaining</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06]">
+            <div className={FLEX_ROW}>
+              <div className={STAT_ICON_CLS}>
                 <CheckCircle2 className="size-3.5 text-green-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{activeCompleted}/{activeTasks}</p>
-                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Done</p>
+                <p className={STAT_VAL_CLS}>{activeCompleted}/{activeTasks}</p>
+                <p className={TEXT_TINY_CLS} style={{ color: TEXT_DIM }}>Done</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06]">
+            <div className={FLEX_ROW}>
+              <div className={STAT_ICON_CLS}>
                 <AlertCircle className="size-3.5 text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{activeStats?.blocked ?? 0}</p>
-                <p className="text-[11px]" style={{ color: TEXT_DIM }}>Blocked</p>
+                <p className={STAT_VAL_CLS}>{activeStats?.blocked ?? 0}</p>
+                <p className={TEXT_TINY_CLS} style={{ color: TEXT_DIM }}>Blocked</p>
               </div>
             </div>
           </div>

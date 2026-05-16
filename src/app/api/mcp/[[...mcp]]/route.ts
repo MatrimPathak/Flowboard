@@ -31,6 +31,15 @@ import {
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+const WORKSPACES = "workspaces";
+const MEMBERS = "members";
+const PROJECTS = "projects";
+const CORS_HEADER = "Access-Control-Allow-Origin";
+const WORKSPACE_ID = "workspaceId";
+const USER_ID = "userId";
+const SPRINT_ID = "sprintId";
+const VERSION_LABEL = "Version";
+
 const mcpContext = new AsyncLocalStorage<{ userId: string }>();
 
 // Helper to get user id for the MCP bot
@@ -44,9 +53,9 @@ function getMcpUserId() {
 
 async function verifyWorkspaceAccess(workspaceId: string) {
   const userId = getMcpUserId();
-  const memberSnapshot = await adminDb.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
+  const memberSnapshot = await adminDb.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", workspaceId)
+    .where(USER_ID, "==", userId)
     .get();
 
   if (memberSnapshot.empty) {
@@ -188,7 +197,7 @@ const createTicketSchema = createTicketBaseSchema.superRefine(taskConditionalRef
 const updateTicketSchema = updateTicketBaseSchema.superRefine(taskConditionalRefine);
 
 async function findProjectAcrossWorkspaces(projectId: string, userId: string) {
-  const membersSnap = await adminDb.collection("members").where("userId", "==", userId).get();
+  const membersSnap = await adminDb.collection(MEMBERS).where(USER_ID, "==", userId).get();
   const workspaceIds = membersSnap.docs.map((d: any) => d.data().workspaceId as string);
   for (const wId of workspaceIds) {
     const pDoc = await projRef(wId, projectId).get();
@@ -198,9 +207,9 @@ async function findProjectAcrossWorkspaces(projectId: string, userId: string) {
 }
 
 async function getCallerWorkspaceRole(workspaceId: string, userId: string): Promise<string | null> {
-  const snap = await adminDb.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
+  const snap = await adminDb.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", workspaceId)
+    .where(USER_ID, "==", userId)
     .limit(1)
     .get();
   return snap.empty ? null : (snap.docs[0].data().role as string);
@@ -209,7 +218,7 @@ async function getCallerWorkspaceRole(workspaceId: string, userId: string): Prom
 async function verifyProjectAdminAccess(workspaceId: string, projectRef: any, callerId: string, action: string) {
   const workspaceRole = await getCallerWorkspaceRole(workspaceId, callerId);
   if (workspaceRole === MemberRole.ADMIN) return;
-  const pm = await projectRef.collection("members").doc(callerId).get();
+  const pm = await projectRef.collection(MEMBERS).doc(callerId).get();
   if (!pm.exists || pm.data()!.role !== MemberRole.ADMIN) {
     throw new Error(`Only workspace admins or project admins can ${action}`);
   }
@@ -244,7 +253,7 @@ async function updateDocFields(ref: any, updates: Record<string, unknown>, entit
 }
 
 async function listByProject(workspaceId: string, projectId: string | undefined, subColFn: (wId: string, pId: string) => any) {
-  const projectsSnap = await adminDb.collection("workspaces").doc(workspaceId).collection("projects").get();
+  const projectsSnap = await adminDb.collection(WORKSPACES).doc(workspaceId).collection(PROJECTS).get();
   const items: any[] = [];
   for (const pDoc of projectsSnap.docs) {
     if (projectId && pDoc.id !== projectId) continue;
@@ -271,7 +280,7 @@ async function resolveCommentRef(args: any, userId: string, action: string) {
 }
 
 async function resolveWorkspaceMember(workspaceId: string, memberId: string) {
-  const ref = adminDb.collection("members").doc(memberId);
+  const ref = adminDb.collection(MEMBERS).doc(memberId);
   const doc = await ref.get();
   if (!doc.exists || doc.data()!.workspaceId !== workspaceId) {
     throw new Error("Member not found in this workspace");
@@ -320,7 +329,7 @@ async function getTaskSubcollection(args: any, colName: string, ascending: boole
 }
 
 function projRef(wId: string, pId: string) {
-  return adminDb.collection("workspaces").doc(wId).collection("projects").doc(pId);
+  return adminDb.collection(WORKSPACES).doc(wId).collection(PROJECTS).doc(pId);
 }
 function tasksCol(wId: string, pId: string) { return projRef(wId, pId).collection("tasks"); }
 function taskDocRef(wId: string, pId: string, taskId: string) { return tasksCol(wId, pId).doc(taskId); }
@@ -381,7 +390,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
         // Fetch all projects in the workspace first to avoid collectionGroup index
-        const projectsSnapshot = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").get();
+        const projectsSnapshot = await adminDb.collection(WORKSPACES).doc(args.workspaceId).collection(PROJECTS).get();
         const projectIds = projectsSnapshot.docs.map((doc: any) => doc.id);
 
         const allTasks: any[] = [];
@@ -460,13 +469,13 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async () => {
         const userId = getMcpUserId();
-        const membersSnapshot = await adminDb.collection("members").where("userId", "==", userId).get();
+        const membersSnapshot = await adminDb.collection(MEMBERS).where(USER_ID, "==", userId).get();
         const workspaceIds = membersSnapshot.docs.map((doc: any) => doc.data().workspaceId);
 
         const workspaces = [];
         for (const wId of workspaceIds) {
           // Only get the workspace itself
-          const wDoc = await adminDb.collection("workspaces").doc(wId).get();
+          const wDoc = await adminDb.collection(WORKSPACES).doc(wId).get();
           if (wDoc.exists) workspaces.push(docJson(wDoc));
         }
         return textResult(workspaces);
@@ -484,7 +493,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const snapshot = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").limit(100).get();
+        const snapshot = await adminDb.collection(WORKSPACES).doc(args.workspaceId).collection(PROJECTS).limit(100).get();
         const projects = snapshot.docs.map((doc: any) => (docJson(doc)));
         return textResult(projects);
       }
@@ -501,8 +510,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        const snapshot = await adminDb.collection("members")
-          .where("workspaceId", "==", args.workspaceId)
+        const snapshot = await adminDb.collection(MEMBERS)
+          .where(WORKSPACE_ID, "==", args.workspaceId)
           .limit(100)
           .get();
         const members = snapshot.docs.map((doc: any) => (docJson(doc)));
@@ -537,30 +546,58 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         }) as any,
       },
       async (args: any) => {
-        const userId = getMcpUserId();
-        const imageUrl = await resolveImageUrl(args.imageUrl, userId);
-        const workspaceId = generatePrefixedId(ID_PREFIX.WORKSPACE);
-        const workspaceRef = adminDb.collection("workspaces").doc(workspaceId);
-        const memberRef = adminDb.collection("members").doc();
-        const now = new Date().toISOString();
-        const batch = adminDb.batch();
-        batch.set(workspaceRef, {
-          name: args.name,
-          userId,
-          imageUrl,
-          inviteCode: generateInviteCode(10),
-          $createdAt: now,
-        });
-        batch.set(memberRef, {
-          userId,
-          workspaceId,
-          role: MemberRole.ADMIN,
-          $createdAt: now,
-        });
-        await batch.commit();
-        const doc = await workspaceRef.get();
-        return textResult(docJson(doc));
-      }
+  const userId = getMcpUserId();
+  const imageUrl = await resolveImageUrl(
+    args.imageUrl,
+    userId
+  );
+
+  const workspaceId =
+    generatePrefixedId(
+      ID_PREFIX.WORKSPACE
+    );
+
+  const workspaceRef =
+    adminDb
+      .collection(WORKSPACES)
+      .doc(workspaceId);
+
+  const memberRef =
+    adminDb
+      .collection(MEMBERS)
+      .doc();
+
+  const now =
+    new Date().toISOString();
+
+  const batch =
+    adminDb.batch();
+
+  batch.set(workspaceRef, {
+    name: args.name,
+    userId,
+    imageUrl,
+    inviteCode:
+      generateInviteCode(10),
+    $createdAt: now,
+  });
+
+  batch.set(memberRef, {
+    userId,
+    workspaceId,
+    role: MemberRole.ADMIN,
+    $createdAt: now,
+  });
+
+  await batch.commit();
+
+  const doc =
+    await workspaceRef.get();
+
+  return textResult(
+    docJson(doc)
+  );
+}
     );
 
     server.registerTool(
@@ -577,7 +614,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         const { workspaceId, imageUrl, ...updates } = args;
         await verifyWorkspaceAccess(workspaceId);
-        return applyWithResolvedImage(adminDb.collection("workspaces").doc(workspaceId), updates, imageUrl, getMcpUserId());
+        return applyWithResolvedImage(adminDb.collection(WORKSPACES).doc(workspaceId), updates, imageUrl, getMcpUserId());
       }
     );
 
@@ -594,8 +631,8 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await verifyWorkspaceAccess(args.workspaceId);
 
         // 1. Delete all membership records for this workspace
-        const membersSnapshot = await adminDb.collection("members")
-          .where("workspaceId", "==", args.workspaceId)
+        const membersSnapshot = await adminDb.collection(MEMBERS)
+          .where(WORKSPACE_ID, "==", args.workspaceId)
           .get();
 
         const batch = adminDb.batch();
@@ -605,7 +642,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await batch.commit();
 
         // 2. Recursively delete the workspace and its projects/tasks
-        await adminDb.recursiveDelete(adminDb.collection("workspaces").doc(args.workspaceId));
+        await adminDb.recursiveDelete(adminDb.collection(WORKSPACES).doc(args.workspaceId));
         return textResult(`Workspace ${args.workspaceId} deleted successfully`);
       }
     );
@@ -626,7 +663,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         const userId = getMcpUserId();
         const imageUrl = await resolveImageUrl(args.imageUrl, userId);
         const projectId = generatePrefixedId(ID_PREFIX.PROJECT);
-        const projectRef = adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").doc(projectId);
+        const projectRef = adminDb.collection(WORKSPACES).doc(args.workspaceId).collection(PROJECTS).doc(projectId);
         await projectRef.set({
           name: args.name,
           workspaceId: args.workspaceId,
@@ -776,7 +813,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await verifyWorkspaceAccess(args.workspaceId);
         const { sprintRef } = await resolveSprintRef(args);
         const sprintTasks = await tasksCol(args.workspaceId, args.projectId)
-          .where("sprintId", "==", args.sprintId)
+          .where(SPRINT_ID, "==", args.sprintId)
           .get();
 
         const batch = adminDb.batch();
@@ -808,7 +845,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
         await verifyWorkspaceAccess(args.workspaceId);
         const { sprintRef, sprintDoc } = await resolveSprintRef(args);
         if (sprintDoc.data()!.status !== SprintStatus.PLANNED) throw new Error("Only PLANNED sprints can be deleted");
-        await batchClearFieldAndDelete(sprintRef, tasksCol(args.workspaceId, args.projectId).where("sprintId", "==", args.sprintId), "sprintId");
+        await batchClearFieldAndDelete(sprintRef, tasksCol(args.workspaceId, args.projectId).where(SPRINT_ID, "==", args.sprintId), SPRINT_ID);
         return textResult(`Sprint ${args.sprintId} deleted successfully`);
       }
     );
@@ -868,7 +905,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         const { workspaceId, projectId, versionId, ...updates } = args;
         await verifyWorkspaceAccess(workspaceId);
-        return updateDocFields(versionsCol(workspaceId, projectId).doc(versionId), updates, "Version");
+        return updateDocFields(versionsCol(workspaceId, projectId).doc(versionId), updates, VERSION_LABEL);
       }
     );
 
@@ -885,7 +922,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return setDocStatus(versionsCol(args.workspaceId, args.projectId).doc(args.versionId), VersionStatus.RELEASED, "Version");
+        return setDocStatus(versionsCol(args.workspaceId, args.projectId).doc(args.versionId), VersionStatus.RELEASED, VERSION_LABEL);
       }
     );
 
@@ -902,7 +939,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       },
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
-        return setDocStatus(versionsCol(args.workspaceId, args.projectId).doc(args.versionId), VersionStatus.ARCHIVED, "Version");
+        return setDocStatus(versionsCol(args.workspaceId, args.projectId).doc(args.versionId), VersionStatus.ARCHIVED, VERSION_LABEL);
       }
     );
 
@@ -1120,7 +1157,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
       async (args: any) => {
         await verifyWorkspaceAccess(args.workspaceId);
         const userId = getMcpUserId();
-        const projectsSnap = await adminDb.collection("workspaces").doc(args.workspaceId).collection("projects").get();
+        const projectsSnap = await adminDb.collection(WORKSPACES).doc(args.workspaceId).collection(PROJECTS).get();
         const allTasks: any[] = [];
         for (const pDoc of projectsSnap.docs) {
           const tasksSnap = await tasksCol(args.workspaceId, pDoc.id).get();
@@ -1261,12 +1298,16 @@ export const runtime = "nodejs";
 
 function unauthorizedResponse(req: Request) {
   const base = new URL(req.url).origin;
+
   return new Response("Unauthorized", {
     status: 401,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Expose-Headers": "WWW-Authenticate",
-      "WWW-Authenticate": `Bearer realm="${base}/api/mcp", resource_metadata="${base}/.well-known/oauth-authorization-server"`,
+      "Access-Control-Expose-Headers":
+        "WWW-Authenticate",
+
+      "WWW-Authenticate":
+        `Bearer realm="${base}/api/mcp", resource_metadata="${base}/.well-known/oauth-authorization-server"`,
     },
   });
 }
@@ -1290,7 +1331,7 @@ export async function GET(req: Request) {
       statusText: response.statusText,
       headers: {
         ...Object.fromEntries(response.headers.entries()),
-        "Access-Control-Allow-Origin": "*",
+        CORS_HEADER: "*",
       }
     });
     return newResponse;
@@ -1303,7 +1344,7 @@ export async function GET(req: Request) {
     statusText: response.statusText,
     headers: {
       ...Object.fromEntries(response.headers.entries()),
-      "Access-Control-Allow-Origin": "*",
+      CORS_HEADER: "*",
       "Cache-Control": "no-cache, no-transform",
       "Content-Type": "text/event-stream",
       "Connection": "keep-alive",
@@ -1319,7 +1360,7 @@ export async function POST(req: Request) {
   const relativeReq = normalizeRequestUrl(req);
 
   const response = await mcpContext.run({ userId }, () => handler(relativeReq));
-  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set(CORS_HEADER, "*");
   response.headers.set("Cache-Control", "no-cache");
   return response;
 }
@@ -1328,7 +1369,7 @@ export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
+      CORS_HEADER: "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },

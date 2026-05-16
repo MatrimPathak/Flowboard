@@ -1,5 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const MEMBERS = "members";
+const WORKSPACE_ID = "workspaceId";
+const WORKLOGS = "worklogs";
+const COMMENTS = "comments";
+const LINKS = "links";
+const ADMIN_ROLE = "ADMIN";
+const USER_ID = "userId";
+const TASK_NOT_FOUND = "Task not found";
+const PROJECT_NOT_FOUND = "Project not found";
+
 // ── Firestore ref helpers ─────────────────────────────────────────────────────
 
 export function taskDocRef(db: any, wId: string, pId: string, taskId: string) {
@@ -19,9 +29,9 @@ export function docJson(doc: any) {
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export async function computeAnalytics(db: any, allTasks: any[], workspaceId: string, userId: string) {
-  const memberSnap = await db.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
+  const memberSnap = await db.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", workspaceId)
+    .where(USER_ID, "==", userId)
     .limit(1).get();
   const memberId = memberSnap.empty ? userId : memberSnap.docs[0].id;
 
@@ -54,7 +64,7 @@ export async function computeAnalytics(db: any, allTasks: any[], workspaceId: st
 // ── Worklog operations ────────────────────────────────────────────────────────
 
 export async function getWorklogs(db: any, wId: string, pId: string, taskId: string) {
-  const snap = await taskDocRef(db, wId, pId, taskId).collection("worklogs").get();
+  const snap = await taskDocRef(db, wId, pId, taskId).collection(WORKLOGS).get();
   return snap.docs
     .map((doc: any) => docJson(doc))
     .sort((a: any, b: any) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime());
@@ -67,9 +77,9 @@ export async function logWork(
 ) {
   const ref = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
   const taskDoc = await ref.get();
-  if (!taskDoc.exists) throw new Error("Task not found");
+  if (!taskDoc.exists) throw new Error(TASK_NOT_FOUND);
 
-  const worklogRef = await ref.collection("worklogs").add({
+  const worklogRef = await ref.collection(WORKLOGS).add({
     timeSpent: args.timeSpent,
     date: args.date,
     description: args.description || null,
@@ -95,7 +105,10 @@ export async function updateWorklog(
   args: { workspaceId: string; projectId: string; taskId: string; worklogId: string; timeSpent?: number; description?: string },
 ) {
   const taskRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
-  const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
+  const worklogRef =
+    taskRef
+      .collection(WORKLOGS)
+      .doc(args.worklogId);
 
   return db.runTransaction(async (tx: any) => {
     const worklogDoc = await tx.get(worklogRef);
@@ -122,7 +135,10 @@ export async function deleteWorklog(
   args: { workspaceId: string; projectId: string; taskId: string; worklogId: string },
 ) {
   const taskRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
-  const worklogRef = taskRef.collection("worklogs").doc(args.worklogId);
+  const worklogRef =
+    taskRef
+      .collection(WORKLOGS)
+      .doc(args.worklogId);
 
   await db.runTransaction(async (tx: any) => {
     const worklogDoc = await tx.get(worklogRef);
@@ -139,7 +155,7 @@ export async function deleteWorklog(
 // ── Comment operations ────────────────────────────────────────────────────────
 
 export async function getComments(db: any, wId: string, pId: string, taskId: string) {
-  const snap = await taskDocRef(db, wId, pId, taskId).collection("comments").get();
+  const snap = await taskDocRef(db, wId, pId, taskId).collection(COMMENTS).get();
   return snap.docs
     .map((doc: any) => docJson(doc))
     .sort((a: any, b: any) => new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime());
@@ -151,9 +167,9 @@ export async function addComment(
   args: { workspaceId: string; projectId: string; taskId: string; content: string },
 ) {
   const ref = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
-  if (!(await ref.get()).exists) throw new Error("Task not found");
+  if (!(await ref.get()).exists) throw new Error(TASK_NOT_FOUND);
 
-  const commentRef = await ref.collection("comments").add({
+  const commentRef = await ref.collection(COMMENTS).add({
     content: args.content,
     authorId: userId,
     workspaceId: args.workspaceId,
@@ -169,7 +185,7 @@ export async function updateComment(
   args: { workspaceId: string; projectId: string; taskId: string; commentId: string; content: string },
 ) {
   const commentRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId)
-    .collection("comments").doc(args.commentId);
+    .collection(COMMENTS).doc(args.commentId);
   const commentDoc = await commentRef.get();
   if (!commentDoc.exists) throw new Error("Comment not found");
   if (commentDoc.data()!.authorId !== userId) throw new Error("Only the comment author can edit it");
@@ -184,7 +200,7 @@ export async function deleteComment(
   args: { workspaceId: string; projectId: string; taskId: string; commentId: string },
 ) {
   const commentRef = taskDocRef(db, args.workspaceId, args.projectId, args.taskId)
-    .collection("comments").doc(args.commentId);
+    .collection(COMMENTS).doc(args.commentId);
   const commentDoc = await commentRef.get();
   if (!commentDoc.exists) throw new Error("Comment not found");
   if (commentDoc.data()!.authorId !== userId) throw new Error("Only the comment author can delete it");
@@ -194,7 +210,7 @@ export async function deleteComment(
 // ── Task link operations ──────────────────────────────────────────────────────
 
 export async function getTaskLinks(db: any, wId: string, pId: string, taskId: string) {
-  const snap = await taskDocRef(db, wId, pId, taskId).collection("links").get();
+  const snap = await taskDocRef(db, wId, pId, taskId).collection(LINKS).get();
   return snap.docs.map((doc: any) => docJson(doc));
 }
 
@@ -205,17 +221,27 @@ export async function addTaskLink(
 ) {
   if (args.taskId === args.targetTaskId) throw new Error("Cannot link a task to itself");
   const ref = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
-  if (!(await ref.get()).exists) throw new Error("Task not found");
-  const targetRef = taskDocRef(db, args.workspaceId, args.projectId, args.targetTaskId);
-  if (!(await targetRef.get()).exists) throw new Error("Target task not found");
+  if (!(await ref.get()).exists)
+    throw new Error(TASK_NOT_FOUND);
 
-  const existingLinks = await ref.collection("links").get();
+  const targetRef =
+    taskDocRef(
+      db,
+      args.workspaceId,
+      args.projectId,
+      args.targetTaskId
+    );
+
+  if (!(await targetRef.get()).exists)
+    throw new Error("Target task not found");
+
+  const existingLinks = await ref.collection(LINKS).get();
   const duplicate = existingLinks.docs.find(
     (doc: any) => doc.data().targetTaskId === args.targetTaskId && doc.data().type === args.type
   );
   if (duplicate) throw new Error("This link already exists");
 
-  const linkRef = await ref.collection("links").add({
+  const linkRef = await ref.collection(LINKS).add({
     targetTaskId: args.targetTaskId,
     type: args.type,
     createdBy: userId,
@@ -227,7 +253,7 @@ export async function addTaskLink(
 }
 
 export async function deleteTaskLink(db: any, wId: string, pId: string, taskId: string, linkId: string) {
-  const linkRef = taskDocRef(db, wId, pId, taskId).collection("links").doc(linkId);
+  const linkRef = taskDocRef(db, wId, pId, taskId).collection(LINKS).doc(linkId);
   if (!(await linkRef.get()).exists) throw new Error("Link not found");
   await linkRef.delete();
 }
@@ -235,22 +261,22 @@ export async function deleteTaskLink(db: any, wId: string, pId: string, taskId: 
 // ── Member operations ─────────────────────────────────────────────────────────
 
 export async function getProjectMembers(db: any, wId: string, pId: string) {
-  const snap = await projRef(db, wId, pId).collection("members").get();
+  const snap = await projRef(db, wId, pId).collection(MEMBERS).get();
   return snap.docs.map((doc: any) => docJson(doc));
 }
 
 async function getWorkspaceRole(db: any, workspaceId: string, userId: string): Promise<string | null> {
-  const snap = await db.collection("members")
-    .where("workspaceId", "==", workspaceId)
-    .where("userId", "==", userId)
+  const snap = await db.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", workspaceId)
+    .where(USER_ID, "==", userId)
     .limit(1).get();
   return snap.empty ? null : (snap.docs[0].data().role as string);
 }
 
 export async function verifyProjectAdmin(db: any, workspaceId: string, projectId: string, callerId: string, action: string) {
-  if (await getWorkspaceRole(db, workspaceId, callerId) === "ADMIN") return;
-  const pm = await projRef(db, workspaceId, projectId).collection("members").doc(callerId).get();
-  if (!pm.exists || pm.data()!.role !== "ADMIN") {
+  if (await getWorkspaceRole(db, workspaceId, callerId) === ADMIN_ROLE) return;
+  const pm = await projRef(db, workspaceId, projectId).collection(MEMBERS).doc(callerId).get();
+  if (!pm.exists || pm.data()!.role !== ADMIN_ROLE) {
     throw new Error(`Only workspace admins or project admins can ${action}`);
   }
 }
@@ -261,17 +287,17 @@ export async function addProjectMember(
   args: { workspaceId: string; projectId: string; userId: string; role: string },
 ) {
   const pRef = projRef(db, args.workspaceId, args.projectId);
-  if (!(await pRef.get()).exists) throw new Error("Project not found");
+  if (!(await pRef.get()).exists) throw new Error(PROJECT_NOT_FOUND);
 
   await verifyProjectAdmin(db, args.workspaceId, args.projectId, callerId, "add project members");
 
-  const targetSnap = await db.collection("members")
-    .where("workspaceId", "==", args.workspaceId)
-    .where("userId", "==", args.userId)
+  const targetSnap = await db.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", args.workspaceId)
+    .where(USER_ID, "==", args.userId)
     .limit(1).get();
   if (targetSnap.empty) throw new Error("User is not a member of this workspace");
 
-  const memberRef = pRef.collection("members").doc(args.userId);
+  const memberRef = pRef.collection(MEMBERS).doc(args.userId);
   if ((await memberRef.get()).exists) throw new Error("User is already a member of this project");
 
   await memberRef.set({ userId: args.userId, role: args.role, $createdAt: new Date().toISOString() });
@@ -284,11 +310,11 @@ export async function updateProjectMember(
   args: { workspaceId: string; projectId: string; userId: string; role: string },
 ) {
   const pRef = projRef(db, args.workspaceId, args.projectId);
-  if (!(await pRef.get()).exists) throw new Error("Project not found");
+  if (!(await pRef.get()).exists) throw new Error(PROJECT_NOT_FOUND);
 
   await verifyProjectAdmin(db, args.workspaceId, args.projectId, callerId, "update project member roles");
 
-  const memberRef = pRef.collection("members").doc(args.userId);
+  const memberRef = pRef.collection(MEMBERS).doc(args.userId);
   if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
 
   await memberRef.update({ role: args.role });
@@ -301,13 +327,13 @@ export async function removeProjectMember(
   args: { workspaceId: string; projectId: string; userId: string },
 ) {
   const pRef = projRef(db, args.workspaceId, args.projectId);
-  if (!(await pRef.get()).exists) throw new Error("Project not found");
+  if (!(await pRef.get()).exists) throw new Error(PROJECT_NOT_FOUND);
 
   if (callerId !== args.userId) {
     await verifyProjectAdmin(db, args.workspaceId, args.projectId, callerId, "remove other project members");
   }
 
-  const memberRef = pRef.collection("members").doc(args.userId);
+  const memberRef = pRef.collection(MEMBERS).doc(args.userId);
   if (!(await memberRef.get()).exists) throw new Error("User is not a member of this project");
   await memberRef.delete();
 }
@@ -317,10 +343,10 @@ export async function updateWorkspaceMember(
   callerId: string,
   args: { workspaceId: string; memberId: string; role: string },
 ) {
-  if (await getWorkspaceRole(db, args.workspaceId, callerId) !== "ADMIN") {
+  if (await getWorkspaceRole(db, args.workspaceId, callerId) !== ADMIN_ROLE) {
     throw new Error("Only workspace admins can update member roles");
   }
-  const memberRef = db.collection("members").doc(args.memberId);
+  const memberRef = db.collection(MEMBERS).doc(args.memberId);
   const memberDoc = await memberRef.get();
   if (!memberDoc.exists || memberDoc.data()!.workspaceId !== args.workspaceId) {
     throw new Error("Member not found in this workspace");
@@ -334,16 +360,16 @@ export async function removeWorkspaceMember(
   callerId: string,
   args: { workspaceId: string; memberId: string },
 ) {
-  const memberRef = db.collection("members").doc(args.memberId);
+  const memberRef = db.collection(MEMBERS).doc(args.memberId);
   const memberDoc = await memberRef.get();
   if (!memberDoc.exists || memberDoc.data()!.workspaceId !== args.workspaceId) {
     throw new Error("Member not found in this workspace");
   }
   const isSelf = memberDoc.data()!.userId === callerId;
-  if (!isSelf && await getWorkspaceRole(db, args.workspaceId, callerId) !== "ADMIN") {
+  if (!isSelf && await getWorkspaceRole(db, args.workspaceId, callerId) !== ADMIN_ROLE) {
     throw new Error("Only admins can remove other members");
   }
-  const allMembers = await db.collection("members").where("workspaceId", "==", args.workspaceId).get();
+  const allMembers = await db.collection(MEMBERS).where(WORKSPACE_ID, "==", args.workspaceId).get();
   if (allMembers.size <= 1) throw new Error("Cannot remove the only member of a workspace");
   await memberRef.delete();
 }

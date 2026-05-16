@@ -39,6 +39,16 @@ const PRIMARY = "#4F7CFF";
 const SUCCESS = "#22C55E";
 const WARNING = "#F59E0B";
 const PRIMARY_MUTED = "rgba(79,124,255,0.15)";
+const TEXT_XS = "text-[12px]";
+const BG_FAINT = "rgba(255,255,255,0.02)";
+const TEXT_CENTER = "text-center";
+const TEXT_SM_MT = "text-[13px] mt-1";
+const FLEX_BETWEEN = "flex items-center justify-between";
+const ICON_SM = "size-3.5";
+const LABEL_CLS = "text-[14px] font-semibold text-white";
+const TAB_OVERVIEW = "overview";
+const FLEX_GAP_XS = "flex items-center gap-1.5 text-[12px]";
+const CARD_PAD = "rounded-2xl p-5";
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   [TaskStatus.BACKLOG]: { label: "Backlog", color: "#6B7280", bg: "rgba(107,114,128,0.12)" },
@@ -65,6 +75,11 @@ const TYPE_CONFIG: Record<IssueType, { label: string; color: string; bg: string 
   [IssueType.TASK]: { label: "Task", color: SUCCESS, bg: "rgba(34,197,94,0.15)" },
 };
 
+function getButtonLabel(isPending: boolean, hasNotes: boolean): string {
+  if (isPending) return "Generating…";
+  return hasNotes ? "Regenerate" : "Generate AI Notes";
+}
+
 function ProgressBar({ value }: { value: number }) {
   return (
     <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: BORDER_SUBTLE }}>
@@ -85,7 +100,7 @@ function WorkItemRow({ task, workspaceId, projectId }: { task: Task; workspaceId
     <Link
       href={href}
       className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
-      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+      style={{ background: BG_FAINT, border: "1px solid rgba(255,255,255,0.05)" }}
     >
       <span
         className="text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0"
@@ -122,7 +137,7 @@ function TimelineTab() {
   return (
     <div
       className="flex flex-col items-center justify-center py-20 rounded-2xl gap-4"
-      style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)" }}
+      style={{ background: BG_FAINT, border: "1px dashed rgba(255,255,255,0.08)" }}
     >
       <div
         className="flex items-center justify-center size-14 rounded-2xl"
@@ -130,9 +145,9 @@ function TimelineTab() {
       >
         <GitBranch className="size-6" style={{ color: PRIMARY }} />
       </div>
-      <div className="text-center">
+      <div className={TEXT_CENTER}>
         <p className="text-[15px] font-semibold text-white">Timeline View</p>
-        <p className="text-[13px] mt-1" style={{ color: TEXT_LABEL }}>
+        <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
           Gantt-style timeline coming in a future release.
         </p>
       </div>
@@ -159,7 +174,7 @@ function AiNotesTab({ epic, childTasks }: { epic: Task; childTasks: Task[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className={FLEX_BETWEEN}>
         <div>
           <h3 className="text-[15px] font-semibold text-white">AI Notes</h3>
           <p className="text-[13px] mt-0.5" style={{ color: TEXT_FAINT }}>
@@ -179,9 +194,9 @@ function AiNotesTab({ epic, childTasks }: { epic: Task; childTasks: Task[] }) {
           {isPending ? (
             <RefreshCw className="size-3.5 animate-spin" />
           ) : (
-            <Sparkles className="size-3.5" />
+            <Sparkles className={ICON_SM} />
           )}
-          {isPending ? "Generating…" : notes ? "Regenerate" : "Generate AI Notes"}
+          {getButtonLabel(isPending, !!notes)}
         </button>
       </div>
 
@@ -196,9 +211,9 @@ function AiNotesTab({ epic, childTasks }: { epic: Task; childTasks: Task[] }) {
           >
             <Sparkles className="size-6" style={{ color: PRIMARY }} />
           </div>
-          <div className="text-center">
-            <p className="text-[14px] font-semibold text-white">Generate AI Notes</p>
-            <p className="text-[13px] mt-1" style={{ color: TEXT_LABEL }}>
+          <div className={TEXT_CENTER}>
+            <p className={LABEL_CLS}>Generate AI Notes</p>
+            <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
               Claude will analyze this epic and provide a summary, risks, and next steps.
             </p>
           </div>
@@ -257,7 +272,7 @@ export const EpicDetailClient = () => {
   const { data: epic, isLoading } = useGetTask({ taskId });
   const { data: allTasks } = useGetTasks({ workspaceId, projectId, enabled: !!epic });
 
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
 
   if (isLoading) return <PageLoader />;
   if (!epic) return <PageError message="Epic not found" />;
@@ -294,7 +309,7 @@ export const EpicDetailClient = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg shrink-0 transition-all"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            <PencilIcon className="size-3.5" />
+            <PencilIcon className={ICON_SM} />
             Edit
           </button>
         </div>
@@ -308,19 +323,19 @@ export const EpicDetailClient = () => {
             {statusCfg.label}
           </span>
           {priorityCfg && (
-            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className={FLEX_GAP_XS} style={{ color: "rgba(255,255,255,0.5)" }}>
               <span className="size-1.5 rounded-full shrink-0" style={{ background: priorityCfg.color }} />
               {priorityCfg.label}
             </span>
           )}
           {epic.dueDate && (
-            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: TEXT_FAINT }}>
+            <span className={FLEX_GAP_XS} style={{ color: TEXT_FAINT }}>
               <Clock className="size-3" />
-              Due <TaskDate value={epic.dueDate} className="text-[12px]" />
+              Due <TaskDate value={epic.dueDate} className={TEXT_XS} />
             </span>
           )}
           {epic.assignee && (
-            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className={FLEX_GAP_XS} style={{ color: "rgba(255,255,255,0.5)" }}>
               <MemberAvatar name={epic.assignee.name} className="size-4" />
               {epic.assignee.name}
             </span>
@@ -330,8 +345,8 @@ export const EpicDetailClient = () => {
         {/* Progress bar */}
         {childTasks.length > 0 && (
           <div className="flex flex-col gap-1.5 mt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px]" style={{ color: TEXT_FAINT }}>
+            <div className={FLEX_BETWEEN}>
+              <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>
                 {doneCount} of {childTasks.length} work items complete
               </span>
               <span
@@ -353,7 +368,7 @@ export const EpicDetailClient = () => {
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           {[
-            { value: "overview", icon: Circle, label: "Overview" },
+            { value: TAB_OVERVIEW, icon: Circle, label: "Overview" },
             { value: "work-items", icon: LayoutList, label: "Work Items", count: childTasks.length },
             { value: "timeline", icon: GitBranch, label: "Timeline" },
             { value: "ai-notes", icon: Sparkles, label: "AI Notes" },
@@ -363,7 +378,7 @@ export const EpicDetailClient = () => {
               value={value}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-all data-[state=active]:text-white data-[state=inactive]:text-white/40 data-[state=active]:bg-white/[0.08] data-[state=inactive]:bg-transparent border-none shadow-none"
             >
-              <Icon className="size-3.5" />
+              <Icon className={ICON_SM} />
               {label}
               {count != null && count > 0 && (
                 <span
@@ -378,13 +393,13 @@ export const EpicDetailClient = () => {
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value={TAB_OVERVIEW} className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-5">
             <div
               className="rounded-2xl p-5 flex flex-col gap-4"
               style={{ background: SURFACE, border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <h3 className="text-[14px] font-semibold text-white">Description</h3>
+              <h3 className={LABEL_CLS}>Description</h3>
               {epic.description ? (
                 <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: TEXT_BODY }}>
                   {epic.description}
@@ -410,7 +425,7 @@ export const EpicDetailClient = () => {
             <div className="flex flex-col gap-3">
               {/* Stats card */}
               <div
-                className="rounded-2xl p-5"
+                className={CARD_PAD}
                 style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
               >
                 <h3 className="text-[13px] font-semibold text-white/50 uppercase tracking-wider mb-4">Progress</h3>
@@ -441,15 +456,15 @@ export const EpicDetailClient = () => {
                   epic.storyPoints != null ? { label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY } : null,
                 ].filter((item): item is { label: string; value: string; color: string } => item !== null)
                 .map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <span className="text-[12px]" style={{ color: TEXT_FAINT }}>{item.label}</span>
+                  <div key={item.label} className={FLEX_BETWEEN}>
+                    <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>{item.label}</span>
                     <span className="text-[12px] font-medium" style={{ color: item.color }}>{item.value}</span>
                   </div>
                 ))}
 
                 {epic.labels && epic.labels.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[12px]" style={{ color: TEXT_FAINT }}>Labels</span>
+                    <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>Labels</span>
                     <div className="flex flex-wrap gap-1.5">
                       {epic.labels.map((label) => (
                         <span
@@ -471,12 +486,12 @@ export const EpicDetailClient = () => {
         {/* Work Items Tab */}
         <TabsContent value="work-items" className="mt-6">
           <div
-            className="rounded-2xl p-5"
+            className={CARD_PAD}
             style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[14px] font-semibold text-white">Work Items</h3>
-              <span className="text-[12px]" style={{ color: TEXT_FAINT }}>
+              <h3 className={LABEL_CLS}>Work Items</h3>
+              <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>
                 {childTasks.length} items
               </span>
             </div>
@@ -484,12 +499,12 @@ export const EpicDetailClient = () => {
             {childTasks.length === 0 ? (
               <div
                 className="flex flex-col items-center justify-center py-12 rounded-xl gap-3"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)" }}
+                style={{ background: BG_FAINT, border: "1px dashed rgba(255,255,255,0.08)" }}
               >
                 <CheckCircle2 className="size-8" style={{ color: "rgba(255,255,255,0.15)" }} />
-                <div className="text-center">
+                <div className={TEXT_CENTER}>
                   <p className="text-[14px] font-medium text-white">No work items yet</p>
-                  <p className="text-[13px] mt-1" style={{ color: TEXT_LABEL }}>
+                  <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
                     Create stories, bugs, or tasks and link them to this epic.
                   </p>
                 </div>
@@ -517,7 +532,7 @@ export const EpicDetailClient = () => {
         {/* AI Notes Tab */}
         <TabsContent value="ai-notes" className="mt-6">
           <div
-            className="rounded-2xl p-5"
+            className={CARD_PAD}
             style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
           >
             <AiNotesTab epic={epic} childTasks={childTasks} />
