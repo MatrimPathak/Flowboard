@@ -32,6 +32,8 @@ const SURFACE = "#0F172A";
 const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
 const TEXT_LABEL = "rgba(255,255,255,0.35)";
 const PRIMARY = "#4F7CFF";
+const STAT_COL_CLS = "flex flex-col gap-1";
+const STAT_LABEL_CLS = "text-[11px] uppercase tracking-widest";
 
 const VIEWS = [
   { label: "List", value: "table", icon: List },
@@ -86,7 +88,7 @@ export const ActiveSprintClient = () => {
     <div className="flex flex-col gap-6">
       {/* ── Page header ── */}
       <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
+        <div className={STAT_COL_CLS}>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Active Sprint
           </h1>
@@ -158,15 +160,15 @@ export const ActiveSprintClient = () => {
             className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-card"
             style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
           >
-            <div className="flex flex-col gap-1">
-              <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
+            <div className={STAT_COL_CLS}>
+              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
                 Sprint
               </p>
               <p className="text-base font-semibold text-white">{activeSprint.name}</p>
             </div>
             {activeSprint.startDate && activeSprint.endDate && (
-              <div className="flex flex-col gap-1">
-                <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
+              <div className={STAT_COL_CLS}>
+                <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
                   Duration
                 </p>
                 <p className="text-sm font-medium text-white flex items-center gap-1.5">
@@ -177,8 +179,8 @@ export const ActiveSprintClient = () => {
               </div>
             )}
             {daysLeft !== null && (
-              <div className="flex flex-col gap-1">
-                <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
+              <div className={STAT_COL_CLS}>
+                <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
                   Days Left
                 </p>
                 <p
@@ -190,7 +192,7 @@ export const ActiveSprintClient = () => {
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <p className="text-[11px] uppercase tracking-widest" style={{ color: TEXT_LABEL }}>
+              <p className={STAT_LABEL_CLS} style={{ color: TEXT_LABEL }}>
                 Progress
               </p>
               <div className="flex items-center gap-2">
