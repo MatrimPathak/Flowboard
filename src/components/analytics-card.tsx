@@ -6,6 +6,7 @@ interface AnalyticsCardProps {
 	value: number;
 	variant: "up" | "down";
 	increaseValue: number;
+	inverted?: boolean;
 }
 
 export const AnalyticsCard = ({
@@ -13,8 +14,10 @@ export const AnalyticsCard = ({
 	value,
 	variant,
 	increaseValue,
+	inverted = false,
 }: AnalyticsCardProps) => {
 	const Icon = variant === "up" ? FaCaretUp : FaCaretDown;
+	const isPositiveOutcome = inverted ? variant === "down" : variant === "up";
 	return (
 		<div className="p-5">
 			<p className="text-muted-foreground text-xs font-medium uppercase tracking-wide mb-2">
@@ -27,7 +30,7 @@ export const AnalyticsCard = ({
 				<div
 					className={cn(
 						"flex items-center gap-1 text-sm mb-0.5",
-						variant === "up" ? "text-success" : "text-destructive"
+						isPositiveOutcome ? "text-success" : "text-destructive"
 					)}
 				>
 					<Icon className="size-3.5" />

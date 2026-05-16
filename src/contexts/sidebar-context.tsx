@@ -35,7 +35,7 @@ const SidebarContext = createContext<SidebarContextValue | undefined>(
 export function SidebarProvider({ children }: { children: ReactNode }) {
 	const [prefill, setPrefillState] = useState<SidebarPrefill>({});
 	const [isCollapsed, setIsCollapsed] = useState(false);
-	const isTablet = useMedia("(max-width: 1279px)");
+	const isTablet = useMedia("(min-width: 1024px) and (max-width: 1279px)");
 
 	useEffect(() => {
 		const saved = localStorage.getItem("chronicle-sidebar");
