@@ -10,11 +10,10 @@ export enum TaskStatus {
 }
 
 export enum TaskPriority {
-	BLOCKER = "BLOCKER",
+	CRITICAL = "CRITICAL",
 	HIGH = "HIGH",
 	MEDIUM = "MEDIUM",
 	LOW = "LOW",
-	TRIVIAL = "TRIVIAL",
 }
 
 export enum IssueType {
@@ -22,6 +21,7 @@ export enum IssueType {
 	STORY = "STORY",
 	SPIKE = "SPIKE",
 	BUG = "BUG",
+	TASK = "TASK",
 }
 
 export type Task = {
@@ -53,6 +53,12 @@ export type Task = {
 	watcherIds?: string[];
 	links?: TaskLink[];
 	attachments?: TaskAttachment[];
+	// WorkItem extended fields
+	assignees?: string[];       // multi-assignee user IDs
+	linkedPRs?: string[];       // GitHub PR URLs
+	linkedDocs?: string[];      // Doc IDs
+	blockedBy?: string[];       // Task IDs that block this item
+	AIContext?: string;         // AI-generated context string
 };
 
 export type TaskComment = {

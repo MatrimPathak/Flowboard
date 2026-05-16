@@ -26,7 +26,7 @@ const badgeVariants = cva(
 					"border-transparent bg-emerald-400 text-primary-foreground hover:bg-emerald-400/80",
 				[TaskStatus.BACKLOG]:
 					"border-transparent bg-pink-400 text-primary-foreground hover:bg-pink-400/80",
-				[TaskPriority.BLOCKER]:
+				[TaskPriority.CRITICAL]:
 					"border-transparent bg-red-600 text-white hover:bg-red-600/80",
 				[TaskPriority.HIGH]:
 					"border-transparent bg-orange-500 text-white hover:bg-orange-500/80",
@@ -34,8 +34,6 @@ const badgeVariants = cva(
 					"border-transparent bg-yellow-500 text-black hover:bg-yellow-500/80",
 				[TaskPriority.LOW]:
 					"border-transparent bg-blue-400 text-black hover:bg-blue-400/80",
-				[TaskPriority.TRIVIAL]:
-					"border-transparent bg-gray-400 text-black hover:bg-gray-400/80",
 			},
 		},
 		defaultVariants: {

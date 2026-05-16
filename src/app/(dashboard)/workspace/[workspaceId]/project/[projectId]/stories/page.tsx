@@ -1,3 +1,11 @@
-import { IssueListPage } from "../_components/issue-list-page";
-import { IssueType } from "@/features/tasks/types";
-export default function StoriesPage() { return <IssueListPage issueType={IssueType.STORY} pageTitle="Stories" />; }
+import { redirect } from "next/navigation";
+
+interface Props {
+  params: { workspaceId: string; projectId: string };
+}
+
+export default function StoriesPage({ params }: Props) {
+  redirect(
+    `/workspace/${params.workspaceId}/project/${params.projectId}/work-items?type=STORY`
+  );
+}

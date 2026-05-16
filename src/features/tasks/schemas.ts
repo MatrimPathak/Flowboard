@@ -54,6 +54,11 @@ export const createTaskSchema = z.object({
 	originalEstimate: z.number().int().min(0).optional(),
 	remainingEstimate: z.number().int().min(0).optional(),
 	rca: z.string().optional(),
+	assignees: z.array(z.string().trim().min(1)).optional(),
+	linkedPRs: z.array(z.string().url()).optional(),
+	linkedDocs: z.array(z.string().trim().min(1)).optional(),
+	blockedBy: z.array(z.string().trim().min(1)).optional(),
+	AIContext: z.string().optional(),
 }).superRefine(taskConditionalRefine);
 
 export const createCommentSchema = z.object({

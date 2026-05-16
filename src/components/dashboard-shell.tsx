@@ -1,37 +1,26 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { useSidebarCollapsed } from "@/contexts/sidebar-context";
-import { Sidebar } from "./sidebar";
-import { Navbar } from "./navbar";
 import { ReactNode } from "react";
+import { Sidebar } from "./sidebar";
+import { CommandBar } from "./command-bar";
 
 export function DashboardShell({ children }: { children: ReactNode }) {
-	const { isCollapsed } = useSidebarCollapsed();
+  return (
+    <div className="flex w-full h-screen overflow-hidden bg-[#070B14]">
+      {/* Fixed 280px sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-[280px] hidden lg:flex flex-col z-40 bg-[#070B14] border-r border-white/5">
+        <Sidebar />
+      </aside>
 
-	return (
-		<div className="flex w-full h-full">
-			<div
-				className={cn(
-					"fixed left-0 top-0 hidden lg:block h-full overflow-y-auto sidebar-transition z-40",
-					isCollapsed ? "w-[72px]" : "w-[260px]"
-				)}
-			>
-				<Sidebar />
-			</div>
-			<div
-				className={cn(
-					"w-full sidebar-transition",
-					isCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
-				)}
-			>
-				<div className="mx-auto max-w-screen-2xl h-full">
-					<Navbar />
-					<main className="h-full py-6 px-6 flex flex-col">
-						{children}
-					</main>
-				</div>
-			</div>
-		</div>
-	);
+      {/* Main area — offset by sidebar, fluid width, future right rail goes here */}
+      <div className="flex flex-col flex-1 min-w-0 lg:pl-[280px]">
+        <CommandBar />
+        <main className="flex-1 overflow-y-auto thin-scrollbar">
+          <div className="max-w-[1800px] mx-auto px-8 py-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 }

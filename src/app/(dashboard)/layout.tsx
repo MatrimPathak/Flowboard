@@ -4,16 +4,16 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { ReactNode } from "react";
 
 interface DashBoardLayoutProps {
-	children?: ReactNode;
+  children?: ReactNode;
 }
 
 const DashBoardLayout = ({ children }: DashBoardLayoutProps) => {
-	return (
-		<SidebarProvider>
-			<AppModals />
-			<DashboardShell>{children}</DashboardShell>
-		</SidebarProvider>
-	);
+  return (
+    <SidebarProvider>
+      <AppModals />
+      <DashboardShell>{children}</DashboardShell>
+    </SidebarProvider>
+  );
 };
 
 export default DashBoardLayout;
