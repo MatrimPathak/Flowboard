@@ -455,7 +455,7 @@ export const EpicDetailClient = () => {
                   [
                     { label: "Status", value: statusCfg.label, color: statusCfg.color },
                     ...(priorityCfg ? [{ label: "Priority", value: priorityCfg.label, color: priorityCfg.color }] : []),
-                    ...(epic.storyPoints != null ? [{ label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY }] : []),
+                    ...(epic.storyPoints == null ? [] : [{ label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY }]),
                   ] as { label: string; value: string; color: string }[]
                 ).map((item) => (
                   <div key={item.label} className={FLEX_BETWEEN}>

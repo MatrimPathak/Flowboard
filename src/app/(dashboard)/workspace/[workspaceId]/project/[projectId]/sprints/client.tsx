@@ -60,7 +60,14 @@ export const SprintsClient = () => {
   const activeCompleted = activeStats ? activeStats.done : 0;
   const activePct = activeTasks > 0 ? Math.round((activeCompleted / activeTasks) * 100) : 0;
   const daysLeft = activeSprint?.endDate ? differenceInDays(new Date(activeSprint.endDate), new Date()) : null;
-  const daysLeftText = daysLeft == null ? "—" : daysLeft >= 0 ? `${daysLeft}d left` : "Overdue";
+  let daysLeftText: string;
+  if (daysLeft == null) {
+    daysLeftText = "—";
+  } else if (daysLeft >= 0) {
+    daysLeftText = `${daysLeft}d left`;
+  } else {
+    daysLeftText = "Overdue";
+  }
 
   return (
     <div className="flex flex-col gap-6">
