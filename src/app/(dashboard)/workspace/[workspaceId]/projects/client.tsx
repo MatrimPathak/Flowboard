@@ -88,19 +88,11 @@ export const ProjectsClient = () => {
                 className="block h-full"
               >
                 <div
-                  className="flex flex-col gap-4 p-5 h-full rounded-card transition-all duration-200"
+                  className="project-card flex flex-col gap-4 p-5 h-full rounded-card transition-all duration-200"
                   style={{
                     background: SURFACE,
                     border: "1px solid rgba(255,255,255,0.06)",
                     boxShadow: "0 0 0 1px rgba(255,255,255,0.03)",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(79,124,255,0.3)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(79,124,255,0.15), 0 8px 24px rgba(79,124,255,0.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.06)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(255,255,255,0.03)";
                   }}
                 >
                   {/* Avatar + name */}

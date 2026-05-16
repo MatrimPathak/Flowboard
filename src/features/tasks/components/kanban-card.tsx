@@ -38,24 +38,23 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
   const hasLinkedPR = task.linkedPRs && task.linkedPRs.length > 0;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150"
+    <button
+      type="button"
+      className="group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150 w-full text-left"
       style={{
         background: "#0F172A",
         border: `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`,
         boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.4)" : "rgba(79,124,255,0.25)"}`;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
+        (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.4)" : "rgba(79,124,255,0.25)"}`;
+        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
+        (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`;
+        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
       }}
     >
       {/* Top row: type + priority badges + menu */}
@@ -133,6 +132,6 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
           </span>
         )}
       </div>
-    </div>
+    </button>
   );
 };
