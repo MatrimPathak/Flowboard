@@ -42,6 +42,8 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
   [TaskPriority.HIGH]: { label: "High", color: "#F97316" },
   [TaskPriority.MEDIUM]: { label: "Medium", color: "#F59E0B" },
   [TaskPriority.LOW]: { label: "Low", color: "#22C55E" },
+  [TaskPriority.BLOCKER]: { label: "Blocker", color: "#B91C1C" },
+  [TaskPriority.TRIVIAL]: { label: "Trivial", color: "#9CA3AF" },
 };
 
 const TYPE_CONFIG: Record<IssueType, { label: string; color: string; bg: string }> = {
