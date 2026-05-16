@@ -193,10 +193,10 @@ export const WorkspaceIdClient = () => {
   const { data: projectsData } = useGetProjects({ workspaceId });
   const { data: membersData } = useGetMembers({ workspaceId });
 
-  const tasks = tasksData?.documents ?? [];
-  const projects = projectsData?.documents ?? [];
-  const members = membersData?.documents ?? [];
-  const now = new Date();
+  const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
+  const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
+  const members = useMemo(() => membersData?.documents ?? [], [membersData]);
+  const now = useMemo(() => new Date(), []);
 
   const sparkData = useMemo(() => buildSparklineData(tasks), [tasks]);
 
@@ -228,7 +228,7 @@ export const WorkspaceIdClient = () => {
       }).length;
       return { day: format(d, "MMM d"), completed, remaining };
     });
-  }, [tasks]);
+  }, [tasks, now]);
 
   if (loadingAnalytics || loadingTasks) return <PageLoader />;
 
