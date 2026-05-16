@@ -1,7 +1,7 @@
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { createVersionSchema, updateVersionSchema } from "../schemas";
+import { createVersionSchema, updateVersionBaseSchema, refineDateOrder } from "../schemas";
 import { getMember } from "@/features/members/utils";
 import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
 import { z } from "zod";
@@ -123,10 +123,10 @@ const app = new Hono()
   .patch(
     "/:versionId",
     sessionMiddleware,
-    zValidator("json", updateVersionSchema.extend({
+    zValidator("json", updateVersionBaseSchema.extend({
       workspaceId: z.string().trim().min(1, "Required"),
       projectId: z.string().trim().min(1, "Required"),
-    })),
+    }).superRefine(refineDateOrder)),
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");

@@ -3,6 +3,8 @@
 // route.ts imports as:      @/lib/mcp-schemas
 
 import { z } from "zod";
+
+const ISO_DATE_DESC = "ISO date string";
 import { TaskStatus, IssueType, TaskPriority } from "../features/tasks/types";
 import { MemberRole } from "../features/members/types";
 import { D } from "./mcp-tool-descriptions";
@@ -18,7 +20,7 @@ const statusEnum = z.enum([
 ]);
 
 const issueTypeEnum = z.enum([IssueType.EPIC, IssueType.STORY, IssueType.SPIKE, IssueType.BUG]);
-const priorityEnum = z.enum([TaskPriority.BLOCKER, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.TRIVIAL]);
+const priorityEnum = z.enum([TaskPriority.CRITICAL, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW]);
 const roleEnum = z.enum([MemberRole.ADMIN, MemberRole.MEMBER]);
 
 // ── Ticket schemas ────────────────────────────────────────────────────────────
@@ -90,8 +92,8 @@ export const createSprintSchema = z.object({
   projectId: z.string(),
   name: z.string().describe("Sprint name"),
   goal: z.string().optional().describe("Sprint goal"),
-  startDate: z.string().optional().describe("ISO date string"),
-  endDate: z.string().optional().describe("ISO date string"),
+  startDate: z.string().optional().describe(ISO_DATE_DESC),
+  endDate: z.string().optional().describe(ISO_DATE_DESC),
 });
 
 export const updateSprintSchema = z.object({
@@ -100,8 +102,8 @@ export const updateSprintSchema = z.object({
   sprintId: z.string(),
   name: z.string().optional(),
   goal: z.string().optional(),
-  startDate: z.string().optional().describe("ISO date string"),
-  endDate: z.string().optional().describe("ISO date string"),
+  startDate: z.string().optional().describe(ISO_DATE_DESC),
+  endDate: z.string().optional().describe(ISO_DATE_DESC),
 });
 
 // ── Version / Release schemas ─────────────────────────────────────────────────
@@ -111,8 +113,8 @@ export const createVersionSchema = z.object({
   projectId: z.string(),
   name: z.string().describe("Version name, e.g. 'v1.2.0'"),
   description: z.string().optional(),
-  startDate: z.string().optional().describe("ISO date string"),
-  releaseDate: z.string().optional().describe("ISO date string"),
+  startDate: z.string().optional().describe(ISO_DATE_DESC),
+  releaseDate: z.string().optional().describe(ISO_DATE_DESC),
 });
 
 export const updateVersionSchema = z.object({
@@ -121,8 +123,8 @@ export const updateVersionSchema = z.object({
   versionId: z.string(),
   name: z.string().optional(),
   description: z.string().optional(),
-  startDate: z.string().optional().describe("ISO date string"),
-  releaseDate: z.string().optional().describe("ISO date string"),
+  startDate: z.string().optional().describe(ISO_DATE_DESC),
+  releaseDate: z.string().optional().describe(ISO_DATE_DESC),
 });
 
 // ── Worklog schemas ───────────────────────────────────────────────────────────

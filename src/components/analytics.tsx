@@ -1,11 +1,13 @@
 import { ProjectAnalyticsResponseType } from "@/features/projects/api/use-get-project-analytics";
 import { AnalyticsCard } from "./analytics-card";
 
+const CARD_CLS = "bg-card border border-border rounded-lg";
+
 export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 	if (!data) return null;
 	return (
 		<div className="grid grid-cols-2 lg:grid-cols-5 gap-3 w-full shrink-0">
-			<div className="bg-card border border-border rounded-lg">
+			<div className={CARD_CLS}>
 				<AnalyticsCard
 					title="Total tasks"
 					value={data.taskCount}
@@ -13,7 +15,7 @@ export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 					increaseValue={data.taskDifference}
 				/>
 			</div>
-			<div className="bg-card border border-border rounded-lg">
+			<div className={CARD_CLS}>
 				<AnalyticsCard
 					title="Assigned tasks"
 					value={data.assignedTaskCount}
@@ -21,7 +23,7 @@ export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 					increaseValue={data.assignedTaskDifference}
 				/>
 			</div>
-			<div className="bg-card border border-border rounded-lg">
+			<div className={CARD_CLS}>
 				<AnalyticsCard
 					title="Completed tasks"
 					value={data.completedTaskCount}
@@ -29,7 +31,7 @@ export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 					increaseValue={data.completedTaskDifference}
 				/>
 			</div>
-			<div className="bg-card border border-border rounded-lg">
+			<div className={CARD_CLS}>
 				<AnalyticsCard
 					title="Overdue tasks"
 					value={data.overdueTaskCount}

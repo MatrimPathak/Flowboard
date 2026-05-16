@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/date-picker";
 import { useCreateVersion } from "../api/use-create-version";
+
+const FIELD_CLS = "flex flex-col gap-y-1";
 
 interface CreateVersionFormProps {
   workspaceId: string;
@@ -22,8 +25,8 @@ export const CreateVersionForm = ({
 }: CreateVersionFormProps) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [releaseDate, setReleaseDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
   const [error, setError] = useState("");
 
   const { mutate: createVersion, isPending } = useCreateVersion();
@@ -32,7 +35,7 @@ export const CreateVersionForm = ({
     e.preventDefault();
     if (!name.trim()) return;
 
-    if (releaseDate && startDate && new Date(releaseDate) < new Date(startDate)) {
+    if (releaseDate && startDate && releaseDate < startDate) {
       setError("Release date must be on or after start date");
       return;
     }
@@ -45,16 +48,16 @@ export const CreateVersionForm = ({
           workspaceId,
           projectId,
           ...(description.trim() ? { description: description.trim() } : {}),
-          ...(startDate ? { startDate: new Date(startDate + "T00:00:00Z") } : {}),
-          ...(releaseDate ? { releaseDate: new Date(releaseDate + "T00:00:00Z") } : {}),
+          ...(startDate ? { startDate } : {}),
+          ...(releaseDate ? { releaseDate } : {}),
         },
       },
       {
         onSuccess: () => {
           setName("");
           setDescription("");
-          setStartDate("");
-          setReleaseDate("");
+          setStartDate(undefined);
+          setReleaseDate(undefined);
           setError("");
           onSuccess?.();
         },
@@ -64,7 +67,7 @@ export const CreateVersionForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-y-4">
-      <div className="flex flex-col gap-y-1">
+      <div className={FIELD_CLS}>
         <Label htmlFor="version-name">Name *</Label>
         <Input
           id="version-name"
@@ -74,7 +77,7 @@ export const CreateVersionForm = ({
           required
         />
       </div>
-      <div className="flex flex-col gap-y-1">
+      <div className={FIELD_CLS}>
         <Label htmlFor="version-description">Description (optional)</Label>
         <Textarea
           id="version-description"
@@ -85,28 +88,26 @@ export const CreateVersionForm = ({
         />
       </div>
       <div className="grid grid-cols-2 gap-x-4">
-        <div className="flex flex-col gap-y-1">
-          <Label htmlFor="version-start">Start Date (optional)</Label>
-          <Input
-            id="version-start"
-            type="date"
+        <div className={FIELD_CLS}>
+          <Label>Start Date (optional)</Label>
+          <DatePicker
             value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
+            onChange={(date) => {
+              setStartDate(date);
               setError("");
             }}
+            placeholder="Start Date"
           />
         </div>
-        <div className="flex flex-col gap-y-1">
-          <Label htmlFor="version-release">Release Date (optional)</Label>
-          <Input
-            id="version-release"
-            type="date"
+        <div className={FIELD_CLS}>
+          <Label>Release Date (optional)</Label>
+          <DatePicker
             value={releaseDate}
-            onChange={(e) => {
-              setReleaseDate(e.target.value);
+            onChange={(date) => {
+              setReleaseDate(date);
               setError("");
             }}
+            placeholder="Release Date"
           />
         </div>
       </div>

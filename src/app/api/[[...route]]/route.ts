@@ -8,6 +8,7 @@ import tasks from "@/features/tasks/server/route";
 import tokens from "@/features/tokens/server/route";
 import sprints from "@/features/sprints/server/route";
 import versions from "@/features/versions/server/route";
+import ai from "@/features/ai/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -20,7 +21,8 @@ const routes = app
 	.route("/tasks", tasks)
 	.route("/tokens", tokens)
 	.route("/sprints", sprints)
-	.route("/versions", versions);
+	.route("/versions", versions)
+	.route("/ai", ai);
 
 export const GET = handle(app);
 export const POST = handle(app);
