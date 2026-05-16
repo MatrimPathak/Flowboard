@@ -6,7 +6,7 @@ export function useMedia(query: string) {
 	const [matches, setMatches] = useState(false);
 
 	useEffect(() => {
-		const mq = globalThis.matchMedia(query);
+		const mq = matchMedia(query);
 		setMatches(mq.matches);
 		const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
 		mq.addEventListener("change", handler);
