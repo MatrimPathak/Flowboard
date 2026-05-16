@@ -49,17 +49,21 @@ Provide concise, actionable AI notes for this epic. Include:
 
 Keep each section tight. No filler. Use markdown.`;
 
-      const response = await client.messages.create({
-        model: "claude-opus-4-7",
-        max_tokens: 1024,
-        thinking: { type: "adaptive" },
-        messages: [{ role: "user", content: prompt }],
-      });
+      try {
+        const response = await client.messages.create({
+          model: "claude-opus-4-7",
+          max_tokens: 1024,
+          thinking: { type: "adaptive" },
+          messages: [{ role: "user", content: prompt }],
+        });
 
-      const textBlock = response.content.find((b) => b.type === "text");
-      const notes = textBlock?.type === "text" ? textBlock.text : "";
+        const textBlock = response.content.find((b) => b.type === "text");
+        const notes = textBlock?.type === "text" ? textBlock.text : "";
 
-      return c.json({ data: notes });
+        return c.json({ data: notes });
+      } catch {
+        return c.json({ error: "AI service unavailable" }, 502);
+      }
     }
   )
   .post(
@@ -94,47 +98,53 @@ ${body.sprintProgress != null ? `Sprint Progress: ${body.sprintProgress}%` : ""}
 
 Generate 3 short, actionable AI insights for the team dashboard. Each insight should be one sentence, specific and helpful.`;
 
-      const response = await client.messages.create({
-        model: "claude-opus-4-7",
-        max_tokens: 512,
-        thinking: { type: "adaptive" },
-        tools: [
-          {
-            name: "return_suggestions",
-            description: "Return exactly 3 dashboard insight suggestions",
-            input_schema: {
-              type: "object" as const,
-              properties: {
-                suggestions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      body: { type: "string" },
-                      type: { type: "string", enum: ["info", "warning", "success"] },
+      try {
+        const response = await client.messages.create({
+          model: "claude-opus-4-7",
+          max_tokens: 512,
+          thinking: { type: "adaptive" },
+          tools: [
+            {
+              name: "return_suggestions",
+              description: "Return exactly 3 dashboard insight suggestions",
+              input_schema: {
+                type: "object" as const,
+                properties: {
+                  suggestions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        body: { type: "string" },
+                        type: { type: "string", enum: ["info", "warning", "success"] },
+                      },
+                      required: ["title", "body", "type"],
                     },
-                    required: ["title", "body", "type"],
+                    minItems: 3,
+                    maxItems: 3,
                   },
-                  minItems: 3,
-                  maxItems: 3,
                 },
+                required: ["suggestions"],
               },
-              required: ["suggestions"],
             },
-          },
-        ],
-        tool_choice: { type: "any" },
-        messages: [{ role: "user", content: prompt }],
-      });
+          ],
+          tool_choice: { type: "any" },
+          messages: [{ role: "user", content: prompt }],
+        });
 
-      const toolUseBlock = response.content.find((b) => b.type === "tool_use");
-      const suggestions =
-        toolUseBlock?.type === "tool_use"
-          ? ((toolUseBlock.input as { suggestions: { title: string; body: string; type: string }[] }).suggestions ?? [])
-          : [];
+        const toolUseBlock = response.content.find((b) => b.type === "tool_use");
+        if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
+          return c.json({ error: "AI service returned unexpected response" }, 502);
+        }
 
-      return c.json({ data: suggestions });
+        const suggestions =
+          (toolUseBlock.input as { suggestions: { title: string; body: string; type: string }[] }).suggestions ?? [];
+
+        return c.json({ data: suggestions });
+      } catch {
+        return c.json({ error: "AI service unavailable" }, 502);
+      }
     }
   );
 

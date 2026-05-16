@@ -42,6 +42,10 @@ export function IntelligencePanel({ embedded: _embedded }: IntelligencePanelProp
   );
 
   useEffect(() => {
+    hasFetched.current = false;
+  }, [workspaceId]);
+
+  useEffect(() => {
     if (hasFetched.current || tasks.length === 0 || !workspaceId) return;
     hasFetched.current = true;
 

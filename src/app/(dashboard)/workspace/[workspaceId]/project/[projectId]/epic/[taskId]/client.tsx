@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
+import { getTaskRoute } from "@/lib/task-routes";
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   [TaskStatus.BACKLOG]: { label: "Backlog", color: "#6B7280", bg: "rgba(107,114,128,0.12)" },
@@ -66,20 +67,13 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 function WorkItemRow({ task, workspaceId, projectId }: { task: Task; workspaceId: string; projectId: string }) {
-  const typeSlug = task.issueType === IssueType.EPIC
-    ? "epic"
-    : task.issueType === IssueType.BUG
-    ? "bug"
-    : task.issueType === IssueType.SPIKE
-    ? "spike"
-    : "story";
-
+  const href = getTaskRoute(workspaceId, projectId, task);
   const typeCfg = task.issueType ? TYPE_CONFIG[task.issueType] : TYPE_CONFIG[IssueType.TASK];
   const statusCfg = STATUS_CONFIG[task.status];
 
   return (
     <Link
-      href={`/workspace/${workspaceId}/project/${projectId}/${typeSlug}/${task.$id}`}
+      href={href}
       className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
       style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
     >

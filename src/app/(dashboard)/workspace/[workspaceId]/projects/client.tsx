@@ -22,8 +22,11 @@ export const ProjectsClient = () => {
   const tasks = tasksData?.documents ?? [];
   const members = membersData?.documents ?? [];
 
-  const getOpenCount = (projectId: string) =>
-    tasks.filter((t) => t.projectId === projectId && t.status !== "DONE").length;
+  const openCountByProject = tasks.reduce<Record<string, number>>((acc, t) => {
+    if (t.status === "DONE") return acc;
+    acc[t.projectId] = (acc[t.projectId] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,7 +93,7 @@ export const ProjectsClient = () => {
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}
         >
           {projects.map((project) => {
-            const openCount = getOpenCount(project.$id);
+            const openCount = openCountByProject[project.$id] ?? 0;
             const projectMembers = members.slice(0, 4);
 
             return (

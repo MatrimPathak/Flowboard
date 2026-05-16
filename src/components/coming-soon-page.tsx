@@ -5,6 +5,7 @@ interface ComingSoonPageProps {
   description: string;
   icon: React.ReactNode;
   cta?: string;
+  onCtaClick?: () => void;
 }
 
 export const ComingSoonPage = ({
@@ -12,6 +13,7 @@ export const ComingSoonPage = ({
   description,
   icon,
   cta = "Notify me",
+  onCtaClick,
 }: ComingSoonPageProps) => {
   return (
     <div
@@ -38,14 +40,17 @@ export const ComingSoonPage = ({
 
       <button
         type="button"
-        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-btn transition-all duration-150"
+        onClick={onCtaClick}
+        disabled={!onCtaClick}
+        aria-disabled={!onCtaClick}
+        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-btn transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
           background: "rgba(79,124,255,0.12)",
           border: "1px solid rgba(79,124,255,0.25)",
           color: "#4F7CFF",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(79,124,255,0.2)";
+          if (onCtaClick) e.currentTarget.style.background = "rgba(79,124,255,0.2)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "rgba(79,124,255,0.12)";

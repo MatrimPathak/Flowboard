@@ -4,7 +4,7 @@ import { Task, TaskPriority, IssueType } from "../types";
 import { TaskActions } from "./task-actions";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, AlertCircle, GitPullRequest, MessageSquare } from "lucide-react";
+import { MoreHorizontal, AlertCircle, GitPullRequest } from "lucide-react";
 
 const TYPE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   EPIC: { label: "Epic", bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },

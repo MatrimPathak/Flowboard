@@ -116,10 +116,12 @@
     @apply border-border;
   }
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
   }
+
   body {
     @apply bg-background text-foreground;
+
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
   }
@@ -160,6 +162,7 @@
 /* Chronicle sidebar nav item */
 .nav-item {
   @apply flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer select-none;
+
   color: rgba(255,255,255,0.55);
 }
 .nav-item:hover {
@@ -176,6 +179,7 @@
 /* Section label */
 .sidebar-section-label {
   @apply px-3 text-[10px] font-semibold uppercase tracking-widest;
+
   color: rgba(255,255,255,0.3);
 }
 
