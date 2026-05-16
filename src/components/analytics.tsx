@@ -1,65 +1,50 @@
 import { ProjectAnalyticsResponseType } from "@/features/projects/api/use-get-project-analytics";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { AnalyticsCard } from "./analytics-card";
-import { DottedSeperator } from "./dotted-seperator";
 
 export const Analytics = ({ data }: ProjectAnalyticsResponseType) => {
 	if (!data) return null;
 	return (
-		<ScrollArea className="border rounded-lg w-full whitespace-nowrap shrink-0">
-			<div className="w-full flex flex-row">
-				<div className="flex flex-1 items-center">
-					<AnalyticsCard
-						title="Total tasks"
-						value={data.taskCount}
-						variant={data.taskDifference > 0 ? "up" : "down"}
-						increaseValue={data.taskDifference}
-					/>
-					<DottedSeperator direction="vertical" />
-				</div>
-				<div className="flex flex-1 items-center">
-					<AnalyticsCard
-						title="Assigned tasks"
-						value={data.assignedTaskCount}
-						variant={
-							data.assignedTaskDifference > 0 ? "up" : "down"
-						}
-						increaseValue={data.assignedTaskDifference}
-					/>
-					<DottedSeperator direction="vertical" />
-				</div>
-				<div className="flex flex-1 items-center">
-					<AnalyticsCard
-						title="Completed tasks"
-						value={data.completedTaskCount}
-						variant={
-							data.completedTaskDifference > 0 ? "up" : "down"
-						}
-						increaseValue={data.completedTaskDifference}
-					/>
-					<DottedSeperator direction="vertical" />
-				</div>
-				<div className="flex flex-1 items-center">
-					<AnalyticsCard
-						title="Overdue tasks"
-						value={data.overdueTaskCount}
-						variant={data.overdueTaskDifference > 0 ? "up" : "down"}
-						increaseValue={data.overdueTaskDifference}
-					/>
-					<DottedSeperator direction="vertical" />
-				</div>
-				<div className="flex flex-1 items-center">
-					<AnalyticsCard
-						title="Incomplete tasks"
-						value={data.incompleteTaskCount}
-						variant={
-							data.incompleteTaskDifference > 0 ? "up" : "down"
-						}
-						increaseValue={data.incompleteTaskDifference}
-					/>
-				</div>
+		<div className="grid grid-cols-2 lg:grid-cols-5 gap-3 w-full shrink-0">
+			<div className="bg-card border border-border rounded-lg">
+				<AnalyticsCard
+					title="Total tasks"
+					value={data.taskCount}
+					variant={data.taskDifference > 0 ? "up" : "down"}
+					increaseValue={data.taskDifference}
+				/>
 			</div>
-			<ScrollBar orientation="horizontal" />
-		</ScrollArea>
+			<div className="bg-card border border-border rounded-lg">
+				<AnalyticsCard
+					title="Assigned tasks"
+					value={data.assignedTaskCount}
+					variant={data.assignedTaskDifference > 0 ? "up" : "down"}
+					increaseValue={data.assignedTaskDifference}
+				/>
+			</div>
+			<div className="bg-card border border-border rounded-lg">
+				<AnalyticsCard
+					title="Completed tasks"
+					value={data.completedTaskCount}
+					variant={data.completedTaskDifference > 0 ? "up" : "down"}
+					increaseValue={data.completedTaskDifference}
+				/>
+			</div>
+			<div className="bg-card border border-border rounded-lg">
+				<AnalyticsCard
+					title="Overdue tasks"
+					value={data.overdueTaskCount}
+					variant={data.overdueTaskDifference > 0 ? "up" : "down"}
+					increaseValue={data.overdueTaskDifference}
+				/>
+			</div>
+			<div className="bg-card border border-border rounded-lg col-span-2 lg:col-span-1">
+				<AnalyticsCard
+					title="Incomplete tasks"
+					value={data.incompleteTaskCount}
+					variant={data.incompleteTaskDifference > 0 ? "up" : "down"}
+					increaseValue={data.incompleteTaskDifference}
+				/>
+			</div>
+		</div>
 	);
 };

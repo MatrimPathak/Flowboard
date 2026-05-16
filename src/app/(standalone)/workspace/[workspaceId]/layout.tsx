@@ -3,11 +3,13 @@ import { AppModals } from "@/components/app-modals";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { ReactNode } from "react";
 
-interface DashBoardLayoutProps {
-	children?: ReactNode;
+interface WorkspaceScopedStandaloneLayoutProps {
+	children: ReactNode;
 }
 
-const DashBoardLayout = ({ children }: DashBoardLayoutProps) => {
+const WorkspaceScopedStandaloneLayout = ({
+	children,
+}: WorkspaceScopedStandaloneLayoutProps) => {
 	return (
 		<SidebarProvider>
 			<AppModals />
@@ -16,4 +18,4 @@ const DashBoardLayout = ({ children }: DashBoardLayoutProps) => {
 	);
 };
 
-export default DashBoardLayout;
+export default WorkspaceScopedStandaloneLayout;

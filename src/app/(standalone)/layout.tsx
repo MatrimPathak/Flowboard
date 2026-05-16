@@ -1,35 +1,14 @@
-import { UserButton } from "@/features/auth/components/user-button";
-import Image from "next/image";
-import Link from "next/link";
+import { ReactNode } from "react";
 
 interface StandaloneLayoutProps {
-	children: React.ReactNode;
+	children: ReactNode;
 }
 
 const StandaloneLayout = ({ children }: StandaloneLayoutProps) => {
 	return (
-		<main className="bg-muted min-h-screen">
-			<div className="mx-auto max-w-screen-2xl p-4">
-				<nav className="flex justify-between items-center h-[73px]">
-					<Link href="/">
-						<Image
-							src="/logo.svg"
-							alt="Logo"
-							width={0}
-							height={0}
-							sizes="100vw"
-							style={{ width: "100%", height: "40px" }}
-							className="object-cover w-fit h-12 -ml-4"
-							priority
-						/>
-					</Link>
-					<UserButton />
-				</nav>
-				<div className="flex flex-col items-center justify-center py-4">
-					{children}
-				</div>
-			</div>
-		</main>
+		<div className="min-h-screen bg-background">
+			{children}
+		</div>
 	);
 };
 
