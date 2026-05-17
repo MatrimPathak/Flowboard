@@ -109,6 +109,16 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							</div>
 						</div>
 					)}
+					{task.linkedDocs && task.linkedDocs.length > 0 && (
+						<div className="flex flex-col gap-1.5">
+							<span className="text-[12px] text-muted-foreground">Related Docs</span>
+							<div className="flex flex-wrap gap-1.5 justify-end">
+								{task.linkedDocs.map((docId) => (
+									<Badge key={docId} variant="outline" className="text-[11px]">{docId}</Badge>
+								))}
+							</div>
+						</div>
+					)}
 					<div className="flex items-center justify-between">
 						<span className="text-[12px] text-muted-foreground">Watchers</span>
 						<div className="text-[12px]">
