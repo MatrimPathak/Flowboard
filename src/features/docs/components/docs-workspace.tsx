@@ -16,6 +16,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
   const { docsQuery, createDoc, updateDoc } = useDocuments(workspaceId, projectId);
   const [selectedId, setSelectedId] = useState<string | null>(initialDocId ?? null);
   const [search, setSearch] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({ workspace: true, project: true });
 
   const docsData = docsQuery.data;
@@ -27,6 +28,25 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
     const firstId = docsData?.[0]?.id;
     if (!selectedId && firstId) setSelectedId(firstId);
   }, [docsData, selectedId]);
+
+
+
+  useEffect(() => {
+    setTitleDraft(selected?.title ?? "");
+  }, [selected?.id, selected?.title]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const currentId = selected.id;
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === selected.title) return;
+
+    const handle = setTimeout(() => {
+      updateDoc.mutate({ id: currentId, patch: { title: trimmed } });
+    }, 350);
+
+    return () => clearTimeout(handle);
+  }, [titleDraft, selected, updateDoc]);
 
   const templates = ["Blank", "Meeting Notes", "PRD", "Architecture", "API Spec", "Sprint Retrospective"];
 
@@ -53,7 +73,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
       </div> : <div className="max-w-[880px] mx-auto px-10 py-10 space-y-6">
         <div className="h-40 rounded-xl border border-dashed border-white/15 bg-white/[0.02]" />
         <div className="text-4xl">📄</div>
-        <Input value={selected.title} onChange={(e)=>updateDoc.mutate({id:selected.id,patch:{title:e.target.value}})} className="text-3xl font-semibold bg-transparent border-none px-0 h-auto text-white" />
+        <Input value={titleDraft} onChange={(e)=>setTitleDraft(e.target.value)} className="text-3xl font-semibold bg-transparent border-none px-0 h-auto text-white" />
         <p className="text-xs text-white/50">Updated {new Date(selected.updatedAt).toLocaleString()}</p>
         <ChronicleEditor content={selected.content} onChange={(content)=>{
           updateDoc.mutate({id:selected.id,patch:{content}});
