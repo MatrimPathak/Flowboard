@@ -26,13 +26,6 @@ const slashItems = [
   { label: "Code Block", run: (e: any) => e.chain().focus().toggleCodeBlock().run() },
   { label: "Image", run: (e: any) => e.chain().focus().setImage({ src: "https://placehold.co/1200x600" }).run() },
   { label: "Divider", run: (e: any) => e.chain().focus().setHorizontalRule().run() },
-  { label: "Insert Work Item", run: (e: any) => e.chain().focus().insertContent("[Work Item]").run() },
-  { label: "Insert Epic", run: (e: any) => e.chain().focus().insertContent("[Epic]").run() },
-  { label: "Insert Story", run: (e: any) => e.chain().focus().insertContent("[Story]").run() },
-  { label: "Insert Task", run: (e: any) => e.chain().focus().insertContent("[Task]").run() },
-  { label: "Generate Summary", run: (e: any) => e.chain().focus().insertContent("\nAI Summary: ").run() },
-  { label: "Generate Architecture", run: (e: any) => e.chain().focus().insertContent("\nArchitecture Outline: ").run() },
-  { label: "Generate Tasks", run: (e: any) => e.chain().focus().insertContent("\nGenerated Tasks:\n- ").run() },
 ];
 
 export function ChronicleEditor({ content, onChange }: { content: any; onChange: (content: any) => void }) {
