@@ -24,7 +24,6 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "@/features/tasks/components/task-date";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useGetTask as useGetEpicTask } from "@/features/tasks/api/use-get-task";
 import {
   PencilIcon,
   TrashIcon,
@@ -40,15 +39,35 @@ import { cn } from "@/lib/utils";
 import { getTaskRoute } from "@/lib/task-routes";
 
 
-function EpicBreadcrumb({ epicId, workspaceId, projectId, taskId }: { epicId: string; workspaceId: string; projectId: string; taskId: string }) {
-  const { data: epicTask } = useGetEpicTask({ taskId: epicId });
-  if (!epicTask) return null;
-  const epicHref = getTaskRoute(workspaceId, projectId, epicTask);
+function TaskBreadcrumb({ epicId, parentId, workspaceId, projectId, taskId }: {
+  epicId?: string;
+  parentId?: string;
+  workspaceId: string;
+  projectId: string;
+  taskId: string;
+}) {
+  const { data: epicTask } = useGetTask({ taskId: epicId ?? "" });
+  const { data: parentTask } = useGetTask({ taskId: (parentId && parentId !== epicId) ? parentId : "" });
+
+  const crumbs: { label: string; href?: string }[] = [];
+  if (epicTask) crumbs.push({ label: epicId!, href: getTaskRoute(workspaceId, projectId, epicTask) });
+  if (parentTask) crumbs.push({ label: parentId!, href: getTaskRoute(workspaceId, projectId, parentTask) });
+  crumbs.push({ label: taskId });
+
+  if (crumbs.length <= 1) return null;
+
   return (
     <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground font-mono">
-      <Link href={epicHref} className="hover:text-foreground transition-colors">{epicId}</Link>
-      <ChevronRight className="size-3" />
-      <span className="text-foreground/70">{taskId}</span>
+      {crumbs.map((crumb, i) => (
+        <span key={i} className="flex items-center gap-1.5">
+          {i > 0 && <ChevronRight className="size-3" />}
+          {crumb.href ? (
+            <Link href={crumb.href} className="hover:text-foreground transition-colors">{crumb.label}</Link>
+          ) : (
+            <span className="text-foreground/70">{crumb.label}</span>
+          )}
+        </span>
+      ))}
     </div>
   );
 }
@@ -185,9 +204,10 @@ export const TaskIdClient = () => {
           </div>
 
           {/* Breadcrumbs */}
-          {data.epicId && (
-            <EpicBreadcrumb
+          {(data.epicId || data.parentId) && (
+            <TaskBreadcrumb
               epicId={data.epicId}
+              parentId={data.parentId}
               workspaceId={workspaceId}
               projectId={data.projectId}
               taskId={data.$id}
