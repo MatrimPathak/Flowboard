@@ -11,6 +11,7 @@ import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal
 import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint-modal";
 import { useCreateVersionModal } from "@/features/versions/hooks/use-create-version-modal";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { IssueType } from "@/features/tasks/types";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
@@ -40,6 +41,7 @@ interface NavItem {
   icon: ElementType;
   soon?: boolean;
   onCreate?: "task" | "sprint" | "release";
+  issueType?: IssueType;
 }
 
 const TASK = "task" as const;
@@ -60,7 +62,6 @@ const PROJECT_SECTIONS: NavSection[] = [
   {
     group: "Work Items",
     items: [
-      { label: "Epics", hrefSuffix: "/epics", icon: Target, onCreate: TASK },
       { label: "Work Items", hrefSuffix: "/work-items", icon: ListTodo, onCreate: TASK },
     ],
   },
@@ -108,7 +109,7 @@ function ProjectNavItem({ item, projectHref, projectId }: ProjectItemProps) {
     e.stopPropagation();
     if (item.onCreate === SPRINT) openSprintModal({ projectId });
     else if (item.onCreate === RELEASE) openVersionModal({ projectId });
-    else if (item.onCreate === TASK) openTaskModal({ projectId });
+    else if (item.onCreate === TASK) openTaskModal({ projectId, issueType: item.issueType });
   };
 
   return (

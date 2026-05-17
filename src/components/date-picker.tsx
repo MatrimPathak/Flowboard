@@ -21,7 +21,7 @@ export const DatePicker = ({
 	placeholder = "Select Date",
 }: DatePickerProps) => {
 	return (
-		<Popover>
+		<Popover modal={false}>
 			<PopoverTrigger asChild>
 				<Button
 					variant="outline"
@@ -42,7 +42,7 @@ export const DatePicker = ({
 					)}
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-auto p-0">
+			<PopoverContent className="w-auto p-0 z-[9999]">
 				<Calendar
 					mode="single"
 					selected={value}

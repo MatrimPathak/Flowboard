@@ -14,6 +14,7 @@ import { DataTable } from "@/features/tasks/components/data-table";
 import { columns } from "@/features/tasks/components/columns";
 import { getTaskRoute } from "@/lib/task-routes";
 import { useCallback } from "react";
+import { cn } from "@/lib/utils";
 import {
   Plus,
   Layers,
@@ -26,52 +27,55 @@ import {
   Loader,
 } from "lucide-react";
 
-const PRIMARY = "#4F7CFF";
-const SUCCESS = "#22C55E";
-const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
-const BG_HOVER = "rgba(255,255,255,0.04)";
-
-/* ── Type filter pills ── */
+/* ── Type filter pills — Epic is an issue type, not a separate section ── */
 const TYPE_FILTERS = [
   { label: "All", value: null, icon: Layers },
+  { label: "Epic", value: IssueType.EPIC, icon: Target },
   { label: "Story", value: IssueType.STORY, icon: BookOpen },
   { label: "Bug", value: IssueType.BUG, icon: Bug },
   { label: "Spike", value: IssueType.SPIKE, icon: Zap },
-  { label: "Task", value: IssueType.TASK, icon: Target },
 ] as const;
+
+/* Only types visible in the UI can become an active filter */
+const ALLOWED_FILTER_TYPES = new Set<string>(
+  TYPE_FILTERS.map((f) => f.value).filter((v) => v !== null)
+);
 
 const VIEWS = [
   { label: "List", value: "table", icon: List },
   { label: "Board", value: "kanban", icon: LayoutGrid },
 ] as const;
 
-/* ── Type badge colors ── */
-const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  STORY: { bg: "rgba(34,197,94,0.12)", text: SUCCESS },
-  BUG: { bg: "rgba(239,68,68,0.12)", text: "#EF4444" },
-  SPIKE: { bg: "rgba(139,92,246,0.12)", text: "#8B5CF6" },
-  TASK: { bg: "rgba(79,124,255,0.12)", text: PRIMARY },
-  EPIC: { bg: "rgba(245,158,11,0.12)", text: "#F59E0B" },
+/* ── Type active classes (Tailwind tokens only) ── */
+const TYPE_ACTIVE_CLASS: Record<string, string> = {
+  EPIC: "bg-warning/10 text-warning border border-warning/20",
+  STORY: "bg-success/10 text-success border border-success/20",
+  BUG: "bg-destructive/10 text-destructive border border-destructive/20",
+  SPIKE: "bg-purple/10 text-purple border border-purple/20",
 };
+
+const TYPE_INACTIVE_CLASS =
+  "bg-surface text-muted-foreground border border-border/40 hover:text-foreground hover:bg-surface-2";
+
+const TYPE_ALL_ACTIVE_CLASS =
+  "bg-primary/10 text-primary border border-primary/20";
 
 export const WorkItemsClient = () => {
   const workspaceId = useWorkspaceId();
   const projectId = useProjectId();
   const router = useRouter();
   const { open: openCreateModal } = useCreateTaskModal();
-  const { mutate: bulkUpdate } = useBulkUpdateTasks();
+  const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateTasks();
 
   const [typeParam, setTypeParam] = useQueryState("type");
   const activeType: IssueType | null =
-    typeParam && Object.values(IssueType).includes(typeParam as IssueType)
+    typeParam && ALLOWED_FILTER_TYPES.has(typeParam)
       ? (typeParam as IssueType)
       : null;
   const [view, setView] = useQueryState("view", { defaultValue: "table" });
 
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
-  const activeSprint = sprintsData?.documents?.find(
-    (s) => s.status === "ACTIVE"
-  );
+  const activeSprint = sprintsData?.documents?.find((s) => s.status === "ACTIVE");
 
   const { data: tasksData, isLoading } = useGetTasks({
     workspaceId,
@@ -88,32 +92,29 @@ export const WorkItemsClient = () => {
     [bulkUpdate]
   );
 
-  const activeSprint_display = activeSprint
-    ? `${activeSprint.name} · active`
-    : null;
+  const activeSprint_display = activeSprint ? `${activeSprint.name} · active` : null;
 
   let contentArea: React.ReactNode;
   if (isLoading) {
     contentArea = (
       <div className="flex items-center justify-center h-64">
-        <Loader className="size-5 animate-spin" style={{ color: "rgba(255,255,255,0.3)" }} />
+        <Loader className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
   } else if (tasks.length === 0) {
     contentArea = (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <Layers className="size-8" style={{ color: "rgba(255,255,255,0.15)" }} />
+        <Layers className="size-8 text-muted-foreground/30" />
         <div className="text-center">
-          <p className="text-sm font-medium text-white">No work items yet</p>
-          <p className="text-[13px] mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-sm font-medium text-foreground">No work items yet</p>
+          <p className="text-[13px] mt-1 text-muted-foreground">
             Create your first work item to get started
           </p>
         </div>
         <button
           type="button"
           onClick={() => openCreateModal({ projectId })}
-          className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn transition-all"
-          style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY, border: "1px solid rgba(79,124,255,0.2)" }}
+          className="flex items-center gap-2 px-4 py-2 text-sm rounded-btn bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all"
         >
           <Plus className="size-4" />
           Create Work Item
@@ -123,7 +124,7 @@ export const WorkItemsClient = () => {
   } else if (view === "kanban") {
     contentArea = (
       <div className="p-4">
-        <DataKanban data={tasks} onChange={onKanbanChange} />
+        <DataKanban data={tasks} onChange={onKanbanChange} isPending={isBulkUpdating} />
       </div>
     );
   } else {
@@ -145,17 +146,14 @@ export const WorkItemsClient = () => {
       {/* ── Page header ── */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Work Items
           </h1>
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-            Manage stories, bugs, spikes and tasks
+          <p className="text-sm text-muted-foreground">
+            Manage epics, stories, bugs and spikes
             {activeSprint_display && (
-              <span
-                className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
-                style={{ background: "rgba(34,197,94,0.1)", color: SUCCESS, border: "1px solid rgba(34,197,94,0.2)" }}
-              >
-                <span className="size-1.5 rounded-full inline-block" style={{ background: SUCCESS }} />
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success border border-success/20">
+                <span className="size-1.5 rounded-full inline-block bg-success" />
                 {activeSprint_display}
               </span>
             )}
@@ -165,14 +163,7 @@ export const WorkItemsClient = () => {
         <button
           type="button"
           onClick={() => openCreateModal({ projectId })}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150"
-          style={{
-            background: PRIMARY,
-            color: "#FFFFFF",
-            boxShadow: "0 0 0 1px rgba(79,124,255,0.3), 0 4px 12px rgba(79,124,255,0.25)",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#3d6ae8"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = PRIMARY; }}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn bg-primary text-white hover:bg-primary/90 transition-all duration-150 shadow-glow-primary"
         >
           <Plus className="size-4" />
           New Work Item
@@ -185,27 +176,20 @@ export const WorkItemsClient = () => {
         <div className="flex items-center gap-1.5">
           {TYPE_FILTERS.map(({ label, value, icon: Icon }) => {
             const isActive = activeType === value;
-            const color = value ? TYPE_COLORS[value] : null;
+            const activeClass =
+              value === null
+                ? TYPE_ALL_ACTIVE_CLASS
+                : TYPE_ACTIVE_CLASS[value] ?? TYPE_ALL_ACTIVE_CLASS;
 
             return (
               <button
                 key={label}
                 type="button"
                 onClick={() => setTypeParam(value)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-sm font-medium transition-all duration-150"
-                style={
-                  isActive
-                    ? {
-                        background: color?.bg ?? "rgba(79,124,255,0.12)",
-                        color: color?.text ?? PRIMARY,
-                        border: `1px solid ${color?.text ? color.text + "30" : "rgba(79,124,255,0.3)"}`,
-                      }
-                    : {
-                        background: BG_HOVER,
-                        color: "rgba(255,255,255,0.5)",
-                        border: "1px solid rgba(255,255,255,0.06)",
-                      }
-                }
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-sm font-medium transition-all duration-150",
+                  isActive ? activeClass : TYPE_INACTIVE_CLASS
+                )}
               >
                 <Icon className="size-3.5" />
                 {label}
@@ -215,21 +199,18 @@ export const WorkItemsClient = () => {
         </div>
 
         {/* View toggle */}
-        <div
-          className="flex items-center p-1 rounded-btn gap-0.5"
-          style={{ background: BG_HOVER, border: `1px solid ${BORDER_SUBTLE}` }}
-        >
+        <div className="flex items-center p-1 rounded-btn gap-0.5 bg-surface border border-border/40">
           {VIEWS.map(({ label, value, icon: Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => setView(value)}
-              className="flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-all duration-150"
-              style={
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-all duration-150",
                 view === value
-                  ? { background: "rgba(255,255,255,0.08)", color: "#FFFFFF" }
-                  : { color: "rgba(255,255,255,0.4)" }
-              }
+                  ? "bg-surface-2 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
               <Icon className="size-3.5" />
               {label}
@@ -239,14 +220,7 @@ export const WorkItemsClient = () => {
       </div>
 
       {/* ── Content ── */}
-      <div
-        className="rounded-card overflow-hidden"
-        style={{
-          background: "#0F172A",
-          border: `1px solid ${BORDER_SUBTLE}`,
-          boxShadow: `0 0 0 1px ${BG_HOVER}, 0 8px 30px rgba(0,0,0,0.25)`,
-        }}
-      >
+      <div className="rounded-card overflow-hidden bg-surface border border-border/40 shadow-chronicle-sm">
         {contentArea}
       </div>
     </div>

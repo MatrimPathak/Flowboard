@@ -17,6 +17,7 @@ const config: Config = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        panel: "hsl(var(--panel))",
         surface: {
           DEFAULT: "hsl(var(--surface-1))",
           "2": "hsl(var(--surface-2))",
