@@ -2,48 +2,77 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import crypto from "crypto";
 
-const INVALID_GRANT = "invalid_grant";
+const INVALID_GRANT =
+  "invalid_grant";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Origin":
+    "*",
+
+  "Access-Control-Allow-Methods":
+    "POST, OPTIONS",
+
+  "Access-Control-Allow-Headers":
+    "Content-Type",
 };
 
 export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: CORS_HEADERS,
-  });
+  return new Response(
+    null,
+    {
+      status: 204,
+      headers:
+        CORS_HEADERS,
+    }
+  );
 }
 
 function verifyPKCE(
   verifier: string,
   challenge: string
 ): boolean {
-  const hash = crypto
-    .createHash("sha256")
-    .update(verifier)
-    .digest();
+  const hash =
+    crypto
+      .createHash(
+        "sha256"
+      )
+      .update(
+        verifier
+      )
+      .digest();
 
-  return hash.toString("base64url") === challenge;
+  return (
+    hash.toString(
+      "base64url"
+    ) === challenge
+  );
 }
 
 async function parseBody(
   req: NextRequest
-): Promise<Record<string, string>> {
+): Promise<
+  Record<
+    string,
+    string
+  >
+> {
   const contentType =
-    req.headers.get("content-type") ?? "";
+    req.headers.get(
+      "content-type"
+    ) ?? "";
 
   if (
     contentType.includes(
       "application/x-www-form-urlencoded"
     )
   ) {
-    const text = await req.text();
+    const text =
+      await req.text();
 
     return Object.fromEntries(
-      new URLSearchParams(text)
+      new URLSearchParams(
+        text
+      )
     );
   }
 
@@ -51,20 +80,32 @@ async function parseBody(
 }
 
 function tokenResponse(
-  data: Record<string, unknown>,
+  data: Record<
+    string,
+    unknown
+  >,
   status = 200
 ) {
-  return NextResponse.json(data, {
-    status,
-    headers: CORS_HEADERS,
-  });
+  return NextResponse.json(
+    data,
+    {
+      status,
+      headers:
+        CORS_HEADERS,
+    }
+  );
 }
 
 export async function POST(
   req: NextRequest
 ) {
-  const body = await parseBody(req);
-  const grantType = body.grant_type;
+  const body =
+    await parseBody(
+      req
+    );
+
+  const grantType =
+    body.grant_type;
 
   if (
     grantType ===
@@ -76,6 +117,8 @@ export async function POST(
         codeVerifier,
       redirect_uri:
         redirectUri,
+      client_id:
+        clientId
     } = body;
 
     if (
@@ -86,7 +129,7 @@ export async function POST(
       return tokenResponse(
         {
           error:
-            "invalid_request",
+            "invalid_request"
         },
         400
       );
@@ -97,14 +140,18 @@ export async function POST(
         .collection(
           "mcp_auth_codes"
         )
-        .doc(code)
+        .doc(
+          code
+        )
         .get();
 
-    if (!codeDoc.exists) {
+    if (
+      !codeDoc.exists
+    ) {
       return tokenResponse(
         {
           error:
-            INVALID_GRANT,
+            INVALID_GRANT
         },
         400
       );
@@ -114,54 +161,31 @@ export async function POST(
       codeDoc.data()!;
 
     if (
+      data.clientId &&
+      data.clientId !==
+      clientId
+    ) {
+      return tokenResponse(
+        {
+          error:
+            INVALID_GRANT
+        },
+        400
+      );
+    }
+
+    if (
       new Date(
         data.expiresAt
-      ) < new Date()
+      ) <
+      new Date()
     ) {
       await codeDoc.ref.delete();
 
       return tokenResponse(
         {
           error:
-            INVALID_GRANT,
-        },
-        400
-      );
-    }
-
-    try {
-      const incoming =
-        new URL(
-          redirectUri
-        );
-
-      const stored =
-        new URL(
-          data.redirectUri
-        );
-
-      const same =
-        incoming.hostname ===
-          stored.hostname &&
-        incoming.port ===
-          stored.port &&
-        incoming.pathname ===
-          stored.pathname;
-
-      if (!same) {
-        return tokenResponse(
-          {
-            error:
-              INVALID_GRANT,
-          },
-          400
-        );
-      }
-    } catch {
-      return tokenResponse(
-        {
-          error:
-            INVALID_GRANT,
+            INVALID_GRANT
         },
         400
       );
@@ -176,7 +200,7 @@ export async function POST(
       return tokenResponse(
         {
           error:
-            INVALID_GRANT,
+            INVALID_GRANT
         },
         400
       );
@@ -193,14 +217,12 @@ export async function POST(
         expires_in:
           3600,
 
-        scope: "",
-
         ...(data.refreshToken
           ? {
               refresh_token:
-                data.refreshToken,
+                data.refreshToken
             }
-          : {}),
+          : {})
       });
 
     await codeDoc.ref.delete();
@@ -221,7 +243,7 @@ export async function POST(
       return tokenResponse(
         {
           error:
-            "invalid_request",
+            "invalid_request"
         },
         400
       );
@@ -231,26 +253,34 @@ export async function POST(
       await fetch(
         `https://securetoken.googleapis.com/v1/token?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
         {
-          method: "POST",
+          method:
+            "POST",
+
           headers: {
             "Content-Type":
-              "application/json",
+              "application/json"
           },
+
           body:
-            JSON.stringify({
-              grant_type:
-                "refresh_token",
-              refresh_token:
-                refreshToken,
-            }),
+            JSON.stringify(
+              {
+                grant_type:
+                  "refresh_token",
+
+                refresh_token:
+                  refreshToken
+              }
+            )
         }
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       return tokenResponse(
         {
           error:
-            INVALID_GRANT,
+            INVALID_GRANT
         },
         400
       );
@@ -273,16 +303,14 @@ export async function POST(
         ),
 
       refresh_token:
-        refreshed.refresh_token,
-
-      scope: "",
+        refreshed.refresh_token
     });
   }
 
   return tokenResponse(
     {
       error:
-        "unsupported_grant_type",
+        "unsupported_grant_type"
     },
     400
   );
