@@ -76,6 +76,11 @@ export const WorkspaceIdClient = () => {
   const { data: user } = useCurrent();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
+  const CHART_GRID = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)";
+  const CHART_TICK = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)";
+  const CHART_TOOLTIP_BG = isDark ? "hsl(222,40%,17%)" : "hsl(0,0%,100%)";
+  const CHART_TOOLTIP_BORDER = `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`;
+  const CHART_TOOLTIP_FG = isDark ? "#fff" : "#0f172a";
   const { data: workspace } = useGetWorkspace({
     workspaceId,
     enabled: !!workspaceId,
@@ -246,28 +251,28 @@ export const WorkspaceIdClient = () => {
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)"}
+                  stroke={CHART_GRID}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
+                  tick={{ fontSize: 11, fill: CHART_TICK }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
+                  tick={{ fontSize: 11, fill: CHART_TICK }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: isDark ? "hsl(222,40%,17%)" : "hsl(0,0%,100%)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
+                    background: CHART_TOOLTIP_BG,
+                    border: CHART_TOOLTIP_BORDER,
                     borderRadius: 10,
                     fontSize: 12,
-                    color: isDark ? "#fff" : "#0f172a",
+                    color: CHART_TOOLTIP_FG,
                   }}
                 />
                 <Area
@@ -312,28 +317,28 @@ export const WorkspaceIdClient = () => {
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)"}
+                  stroke={CHART_GRID}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
+                  tick={{ fontSize: 11, fill: CHART_TICK }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
+                  tick={{ fontSize: 11, fill: CHART_TICK }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: isDark ? "hsl(222,40%,17%)" : "hsl(0,0%,100%)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
+                    background: CHART_TOOLTIP_BG,
+                    border: CHART_TOOLTIP_BORDER,
                     borderRadius: 10,
                     fontSize: 12,
-                    color: isDark ? "#fff" : "#0f172a",
+                    color: CHART_TOOLTIP_FG,
                   }}
                 />
                 <Area

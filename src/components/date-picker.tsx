@@ -42,7 +42,7 @@ export const DatePicker = ({
 					)}
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+			<PopoverContent className="w-auto p-0 z-[9999]">
 				<Calendar
 					mode="single"
 					selected={value}

@@ -36,6 +36,11 @@ const TYPE_FILTERS = [
   { label: "Spike", value: IssueType.SPIKE, icon: Zap },
 ] as const;
 
+/* Only types visible in the UI can become an active filter */
+const ALLOWED_FILTER_TYPES = new Set<string>(
+  TYPE_FILTERS.map((f) => f.value).filter((v) => v !== null)
+);
+
 const VIEWS = [
   { label: "List", value: "table", icon: List },
   { label: "Board", value: "kanban", icon: LayoutGrid },
@@ -64,7 +69,7 @@ export const WorkItemsClient = () => {
 
   const [typeParam, setTypeParam] = useQueryState("type");
   const activeType: IssueType | null =
-    typeParam && Object.values(IssueType).includes(typeParam as IssueType)
+    typeParam && ALLOWED_FILTER_TYPES.has(typeParam)
       ? (typeParam as IssueType)
       : null;
   const [view, setView] = useQueryState("view", { defaultValue: "table" });
@@ -145,7 +150,7 @@ export const WorkItemsClient = () => {
             Work Items
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage stories, bugs, spikes and tasks
+            Manage epics, stories, bugs and spikes
             {activeSprint_display && (
               <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success border border-success/20">
                 <span className="size-1.5 rounded-full inline-block bg-success" />

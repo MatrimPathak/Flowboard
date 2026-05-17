@@ -16,7 +16,7 @@ export function WorkItemDetailLayout({
   return (
     <div className="flex flex-col gap-y-4">
       {header}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+      <div className={sidebar ? "grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6" : "grid grid-cols-1 gap-6"}>
         <div className="flex flex-col gap-y-4">
           {metadata}
           {mainContent}

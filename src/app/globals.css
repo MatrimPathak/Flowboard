@@ -160,6 +160,7 @@
 /* ── Chronicle nav item ────────────────────────────────────────────── */
 .nav-item {
   @apply flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer select-none;
+
   color: hsl(var(--muted-foreground));
 }
 .nav-item:hover {
@@ -182,6 +183,7 @@
 /* ── Sidebar section label ─────────────────────────────────────────── */
 .sidebar-section-label {
   @apply px-3 text-[10px] font-semibold uppercase tracking-widest;
+
   color: hsl(var(--muted-foreground) / 0.6);
 }
 

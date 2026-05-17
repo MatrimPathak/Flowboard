@@ -59,6 +59,7 @@ export const DataKanban = ({ data, isPending = false, onChange }: DataKanbanProp
 		(result: DropResult) => {
 			if (!result.destination || isPending) return;
 			const { source, destination } = result;
+			if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 			const sourceStatus = source.droppableId as TaskStatus;
 			const destStatus = destination.droppableId as TaskStatus;
 			let updatesPayload: { $id: string; status: TaskStatus; position: number }[] = [];
