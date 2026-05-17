@@ -27,8 +27,9 @@ export function MainNav() {
   const routes = [
     { label: "Overview", href: base, icon: LayoutDashboard, exact: true },
     { label: "Projects", href: `${base}/projects`, icon: FolderKanban },
-    { label: "Docs", href: `${base}/docs`, icon: FileText, soon: true },
+    { label: "Docs", href: `${base}/docs`, icon: FileText },
     { label: "Activity", href: `${base}/activity`, icon: Activity, soon: true },
+    { label: "Knowledge", href: `${base}/knowledge`, icon: FileText },
     { label: "Members", href: `${base}/members`, icon: Users2 },
     { label: "Settings", href: `${base}/settings`, icon: Settings },
   ];
