@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TrashIcon } from "lucide-react";
 import { useGetComments } from "../api/use-get-comments";
@@ -33,10 +32,9 @@ export const TaskComments = ({ taskId }: TaskCommentsProps) => {
 	};
 
 	return (
-		<div className="p-4 border rounded-lg">
-			<p className="text-lg font-semibold">Comments</p>
-			<DottedSeperator className="my-4" />
-			<div className="flex flex-col gap-y-4 mb-4">
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
+			<h3 className="text-[14px] font-semibold text-foreground">Comments</h3>
+			<div className="flex flex-col gap-y-4">
 				{isLoading && (
 					<p className="text-sm text-muted-foreground">Loading...</p>
 				)}
@@ -84,8 +82,7 @@ export const TaskComments = ({ taskId }: TaskCommentsProps) => {
 					</div>
 				))}
 			</div>
-			<DottedSeperator className="mb-4" />
-			<div className="flex flex-col gap-y-2">
+			<div className="flex flex-col gap-y-2 pt-2 border-t border-border/40">
 				<Textarea
 					placeholder="Add a comment..."
 					value={content}
