@@ -32,9 +32,11 @@ import {
   Timer,
   Plus,
   ArrowRight,
+  FileText,
 } from "lucide-react";
 import { IssueType, Task } from "@/features/tasks/types";
 import { cn } from "@/lib/utils";
+import { useDocumentsQuery } from "@/features/docs/hooks/use-documents-query";
 
 const GROUP_HEADING_CLS = "px-4 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold";
 const ITEM_CLS = "flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-surface aria-selected:bg-surface-2 transition-colors";
@@ -66,6 +68,7 @@ export function CommandPalette() {
   const { data: tasksData } = useGetTasks({ workspaceId });
   const { data: projectsData } = useGetProjects({ workspaceId });
   const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: docsData } = useDocumentsQuery(workspaceId);
 
   const { open: openTaskModal } = useCreateTaskModal();
   const { open: openProjectModal } = useCreateProjectModal();
@@ -94,6 +97,7 @@ export function CommandPalette() {
   const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
   const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
   const members = useMemo(() => membersData?.documents ?? [], [membersData]);
+  const docs = useMemo(() => docsData ?? [], [docsData]);
 
   // Fuse instances
   const taskFuse = useMemo(
@@ -135,6 +139,10 @@ export function CommandPalette() {
   const filteredMembers = query
     ? memberFuse.search(query).slice(0, 3).map((r) => r.item)
     : [];
+
+  const filteredDocs = docs
+    .filter((d) => !query || d.title.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 6);
 
   const handleSelectTask = (task: Task) => {
     closeCommandPalette();
@@ -291,6 +299,33 @@ export function CommandPalette() {
                           </CommandItem>
                         );
                       })}
+                    </CommandGroup>
+                  )}
+
+                  {/* Docs */}
+                  {filteredDocs.length > 0 && (
+                    <CommandGroup
+                      heading={<span className={GROUP_HEADING_CLS}>Docs</span>}
+                    >
+                      {filteredDocs.map((d) => (
+                        <CommandItem
+                          key={d.id}
+                          onSelect={() => {
+                            closeCommandPalette();
+                            if (d.projectId) router.push(`/workspace/${workspaceId}/project/${d.projectId}/docs?docId=${d.id}`);
+                            else router.push(`/workspace/${workspaceId}/docs?docId=${d.id}`);
+                          }}
+                          className={ITEM_CLS}
+                        >
+                          <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06] shrink-0">
+                            <FileText className="size-3.5 text-white/50" />
+                          </div>
+                          <div className={ITEM_CONTENT_CLS}>
+                            <p className={ITEM_TITLE_CLS}>{d.title}</p>
+                            <p className="text-xs text-white/30">{d.projectId ? "Project doc" : "Workspace doc"}</p>
+                          </div>
+                        </CommandItem>
+                      ))}
                     </CommandGroup>
                   )}
 

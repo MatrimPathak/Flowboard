@@ -12,6 +12,7 @@ import { useCurrent } from "@/features/auth/api/use-current";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { TaskWatchers } from "./task-watchers";
 import { useGetVersions } from "@/features/versions/api/use-get-versions";
+import { OverviewProperty } from "./overview-property";
 
 interface TaskOverviewProps {
 	task: Task;
@@ -109,24 +110,33 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							</div>
 						</div>
 					)}
-					<div className="flex items-center justify-between">
-						<span className="text-[12px] text-muted-foreground">Watchers</span>
-						<div className="text-[12px]">
-							{currentMemberId ? (
-								<TaskWatchers
-									task={task}
-									currentMemberId={currentMemberId}
-									members={membersData?.documents ?? []}
-								/>
-							) : (
-								<span className="text-muted-foreground">
-									{task.watcherIds && task.watcherIds.length > 0
-										? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
-										: "No watchers"}
-								</span>
-							)}
-						</div>
-					</div>
+					{task.linkedDocs && task.linkedDocs.length > 0 && (
+						<OverviewProperty label="Related Docs">
+							<div className="flex flex-wrap gap-1">
+								{task.linkedDocs.map((docId) => (
+									<Badge key={docId} variant="outline">
+										{docId}
+									</Badge>
+								))}
+							</div>
+						</OverviewProperty>
+					)}
+
+					<OverviewProperty label="Watchers">
+						{currentMemberId ? (
+							<TaskWatchers
+								task={task}
+								currentMemberId={currentMemberId}
+								members={membersData?.documents ?? []}
+							/>
+						) : (
+							<span className="text-sm text-muted-foreground">
+								{task.watcherIds && task.watcherIds.length > 0
+									? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
+									: "No watchers"}
+							</span>
+						)}
+					</OverviewProperty>
 				</div>
 			</div>
 		</div>
