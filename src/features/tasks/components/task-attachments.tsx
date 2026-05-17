@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import {
 	TrashIcon,
 	PlusIcon,
@@ -81,16 +80,17 @@ export const TaskAttachments = ({ taskId, workspaceId, projectId }: TaskAttachme
 	};
 
 	return (
-		<div className="p-4 border rounded-lg">
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
 			<div className="flex items-center justify-between">
-				<p className="text-lg font-semibold">Attachments</p>
+				<h3 className="text-[14px] font-semibold text-foreground">Attachments</h3>
 				<Button
 					size="sm"
-					variant="secondary"
+					variant="ghost"
+					className="h-7 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
 					onClick={() => fileInputRef.current?.click()}
 					disabled={isUploading}
 				>
-					<PlusIcon className="size-4 mr-1" />
+					<PlusIcon className="size-3.5 mr-1" />
 					Add
 				</Button>
 				<input
@@ -101,18 +101,17 @@ export const TaskAttachments = ({ taskId, workspaceId, projectId }: TaskAttachme
 					onChange={handleFileChange}
 				/>
 			</div>
-			<DottedSeperator className="my-4" />
 
-			{isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+			{isLoading && <p className="text-[13px] text-muted-foreground">Loading...</p>}
 			{!isLoading && (!data?.documents || data.documents.length === 0) && !selectedFile && (
-				<p className="text-sm text-muted-foreground">No attachments yet.</p>
+				<p className="text-[13px] italic text-muted-foreground/50">No attachments yet.</p>
 			)}
 
 			<div className="flex flex-col gap-y-2">
 				{(data?.documents as TaskAttachment[] | undefined)?.map((attachment) => (
 					<div
 						key={attachment.$id}
-						className="flex items-center gap-x-2 p-2 rounded-md border bg-muted/30"
+						className="flex items-center gap-x-2 p-2 rounded-xl border border-border/40 bg-surface-2/50"
 					>
 						{getFileIcon(attachment.fileType)}
 						<div className="flex-1 min-w-0">
@@ -158,8 +157,7 @@ export const TaskAttachments = ({ taskId, workspaceId, projectId }: TaskAttachme
 
 			{selectedFile && (
 				<>
-					{data?.documents && data.documents.length > 0 && <DottedSeperator className="my-4" />}
-					<div className="mt-2 p-3 rounded-md border bg-muted/20 flex flex-col gap-y-2">
+					<div className="p-3 rounded-xl border border-border/40 bg-surface-2/50 flex flex-col gap-y-2">
 						<div className="flex items-center gap-x-2">
 							{getFileIcon(selectedFile.type)}
 							<div className="flex-1 min-w-0">

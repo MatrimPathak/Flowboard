@@ -1,4 +1,3 @@
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { Task, IssueType } from "../types";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, XIcon } from "lucide-react";
@@ -36,9 +35,9 @@ export const TaskDescription = ({ task }: TaskDescriptionProps) => {
 		[IssueType.EPIC, IssueType.STORY, IssueType.BUG].includes(task.issueType);
 
 	return (
-		<div className="p-4 border rounded-lg">
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
 			<div className="flex items-center justify-between">
-				<p className="text-lg font-semibold">Description</p>
+				<h3 className="text-[14px] font-semibold text-foreground">Description</h3>
 				<Button
 					onClick={() => {
 						setIsEditing((prev) => !prev);
@@ -46,17 +45,17 @@ export const TaskDescription = ({ task }: TaskDescriptionProps) => {
 						setAcValue(task.acceptanceCriteria ?? "");
 					}}
 					size="sm"
-					variant="secondary"
+					variant="ghost"
+					className="h-7 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
 				>
 					{isEditing ? (
-						<XIcon className="size-4 mr-2" />
+						<XIcon className="size-3.5 mr-1.5" />
 					) : (
-						<PencilIcon className="size-4 mr-2" />
+						<PencilIcon className="size-3.5 mr-1.5" />
 					)}
 					{isEditing ? "Cancel" : "Edit"}
 				</Button>
 			</div>
-			<DottedSeperator className="my-4" />
 			{isEditing ? (
 				<div className="flex flex-col gap-y-4">
 					<div>
@@ -136,26 +135,26 @@ export const TaskRca = ({ task }: TaskRcaProps) => {
 	if (task.issueType !== IssueType.BUG) return null;
 
 	return (
-		<div className="p-4 border rounded-lg">
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
 			<div className="flex items-center justify-between">
-				<p className="text-lg font-semibold">Root Cause Analysis</p>
+				<h3 className="text-[14px] font-semibold text-foreground">Root Cause Analysis</h3>
 				<Button
 					onClick={() => {
 						setIsEditing((prev) => !prev);
 						setRcaValue(task.rca ?? "");
 					}}
 					size="sm"
-					variant="secondary"
+					variant="ghost"
+					className="h-7 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
 				>
 					{isEditing ? (
-						<XIcon className="size-4 mr-2" />
+						<XIcon className="size-3.5 mr-1.5" />
 					) : (
-						<PencilIcon className="size-4 mr-2" />
+						<PencilIcon className="size-3.5 mr-1.5" />
 					)}
 					{isEditing ? "Cancel" : "Edit"}
 				</Button>
 			</div>
-			<DottedSeperator className="my-4" />
 			{isEditing ? (
 				<div className="flex flex-col gap-y-4">
 					<MarkdownEditor
@@ -176,7 +175,7 @@ export const TaskRca = ({ task }: TaskRcaProps) => {
 			) : task.rca ? (
 				<MarkdownRenderer content={task.rca} />
 			) : (
-				<span className="text-muted-foreground text-sm italic">
+				<span className="text-[13px] italic text-muted-foreground/50">
 					No Root Cause Analysis
 				</span>
 			)}

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { ClockIcon, PlusIcon, TrashIcon, PencilIcon, CheckIcon, XIcon } from "lucide-react";
 import { useGetWorklogs } from "../api/use-get-worklogs";
 import { useDeleteWorklog } from "../api/use-delete-worklog";
@@ -94,41 +93,41 @@ export const TaskTimeTracking = ({
         workspaceId={workspaceId}
         projectId={projectId}
       />
-      <div className="p-4 border rounded-lg">
+      <div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-x-2">
-            <ClockIcon className="size-5 text-muted-foreground" />
-            <p className="text-lg font-semibold">Time Tracking</p>
+            <ClockIcon className="size-4 text-muted-foreground" />
+            <h3 className="text-[14px] font-semibold text-foreground">Time Tracking</h3>
           </div>
           <Button
             size="sm"
-            variant="secondary"
+            variant="ghost"
+            className="h-7 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
             onClick={() => setLogWorkOpen(true)}
           >
-            <PlusIcon className="size-4 mr-1" />
+            <PlusIcon className="size-3.5 mr-1" />
             Log Work
           </Button>
         </div>
-        <DottedSeperator className="my-4" />
 
         {/* Progress bar */}
-        <div className="flex flex-col gap-y-2 mb-4">
+        <div className="flex flex-col gap-y-2">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Logged: {formatMinutes(totalTimeSpent)}</span>
             {trackingTotal > 0 && (
               <span>{progressPercent}%</span>
             )}
           </div>
-          <div className="w-full bg-muted rounded-full h-2">
+          <div className="w-full h-1.5 rounded-full overflow-hidden bg-border/40">
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all"
+              className="bg-primary h-full rounded-full transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
 
         {/* Estimates */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           {/* Original Estimate */}
           <div className="flex flex-col gap-y-0.5">
             <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
@@ -232,7 +231,7 @@ export const TaskTimeTracking = ({
             {worklogs.map((wl) => (
               <div
                 key={wl.$id}
-                className="flex items-start gap-x-2 p-2 rounded-md border bg-muted/20 text-sm"
+                className="flex items-start gap-x-2 p-2 rounded-xl border border-border/40 bg-surface-2/50 text-sm"
               >
                 <ClockIcon className="size-4 mt-0.5 shrink-0 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
