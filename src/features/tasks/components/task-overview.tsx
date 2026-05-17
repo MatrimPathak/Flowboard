@@ -111,6 +111,16 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 							</div>
 						</OverviewProperty>
 					)}
+
+					{task.linkedDocs && task.linkedDocs.length > 0 && (
+						<OverviewProperty label="Related Docs">
+							<div className="flex flex-wrap gap-1">
+								{task.linkedDocs.map((docId) => (
+									<Badge key={docId} variant="outline">{docId}</Badge>
+								))}
+							</div>
+						</OverviewProperty>
+					)}
 					<OverviewProperty label="Watchers">
 						{currentMemberId ? (
 							<TaskWatchers

@@ -67,7 +67,7 @@ const PROJECT_SECTIONS: NavSection[] = [
   {
     group: "Knowledge",
     items: [
-      { label: "Docs", hrefSuffix: "/docs", icon: FileText, soon: true },
+      { label: "Docs", hrefSuffix: "/docs", icon: FileText },
       { label: "Decisions", hrefSuffix: "/decisions", icon: BookOpen, soon: true },
     ],
   },

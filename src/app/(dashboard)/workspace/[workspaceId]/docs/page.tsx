@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrent } from "@/features/auth/queries";
-import { ComingSoonPage } from "@/components/coming-soon-page";
-import { FileText } from "lucide-react";
+import { DocsWorkspace } from "@/features/docs/components/docs-workspace";
 
-export default async function WorkspaceDocsPage() {
+export default async function WorkspaceDocsPage({ params, searchParams }: { params: Promise<{ workspaceId: string }>; searchParams: Promise<{ docId?: string }> }) {
   const user = await getCurrent();
   if (!user) redirect("/sign-in");
-  return (
-    <ComingSoonPage
-      title="Workspace Docs"
-      description="A shared knowledge base for your entire workspace. Write team-wide documentation, onboarding guides, and process notes."
-      icon={<FileText className="size-9" />}
-      cta="Notify me when ready"
-    />
-  );
+  const { workspaceId } = await params;
+  const { docId } = await searchParams;
+  return <DocsWorkspace workspaceId={workspaceId} initialDocId={docId} />;
 }

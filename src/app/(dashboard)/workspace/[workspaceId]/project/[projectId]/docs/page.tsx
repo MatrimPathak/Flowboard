@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrent } from "@/features/auth/queries";
-import { ComingSoonPage } from "@/components/coming-soon-page";
-import { FileText } from "lucide-react";
+import { DocsWorkspace } from "@/features/docs/components/docs-workspace";
 
-export default async function ProjectDocsPage() {
+export default async function ProjectDocsPage({ params, searchParams }: { params: Promise<{ workspaceId: string; projectId: string }>; searchParams: Promise<{ docId?: string }> }) {
   const user = await getCurrent();
   if (!user) redirect("/sign-in");
-  return (
-    <ComingSoonPage
-      title="Project Docs"
-      description="Write and share living documentation directly inside your project. Link docs to epics, stories, and decisions."
-      icon={<FileText className="size-9" />}
-      cta="Notify me when ready"
-    />
-  );
+  const { workspaceId, projectId } = await params;
+  const { docId } = await searchParams;
+  return <DocsWorkspace workspaceId={workspaceId} projectId={projectId} initialDocId={docId} />;
 }
