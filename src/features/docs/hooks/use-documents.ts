@@ -1,18 +1,27 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
-import { createDocument, deleteDocument, listDocuments, type ChronicleDocument, updateDocument } from "@/lib/docs-firestore";
+import { createDocument, deleteDocument, listDocuments, subscribeDocuments, type ChronicleDocument, updateDocument } from "@/lib/docs-firestore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 
 export const useDocuments = (workspaceId: string, projectId?: string) => {
   const queryClient = useQueryClient();
-  const queryKey = ["docs", workspaceId, projectId ?? "workspace"];
+  const queryKey = useMemo(() => ["docs", workspaceId, projectId ?? "workspace"], [workspaceId, projectId]);
 
   const docsQuery = useQuery({
     queryKey,
     queryFn: () => listDocuments(workspaceId, projectId),
     enabled: !!workspaceId,
   });
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const unsubscribe = subscribeDocuments(workspaceId, projectId, (docs) => {
+      queryClient.setQueryData(queryKey, docs);
+    });
+    return unsubscribe;
+  }, [workspaceId, projectId, queryClient, queryKey]);
 
   const createDoc = useMutation({
     mutationFn: async (data: Partial<ChronicleDocument>) => {
