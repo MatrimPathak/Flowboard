@@ -36,10 +36,10 @@ import {
 import { IssueType, Task } from "@/features/tasks/types";
 import { cn } from "@/lib/utils";
 
-const GROUP_HEADING_CLS = "px-4 text-[10px] uppercase tracking-widest text-white/25 font-semibold";
-const ITEM_CLS = "flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-white/[0.05] aria-selected:bg-white/[0.07] transition-colors";
+const GROUP_HEADING_CLS = "px-4 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold";
+const ITEM_CLS = "flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 cursor-pointer hover:bg-surface aria-selected:bg-surface-2 transition-colors";
 const ITEM_CONTENT_CLS = "flex-1 min-w-0";
-const ITEM_TITLE_CLS = "text-sm text-white/80 font-medium truncate";
+const ITEM_TITLE_CLS = "text-sm text-foreground/80 font-medium truncate";
 
 const ISSUE_ICON: Record<string, ElementType> = {
   EPIC: Target,
@@ -192,33 +192,26 @@ export function CommandPalette() {
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className="fixed left-1/2 top-[15vh] -translate-x-1/2 z-50 w-[760px] max-w-[calc(100vw-2rem)]"
           >
-            <div
-              className="rounded-[24px] overflow-hidden"
-              style={{
-                background: "#0F172A",
-                boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.06), 0 24px 64px rgba(0,0,0,0.5)",
-              }}
-            >
+            <div className="rounded-panel overflow-hidden bg-panel border border-border shadow-chronicle-lg">
               <Command
                 className="bg-transparent border-none"
                 shouldFilter={false}
               >
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
-                  <Search className="size-4 text-white/30 shrink-0" />
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                  <Search className="size-4 text-muted-foreground/60 shrink-0" />
                   <CommandInput
                     value={query}
                     onValueChange={setQuery}
                     placeholder="Search anything or type a command..."
-                    className="bg-transparent border-none text-white placeholder:text-white/30 text-sm h-auto p-0 focus:ring-0 focus:outline-none flex-1"
+                    className="bg-transparent border-none text-foreground placeholder:text-muted-foreground/50 text-sm h-auto p-0 focus:ring-0 focus:outline-none flex-1"
                   />
-                  <kbd className="text-[10px] bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] font-mono text-white/30 shrink-0">
+                  <kbd className="text-[10px] bg-surface px-1.5 py-0.5 rounded border border-border font-mono text-muted-foreground shrink-0">
                     ESC
                   </kbd>
                 </div>
 
                 <CommandList className="max-h-[480px] overflow-y-auto thin-scrollbar py-2">
-                  <CommandEmpty className="py-12 text-center text-white/30 text-sm">
+                  <CommandEmpty className="py-12 text-center text-muted-foreground text-sm">
                     No results for &ldquo;{query}&rdquo;
                   </CommandEmpty>
 
@@ -237,11 +230,11 @@ export function CommandPalette() {
                             <action.icon className="size-3.5 text-primary" />
                           </div>
                           <div className={ITEM_CONTENT_CLS}>
-                            <p className="text-sm text-white/80 font-medium">{action.label}</p>
-                            <p className="text-xs text-white/30">{action.description}</p>
+                            <p className="text-sm text-foreground/80 font-medium">{action.label}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
                           </div>
                           {action.shortcut && (
-                            <kbd className="text-[10px] bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] font-mono text-white/30">
+                            <kbd className="text-[10px] bg-surface px-1.5 py-0.5 rounded border border-border font-mono text-muted-foreground">
                               {action.shortcut}
                             </kbd>
                           )}
@@ -261,13 +254,13 @@ export function CommandPalette() {
                           onSelect={() => handleSelectProject(project.$id)}
                           className={ITEM_CLS}
                         >
-                          <div className="flex items-center justify-center size-7 rounded-lg bg-white/[0.06] shrink-0">
-                            <FolderKanban className="size-3.5 text-white/50" />
+                          <div className="flex items-center justify-center size-7 rounded-lg bg-surface shrink-0">
+                            <FolderKanban className="size-3.5 text-muted-foreground" />
                           </div>
                           <div className={ITEM_CONTENT_CLS}>
                             <p className={ITEM_TITLE_CLS}>{project.name}</p>
                           </div>
-                          <ArrowRight className="size-3.5 text-white/20" />
+                          <ArrowRight className="size-3.5 text-muted-foreground/40" />
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -288,12 +281,12 @@ export function CommandPalette() {
                             onSelect={() => handleSelectTask(task)}
                             className={ITEM_CLS}
                           >
-                            <div className={cn("flex items-center justify-center size-7 rounded-lg bg-white/[0.06] shrink-0")}>
+                            <div className={cn("flex items-center justify-center size-7 rounded-lg bg-surface shrink-0")}>
                               <Icon className={cn("size-3.5", colorClass)} />
                             </div>
                             <div className={ITEM_CONTENT_CLS}>
                               <p className={ITEM_TITLE_CLS}>{task.name}</p>
-                              <p className="text-xs text-white/30 capitalize">{type.toLowerCase()} · {task.status.replaceAll("_", " ").toLowerCase()}</p>
+                              <p className="text-xs text-muted-foreground capitalize">{type.toLowerCase()} · {task.status.replaceAll("_", " ").toLowerCase()}</p>
                             </div>
                           </CommandItem>
                         );
@@ -320,7 +313,7 @@ export function CommandPalette() {
                           </div>
                           <div className={ITEM_CONTENT_CLS}>
                             <p className={ITEM_TITLE_CLS}>{member.name ?? member.email}</p>
-                            <p className="text-xs text-white/30 capitalize">{member.role.toLowerCase()}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{member.role.toLowerCase()}</p>
                           </div>
                         </CommandItem>
                       ))}

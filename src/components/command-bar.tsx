@@ -50,7 +50,7 @@ export function CommandBar() {
   const pageLabel = PAGE_LABEL[lastSegment] ?? null;
 
   return (
-    <header className="sticky top-0 z-30 h-14 flex items-center gap-4 px-6 border-b border-white/5 bg-[#070B14]/90 backdrop-blur-sm shrink-0">
+    <header className="sticky top-0 z-30 h-14 flex items-center gap-4 px-6 border-b border-border/30 bg-background/90 backdrop-blur-sm shrink-0">
       {/* Mobile sidebar trigger */}
       <div className="lg:hidden">
         <MobileSidebar />
@@ -61,17 +61,17 @@ export function CommandBar() {
         {workspace && (
           <Link
             href={`/workspace/${workspaceId}`}
-            className="text-white/40 hover:text-white/70 transition-colors truncate max-w-[120px]"
+            className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
           >
             {workspace.name}
           </Link>
         )}
         {project && (
           <>
-            <ChevronRight className="size-3 text-white/20 shrink-0" />
+            <ChevronRight className="size-3 text-muted-foreground/50 shrink-0" />
             <Link
               href={`/workspace/${workspaceId}/project/${projectId}`}
-              className="text-white/40 hover:text-white/70 transition-colors truncate max-w-[120px]"
+              className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
             >
               {project.name}
             </Link>
@@ -79,8 +79,8 @@ export function CommandBar() {
         )}
         {pageLabel && (
           <>
-            <ChevronRight className="size-3 text-white/20 shrink-0" />
-            <span className="text-white/80 font-medium">{pageLabel}</span>
+            <ChevronRight className="size-3 text-muted-foreground/50 shrink-0" />
+            <span className="text-foreground font-medium">{pageLabel}</span>
           </>
         )}
       </nav>
@@ -90,11 +90,11 @@ export function CommandBar() {
         <button
           type="button"
           onClick={openCommandPalette}
-          className="flex items-center gap-3 w-full max-w-xl h-9 px-4 rounded-lg bg-white/[0.04] border border-white/[0.07] text-sm text-white/40 hover:bg-white/[0.06] hover:border-white/[0.12] hover:text-white/60 transition-all duration-150 group"
+          className="flex items-center gap-3 w-full max-w-xl h-9 px-4 rounded-lg bg-surface border border-border text-sm text-muted-foreground hover:bg-surface-2 hover:border-border hover:text-foreground transition-all duration-150 group"
         >
           <Search className="size-3.5 shrink-0" />
           <span className="flex-1 text-left">Search anything or type a command...</span>
-          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] bg-white/[0.06] px-1.5 py-0.5 rounded-md border border-white/[0.08] font-mono text-white/30">
+          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded-md border border-border font-mono text-muted-foreground">
             ⌘K
           </kbd>
         </button>
@@ -103,13 +103,13 @@ export function CommandBar() {
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
         <button
-          className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-all"
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all"
           aria-label="Notifications"
         >
           <Bell className="size-4" />
         </button>
         <button
-          className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-all"
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all"
           aria-label="Help"
         >
           <HelpCircle className="size-4" />

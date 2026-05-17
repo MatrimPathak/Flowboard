@@ -6,25 +6,21 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
 import { MoreHorizontal, AlertCircle, GitPullRequest } from "lucide-react";
 
-const PRIMARY = "#4F7CFF";
-const DANGER = "#EF4444";
-const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
-
-const TYPE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  EPIC: { label: "Epic", bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },
-  STORY: { label: "Story", bg: "rgba(34,197,94,0.12)", color: "#22C55E" },
-  BUG: { label: "Bug", bg: "rgba(239,68,68,0.12)", color: DANGER },
-  SPIKE: { label: "Spike", bg: "rgba(139,92,246,0.12)", color: "#8B5CF6" },
-  TASK: { label: "Task", bg: "rgba(79,124,255,0.12)", color: PRIMARY },
+const TYPE_CONFIG: Record<string, { label: string; bgClass: string; colorClass: string }> = {
+  EPIC: { label: "Epic", bgClass: "bg-warning/10", colorClass: "text-warning" },
+  STORY: { label: "Story", bgClass: "bg-success/10", colorClass: "text-success" },
+  BUG: { label: "Bug", bgClass: "bg-destructive/10", colorClass: "text-destructive" },
+  SPIKE: { label: "Spike", bgClass: "bg-purple/15", colorClass: "text-purple" },
+  TASK: { label: "Task", bgClass: "bg-primary/10", colorClass: "text-primary" },
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  CRITICAL: { label: "Critical", color: DANGER, dot: "bg-red-400" },
-  HIGH: { label: "High", color: "#F59E0B", dot: "bg-yellow-400" },
-  MEDIUM: { label: "Medium", color: PRIMARY, dot: "bg-blue-400" },
-  LOW: { label: "Low", color: "rgba(255,255,255,0.3)", dot: "bg-white/20" },
-  BLOCKER: { label: "Blocker", color: DANGER, dot: "bg-red-400" },
-  TRIVIAL: { label: "Trivial", color: "rgba(255,255,255,0.2)", dot: "bg-white/10" },
+const PRIORITY_CONFIG: Record<string, { label: string; colorClass: string; dot: string }> = {
+  CRITICAL: { label: "Critical", colorClass: "text-destructive", dot: "bg-red-400" },
+  HIGH: { label: "High", colorClass: "text-warning", dot: "bg-yellow-400" },
+  MEDIUM: { label: "Medium", colorClass: "text-primary", dot: "bg-blue-400" },
+  LOW: { label: "Low", colorClass: "text-muted-foreground/60", dot: "bg-white/20" },
+  BLOCKER: { label: "Blocker", colorClass: "text-destructive", dot: "bg-red-400" },
+  TRIVIAL: { label: "Trivial", colorClass: "text-muted-foreground/60", dot: "bg-white/10" },
 };
 
 interface KanbanCardProps {
@@ -40,75 +36,59 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
   return (
     <button
       type="button"
-      className="group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150 w-full text-left"
-      style={{
-        background: "#0F172A",
-        border: `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.4)" : "rgba(79,124,255,0.25)"}`;
-        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.border = `1px solid ${isBlocked ? "rgba(239,68,68,0.25)" : BORDER_SUBTLE}`;
-        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
-      }}
+      className={cn(
+        "group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150 w-full text-left bg-surface shadow-sm hover:-translate-y-px hover:shadow-md",
+        isBlocked
+          ? "border border-destructive/25 hover:border-destructive/40"
+          : "border border-border/40 hover:border-primary/25"
+      )}
     >
       {/* Top row: type + priority badges + menu */}
       <div className="flex items-center gap-1.5 justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
           {typeConfig && (
             <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-              style={{ background: typeConfig.bg, color: typeConfig.color }}
+              className={cn(
+                "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                typeConfig.bgClass,
+                typeConfig.colorClass
+              )}
             >
               {typeConfig.label}
             </span>
           )}
           {priorityConfig && (
-            <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: priorityConfig.color }}>
+            <span className={cn("flex items-center gap-1 text-[10px] font-medium", priorityConfig.colorClass)}>
               <span className={cn("size-1.5 rounded-full", priorityConfig.dot)} />
               {priorityConfig.label}
             </span>
           )}
         </div>
         <TaskActions id={task.$id}>
-          <MoreHorizontal className="size-4 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          <MoreHorizontal className="size-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </TaskActions>
       </div>
 
       {/* Title */}
-      <p className="text-[13px] font-medium leading-snug text-white/85 line-clamp-2">
+      <p className="text-[13px] font-medium leading-snug text-foreground line-clamp-2">
         {task.name}
       </p>
 
       {/* Meta row: sprint, story points, PR, blocker */}
       <div className="flex items-center gap-2 flex-wrap">
         {task.storyPoints != null && (
-          <span
-            className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-            style={{ background: BORDER_SUBTLE, color: "rgba(255,255,255,0.4)" }}
-          >
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-border/40 text-muted-foreground">
             {task.storyPoints} SP
           </span>
         )}
         {hasLinkedPR && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(79,124,255,0.1)", color: PRIMARY }}
-          >
+          <span className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
             <GitPullRequest className="size-3" />
             PR
           </span>
         )}
         {isBlocked && (
-          <span
-            className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(239,68,68,0.12)", color: DANGER }}
-          >
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive">
             <AlertCircle className="size-3" />
             Blocked
           </span>
@@ -122,12 +102,12 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
             <MemberAvatar
               name={task.assignee.name ?? "?"}
               imageUrl={task.assignee.email}
-              className="size-5 ring-1 ring-[#0F172A]"
+              className="size-5 ring-1 ring-surface"
             />
           )}
         </div>
         {task.dueDate && (
-          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <span className="text-[11px] text-muted-foreground/60">
             {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         )}

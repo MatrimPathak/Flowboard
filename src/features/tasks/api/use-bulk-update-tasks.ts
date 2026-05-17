@@ -33,6 +33,7 @@ export const useBulkUpdateTasks = () => {
 		},
 		onError: () => {
 			toast.error("Failed to update tasks");
+			queryClient.invalidateQueries({ queryKey: ["tasks"] });
 		},
 	});
 	return mutation;

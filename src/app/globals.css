@@ -9,9 +9,41 @@
 }
 
 @layer base {
+  /* ── Shared base tokens (theme-neutral) ────────────────────────── */
   :root {
-    /* Chronicle design tokens — always dark */
+    --radius: 0.75rem;
+    --radius-card: 1.125rem;   /* 18px */
+    --radius-btn: 0.75rem;     /* 12px */
+    --radius-panel: 1.5rem;    /* 24px */
+
+    --primary: 224 100% 65%;          /* Chronicle blue — same in both themes */
+    --primary-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --purple: 258 89% 66%;
+
+    --ring: 224 100% 65%;
+
+    /* Chart palette */
+    --chart-1: 224 100% 65%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 258 89% 66%;
+    --chart-5: 0 84% 60%;
+
+    /* Logo */
+    --logo-start: 224 100% 72%;
+    --logo-end: 224 84% 56%;
+  }
+
+  /* ── Dark theme — deep navy ────────────────────────────────────── */
+  .dark {
     --background: 222 47% 5%;           /* #070B14 */
+    --panel: 222 40% 9%;                /* #0C1220 — slightly lifted from bg */
     --surface-1: 222 40% 12%;           /* #0F172A */
     --surface-2: 222 38% 14%;           /* #121C31 */
     --surface-elevated: 222 40% 17%;    /* #16233F */
@@ -25,9 +57,6 @@
     --popover: 222 40% 12%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 224 100% 65%;            /* #4F7CFF */
-    --primary-foreground: 0 0% 100%;
-
     --secondary: 222 38% 14%;
     --secondary-foreground: 0 0% 100%;
 
@@ -36,78 +65,49 @@
 
     --accent: 222 40% 17%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;           /* #EF4444 */
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 71% 45%;             /* #22C55E */
-    --warning: 38 92% 50%;              /* #F59E0B */
-    --purple: 258 89% 66%;              /* #8B5CF6 */
 
     --border: 222 40% 20%;
     --border-subtle: 0 0% 100% / 0.05;
     --input: 222 38% 14%;
-    --ring: 224 100% 65%;
-
-    --radius: 0.75rem;
-    --radius-card: 1.125rem;            /* 18px */
-    --radius-btn: 0.75rem;              /* 12px */
-    --radius-panel: 1.5rem;             /* 24px */
 
     --shadow-sm: 0 0 0 1px rgba(255,255,255,.04), 0 4px 16px rgba(0,0,0,.2);
     --shadow-md: 0 0 0 1px rgba(255,255,255,.04), 0 8px 30px rgba(0,0,0,.25);
     --shadow-lg: 0 0 0 1px rgba(255,255,255,.06), 0 16px 48px rgba(0,0,0,.35);
-
-    /* Logo colors */
-    --logo-start: 224 100% 72%;
-    --logo-end: 224 84% 56%;
-
-    /* Chart colors */
-    --chart-1: 224 100% 65%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 258 89% 66%;
-    --chart-5: 0 84% 60%;
   }
 
-  /* Chronicle is dark-first: no separate .dark override needed.
-     We always render in "dark" mode via the html class. */
-  .dark {
-    --background: 222 47% 5%;
-    --surface-1: 222 40% 12%;
-    --surface-2: 222 38% 14%;
-    --surface-elevated: 222 40% 17%;
-    --foreground: 0 0% 100%;
-    --foreground-secondary: 215 20% 72%;
-    --foreground-muted: 215 15% 52%;
-    --card: 222 40% 12%;
-    --card-foreground: 0 0% 100%;
-    --popover: 222 40% 12%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 224 100% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 38% 14%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 222 38% 14%;
-    --muted-foreground: 215 15% 52%;
-    --accent: 222 40% 17%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 222 40% 20%;
-    --input: 222 38% 14%;
-    --ring: 224 100% 65%;
-    --success: 142 71% 45%;
-    --warning: 38 92% 50%;
-    --purple: 258 89% 66%;
-    --logo-start: 224 100% 72%;
-    --logo-end: 224 84% 56%;
-    --radius: 0.75rem;
-    --chart-1: 224 100% 65%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 258 89% 66%;
-    --chart-5: 0 84% 60%;
+  /* ── Light theme — warm white ──────────────────────────────────── */
+  .light {
+    --background: 40 30% 98%;           /* warm white */
+    --panel: 220 20% 96%;               /* soft cool white */
+    --surface-1: 220 16% 94%;           /* light surface */
+    --surface-2: 220 14% 90%;           /* slightly deeper */
+    --surface-elevated: 220 13% 87%;    /* elevated card */
+
+    --foreground: 222 47% 11%;          /* deep navy text */
+    --foreground-secondary: 220 20% 38%;
+    --foreground-muted: 220 15% 52%;
+
+    --card: 220 16% 94%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 90%;
+    --muted-foreground: 220 15% 45%;
+
+    --accent: 220 13% 87%;
+    --accent-foreground: 222 47% 11%;
+
+    --border: 220 16% 82%;
+    --border-subtle: 0 0% 0% / 0.06;
+    --input: 220 16% 94%;
+
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    --shadow-md: 0 0 0 1px rgba(0,0,0,.06), 0 8px 30px rgba(0,0,0,.08);
+    --shadow-lg: 0 0 0 1px rgba(0,0,0,.06), 0 16px 48px rgba(0,0,0,.10);
   }
 }
 
@@ -121,13 +121,12 @@
 
   body {
     @apply bg-background text-foreground;
-
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Scrollbar */
+/* ── Scrollbar utilities ───────────────────────────────────────────── */
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -136,10 +135,9 @@
   display: none;
 }
 
-/* Thin scrollbar for main content */
 .thin-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  scrollbar-color: hsl(var(--border)) transparent;
 }
 .thin-scrollbar::-webkit-scrollbar {
   width: 4px;
@@ -148,50 +146,48 @@
   background: transparent;
 }
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+  background: hsl(var(--border));
   border-radius: 2px;
 }
 
-/* Glass surface utility */
+/* ── Glass surface ─────────────────────────────────────────────────── */
 .glass {
-  background: rgba(15, 23, 42, 0.8);
+  background: hsl(var(--panel) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Chronicle sidebar nav item */
+/* ── Chronicle nav item ────────────────────────────────────────────── */
 .nav-item {
   @apply flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer select-none;
-
-  color: rgba(255,255,255,0.55);
+  color: hsl(var(--muted-foreground));
 }
 .nav-item:hover {
-  background: #0e1520;
-  color: #d9d9d9;
+  background: hsl(var(--surface-1));
+  color: hsl(var(--foreground));
 }
 .nav-item.active {
-  background: #1f2d4e;
-  color: #fff;
-  border-left: 2px solid #4F7CFF;
+  background: hsl(var(--surface-2));
+  color: hsl(var(--foreground));
+  border-left: 2px solid hsl(var(--primary));
   padding-left: calc(0.75rem - 2px);
 }
 
-/* Project card hover (avoids JS mouse handlers) */
+/* ── Project card hover ────────────────────────────────────────────── */
 .project-card:hover {
-  border-color: rgba(79,124,255,0.3) !important;
-  box-shadow: 0 0 0 1px rgba(79,124,255,0.15), 0 8px 24px rgba(79,124,255,0.08) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15), 0 8px 24px hsl(var(--primary) / 0.08) !important;
 }
 
-/* Section label */
+/* ── Sidebar section label ─────────────────────────────────────────── */
 .sidebar-section-label {
   @apply px-3 text-[10px] font-semibold uppercase tracking-widest;
-
-  color: rgba(255,255,255,0.3);
+  color: hsl(var(--muted-foreground) / 0.6);
 }
 
-/* Command palette backdrop */
+/* ── Command palette backdrop ──────────────────────────────────────── */
 .palette-backdrop {
-  background: rgba(7, 11, 20, 0.7);
+  background: hsl(var(--background) / 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
