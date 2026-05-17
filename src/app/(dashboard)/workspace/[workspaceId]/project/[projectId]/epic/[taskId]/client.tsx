@@ -11,6 +11,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useEditTaskModal } from "@/features/tasks/hooks/use-edit-task-modal";
 import { Task, TaskStatus, IssueType, TaskPriority } from "@/features/tasks/types";
+import { STATUS_CLASS, PRIORITY_CLASS, TYPE_CLASS } from "@/features/tasks/utils/task-display";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "@/features/tasks/components/task-date";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -31,31 +32,6 @@ import Link from "next/link";
 import { getTaskRoute } from "@/lib/task-routes";
 import { cn } from "@/lib/utils";
 
-/* ── Status classes (Tailwind tokens only) ── */
-const STATUS_CLASS: Record<TaskStatus, { label: string; cls: string }> = {
-  [TaskStatus.BACKLOG]:      { label: "Backlog",     cls: "bg-muted/30 text-muted-foreground" },
-  [TaskStatus.TODO]:         { label: "To Do",       cls: "bg-muted/30 text-muted-foreground/80" },
-  [TaskStatus.IN_PROGRESS]:  { label: "In Progress", cls: "bg-primary/10 text-primary" },
-  [TaskStatus.UNDER_REVIEW]: { label: "In Review",   cls: "bg-warning/10 text-warning" },
-  [TaskStatus.DONE]:         { label: "Done",        cls: "bg-success/10 text-success" },
-};
-
-const PRIORITY_CLASS: Record<TaskPriority, { label: string; dotCls: string }> = {
-  [TaskPriority.BLOCKER]:  { label: "Blocker",  dotCls: "bg-destructive" },
-  [TaskPriority.CRITICAL]: { label: "Critical", dotCls: "bg-destructive" },
-  [TaskPriority.HIGH]:     { label: "High",     dotCls: "bg-orange-500" },
-  [TaskPriority.MEDIUM]:   { label: "Medium",   dotCls: "bg-warning" },
-  [TaskPriority.LOW]:      { label: "Low",      dotCls: "bg-success" },
-  [TaskPriority.TRIVIAL]:  { label: "Trivial",  dotCls: "bg-muted-foreground" },
-};
-
-const TYPE_CLASS: Record<IssueType, { label: string; cls: string }> = {
-  [IssueType.EPIC]:  { label: "Epic",  cls: "bg-purple/15 text-purple" },
-  [IssueType.STORY]: { label: "Story", cls: "bg-primary/10 text-primary" },
-  [IssueType.BUG]:   { label: "Bug",   cls: "bg-destructive/10 text-destructive" },
-  [IssueType.SPIKE]: { label: "Spike", cls: "bg-warning/10 text-warning" },
-  [IssueType.TASK]:  { label: "Task",  cls: "bg-success/10 text-success" },
-};
 
 function ProgressBar({ value }: { readonly value: number }) {
   return (
