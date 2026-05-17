@@ -28,8 +28,11 @@ async function parseBody(req: NextRequest): Promise<Record<string, string>> {
   return req.json();
 }
 
-function tokenResponse(data: Record<string, unknown>) {
-  return NextResponse.json(data, { headers: CORS_HEADERS });
+function tokenResponse(data: Record<string, unknown>, status = 200) {
+  return NextResponse.json(data, {
+    status,
+    headers: CORS_HEADERS
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -37,30 +40,58 @@ export async function POST(req: NextRequest) {
   const grantType = body.grant_type;
 
   if (grantType === "authorization_code") {
-    const { code, code_verifier: codeVerifier, redirect_uri: redirectUri } = body;
+    const {
+      code,
+      code_verifier: codeVerifier,
+      redirect_uri: redirectUri
+    } = body;
 
-    if (!code || !codeVerifier) {
-      return tokenResponse({ error: "invalid_request" });
+    if (!code || !codeVerifier || !redirectUri) {
+      return tokenResponse(
+        { error: "invalid_request" },
+        400
+      );
     }
 
-    const codeDoc = await adminDb.collection("mcp_auth_codes").doc(code).get();
+    const codeDoc =
+      await adminDb
+        .collection("mcp_auth_codes")
+        .doc(code)
+        .get();
+
     if (!codeDoc.exists) {
-      return tokenResponse({ error: INVALID_GRANT });
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
     const data = codeDoc.data()!;
 
     if (new Date(data.expiresAt) < new Date()) {
       await codeDoc.ref.delete();
-      return tokenResponse({ error: INVALID_GRANT });
+
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
-    if (redirectUri && data.redirectUri !== redirectUri) {
-      return tokenResponse({ error: INVALID_GRANT });
+    if (data.redirectUri !== redirectUri) {
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
-    if (!verifyPKCE(codeVerifier, data.codeChallenge)) {
-      return tokenResponse({ error: INVALID_GRANT });
+    if (!verifyPKCE(
+      codeVerifier,
+      data.codeChallenge
+    )) {
+      return tokenResponse(
+        { error: INVALID_GRANT },
+        400
+      );
     }
 
     await codeDoc.ref.delete();
@@ -69,7 +100,12 @@ export async function POST(req: NextRequest) {
       access_token: data.idToken,
       token_type: "bearer",
       expires_in: 3600,
-      ...(data.refreshToken ? { refresh_token: data.refreshToken } : {}),
+      ...(data.refreshToken
+        ? {
+            refresh_token:
+              data.refreshToken
+          }
+        : {})
     });
   }
 

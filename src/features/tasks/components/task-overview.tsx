@@ -12,6 +12,7 @@ import { useCurrent } from "@/features/auth/api/use-current";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { TaskWatchers } from "./task-watchers";
 import { useGetVersions } from "@/features/versions/api/use-get-versions";
+import { OverviewProperty } from "./overview-property";
 
 interface TaskOverviewProps {
 	task: Task;
@@ -110,33 +111,32 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 						</div>
 					)}
 					{task.linkedDocs && task.linkedDocs.length > 0 && (
-						<div className="flex flex-col gap-1.5">
-							<span className="text-[12px] text-muted-foreground">Related Docs</span>
-							<div className="flex flex-wrap gap-1.5 justify-end">
+						<OverviewProperty label="Related Docs">
+							<div className="flex flex-wrap gap-1">
 								{task.linkedDocs.map((docId) => (
-									<Badge key={docId} variant="outline" className="text-[11px]">{docId}</Badge>
+									<Badge key={docId} variant="outline">
+										{docId}
+									</Badge>
 								))}
 							</div>
-						</div>
+						</OverviewProperty>
 					)}
-					<div className="flex items-center justify-between">
-						<span className="text-[12px] text-muted-foreground">Watchers</span>
-						<div className="text-[12px]">
-							{currentMemberId ? (
-								<TaskWatchers
-									task={task}
-									currentMemberId={currentMemberId}
-									members={membersData?.documents ?? []}
-								/>
-							) : (
-								<span className="text-muted-foreground">
-									{task.watcherIds && task.watcherIds.length > 0
-										? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
-										: "No watchers"}
-								</span>
-							)}
-						</div>
-					</div>
+
+					<OverviewProperty label="Watchers">
+						{currentMemberId ? (
+							<TaskWatchers
+								task={task}
+								currentMemberId={currentMemberId}
+								members={membersData?.documents ?? []}
+							/>
+						) : (
+							<span className="text-sm text-muted-foreground">
+								{task.watcherIds && task.watcherIds.length > 0
+									? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
+									: "No watchers"}
+							</span>
+						)}
+					</OverviewProperty>
 				</div>
 			</div>
 		</div>

@@ -19,6 +19,16 @@ function McpLoginForm() {
   const codeChallenge = searchParams.get("code_challenge") ?? "";
   const codeChallengeMethod = searchParams.get("code_challenge_method") ?? "S256";
 
+  if (!redirectUri || !codeChallenge) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-sm p-8">
+          <p className="text-sm text-red-500 text-center">Invalid authorization request: missing required parameters.</p>
+        </div>
+      </div>
+    );
+  }
+
   async function completeAuth(idToken: string, refreshToken: string) {
     const res = await fetch("/api/mcp/callback", {
       method: "POST",
@@ -27,7 +37,7 @@ function McpLoginForm() {
     });
     if (!res.ok) throw new Error("Failed to complete authorization");
     const { redirectTo } = await res.json();
-    window.location.href = redirectTo;
+    globalThis.window.location.href = redirectTo;
   }
 
   const handleEmailPassword = async (e: React.FormEvent) => {
@@ -64,7 +74,9 @@ function McpLoginForm() {
         </div>
 
         <form onSubmit={handleEmailPassword} className="space-y-3">
+          <label htmlFor="mcp-email" className="sr-only">Email address</label>
           <input
+            id="mcp-email"
             type="email"
             placeholder="Email address"
             value={email}
@@ -73,7 +85,9 @@ function McpLoginForm() {
             disabled={loading}
             className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
+          <label htmlFor="mcp-password" className="sr-only">Password</label>
           <input
+            id="mcp-password"
             type="password"
             placeholder="Password"
             value={password}
@@ -126,7 +140,13 @@ function McpLoginForm() {
 
 export default function McpLoginPage() {
   return (
-    <Suspense>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-sm p-8">
+          <p className="text-sm text-neutral-500 text-center">Loading…</p>
+        </div>
+      </div>
+    }>
       <McpLoginForm />
     </Suspense>
   );
