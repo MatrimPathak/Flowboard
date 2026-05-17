@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -74,6 +74,16 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
   });
 
   const filtered = useMemo(() => slashItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())), [query]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const next = content ?? "";
+    const current = editor.getJSON();
+    const same = JSON.stringify(current) === JSON.stringify(next);
+    if (!same) {
+      editor.commands.setContent(next, { emitUpdate: false });
+    }
+  }, [editor, content]);
 
   if (!editor) return null;
 
