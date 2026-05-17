@@ -4,10 +4,17 @@ import { useRef } from "react";
 import type { ChangeEvent } from "react";
 
 const extractTitle = (text: string, fallback: string) => {
-  const heading = text.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  if (heading) return heading;
-  const firstLine = text.split("\n").map((line) => line.trim()).find(Boolean);
-  return firstLine || fallback;
+  const lines = text.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith("# ")) {
+      const heading = line.slice(2).trim();
+      if (heading) return heading;
+    }
+    return line;
+  }
+  return fallback;
 };
 
 export function ImportDocDialog({ onImport }: { onImport: (title: string, content: string) => void }) {
