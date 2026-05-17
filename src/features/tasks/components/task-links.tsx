@@ -11,7 +11,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { TrashIcon, PlusIcon } from "lucide-react";
 import { useGetLinks } from "../api/use-get-links";
 import { useAddLink } from "../api/use-add-link";
@@ -52,24 +51,28 @@ export const TaskLinks = ({ taskId, workspaceId, projectId }: TaskLinksProps) =>
 	};
 
 	return (
-		<div className="p-4 border rounded-lg">
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
 			<div className="flex items-center justify-between">
-				<p className="text-lg font-semibold">Links</p>
-				<Button size="sm" variant="secondary" onClick={() => setShowForm((v) => !v)}>
-					<PlusIcon className="size-4 mr-1" />
+				<h3 className="text-[14px] font-semibold text-foreground">Links</h3>
+				<Button
+					size="sm"
+					variant="ghost"
+					className="h-7 px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
+					onClick={() => setShowForm((v) => !v)}
+				>
+					<PlusIcon className="size-3.5 mr-1" />
 					Add
 				</Button>
 			</div>
-			<DottedSeperator className="my-4" />
 
-			{isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+			{isLoading && <p className="text-[13px] text-muted-foreground">Loading...</p>}
 			{!isLoading && (!data?.documents || data.documents.length === 0) && !showForm && (
-				<p className="text-sm text-muted-foreground">No linked tasks.</p>
+				<p className="text-[13px] italic text-muted-foreground/50">No linked tasks.</p>
 			)}
 
 			<div className="flex flex-col gap-y-2">
 				{(data?.documents as TaskLink[] | undefined)?.map((link) => (
-					<div key={link.$id} className="flex items-center gap-x-2 p-2 rounded-md border bg-muted/30">
+					<div key={link.$id} className="flex items-center gap-x-2 p-2 rounded-xl border border-border/40 bg-surface-2/50">
 						<Badge variant="outline" className="shrink-0 text-xs">
 							{snakeCaseToTitleCase(link.type)}
 						</Badge>
@@ -104,8 +107,7 @@ export const TaskLinks = ({ taskId, workspaceId, projectId }: TaskLinksProps) =>
 
 			{showForm && (
 				<>
-					{data?.documents && data.documents.length > 0 && <DottedSeperator className="my-4" />}
-					<div className="flex flex-col gap-y-2 mt-2">
+					<div className="flex flex-col gap-y-2 pt-2 border-t border-border/40">
 						<Select value={linkType} onValueChange={(v) => setLinkType(v as LinkType)}>
 							<SelectTrigger className="h-8 text-sm">
 								<SelectValue placeholder="Link type" />

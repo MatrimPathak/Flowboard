@@ -1,10 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Task } from "../types";
 import { PencilIcon } from "lucide-react";
-import { DottedSeperator } from "@/components/dotted-seperator";
-import { OverviewProperty } from "./overview-property";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskDate } from "./task-date";
 import { Badge } from "@/components/ui/badge";
@@ -37,105 +34,109 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
 		? versionsData?.documents?.find((v) => v.$id === task.fixVersionId)?.name
 		: undefined;
 	return (
-		<div className="flex flex-col gap-y-4 col-span-1">
-			<div className="bg-muted rounded-lg p-4">
-				<div className="flex items-center justify-between">
-					<p className="text-lg font-semibold">Overview</p>
-					<Button
+		<div className="flex flex-col gap-3">
+			<div className="rounded-2xl p-5 flex flex-col gap-3 bg-surface border border-border/40">
+				<div className="flex items-center justify-between mb-1">
+					<h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Details</h3>
+					<button
 						onClick={() => open(task.$id)}
-						size="sm"
-						variant="secondary"
+						className="flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-lg transition-all bg-surface-2 text-muted-foreground border border-border/40 hover:text-foreground"
 					>
-						<PencilIcon className="size-4 mr-2" />
+						<PencilIcon className="size-3" />
 						Edit
-					</Button>
+					</button>
 				</div>
-				<DottedSeperator className="my-4" />
-				<div className="flex flex-col gap-y-4">
-					<OverviewProperty label="Assignee">
-						<MemberAvatar
-							name={task.assignee?.name || "Unknown"}
-							className="size-6"
-						/>
-						<p className="text-sm font-medium">
+				<div className="flex flex-col gap-3">
+					<div className="flex items-center justify-between">
+						<span className="text-[12px] text-muted-foreground">Assignee</span>
+						<span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/80">
+							<MemberAvatar name={task.assignee?.name || "Unknown"} className="size-4" />
 							{task.assignee?.name || "Unknown"}
-						</p>
-					</OverviewProperty>
-					<OverviewProperty label="Due Date">
-						<TaskDate
-							value={task.dueDate}
-							className="text-sm font-medium"
-						/>
-					</OverviewProperty>
-					<OverviewProperty label="Status">
-						<Badge variant={task.status}>
+						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-[12px] text-muted-foreground">Due Date</span>
+						<TaskDate value={task.dueDate} className="text-[12px] font-medium" />
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-[12px] text-muted-foreground">Status</span>
+						<Badge variant={task.status} className="text-[11px]">
 							{snakeCaseToTitleCase(task.status)}
 						</Badge>
-					</OverviewProperty>
+					</div>
 					{task.issueType && (
-						<OverviewProperty label="Issue Type">
-							<Badge variant="outline">
+						<div className="flex items-center justify-between">
+							<span className="text-[12px] text-muted-foreground">Issue Type</span>
+							<Badge variant="outline" className="text-[11px]">
 								{snakeCaseToTitleCase(task.issueType)}
 							</Badge>
-						</OverviewProperty>
+						</div>
 					)}
 					{task.priority && (
-						<OverviewProperty label="Priority">
-							<Badge variant={task.priority as TaskPriority}>
+						<div className="flex items-center justify-between">
+							<span className="text-[12px] text-muted-foreground">Priority</span>
+							<Badge variant={task.priority as TaskPriority} className="text-[11px]">
 								{snakeCaseToTitleCase(task.priority)}
 							</Badge>
-						</OverviewProperty>
+						</div>
 					)}
 					{task.storyPoints !== undefined && task.storyPoints !== null && (
-						<OverviewProperty label="Story Points">
-							<Badge variant="secondary">
-								{task.storyPoints} pts
-							</Badge>
-						</OverviewProperty>
+						<div className="flex items-center justify-between">
+							<span className="text-[12px] text-muted-foreground">Story Points</span>
+							<span className="text-[12px] font-medium text-foreground/80">{task.storyPoints} pts</span>
+						</div>
 					)}
 					{task.fixVersionId && (
-						<OverviewProperty label="Version">
-							<Badge variant="outline">
+						<div className="flex items-center justify-between">
+							<span className="text-[12px] text-muted-foreground">Version</span>
+							<Badge variant="outline" className="text-[11px]">
 								{fixVersionName ?? task.fixVersionId}
 							</Badge>
-						</OverviewProperty>
+						</div>
 					)}
 					{task.labels && task.labels.length > 0 && (
-						<OverviewProperty label="Labels">
-							<div className="flex flex-wrap gap-1">
+						<div className="flex flex-col gap-1.5">
+							<span className="text-[12px] text-muted-foreground">Labels</span>
+							<div className="flex flex-wrap gap-1.5 justify-end">
 								{task.labels.map((label, index) => (
-									<Badge key={`${label}-${index}`} variant="secondary">
+									<span
+										key={`${label}-${index}`}
+										className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-border/40 text-foreground/60"
+									>
 										{label}
-									</Badge>
+									</span>
 								))}
 							</div>
-						</OverviewProperty>
+						</div>
 					)}
-
 					{task.linkedDocs && task.linkedDocs.length > 0 && (
-						<OverviewProperty label="Related Docs">
-							<div className="flex flex-wrap gap-1">
+						<div className="flex flex-col gap-1.5">
+							<span className="text-[12px] text-muted-foreground">Related Docs</span>
+							<div className="flex flex-wrap gap-1.5 justify-end">
 								{task.linkedDocs.map((docId) => (
-									<Badge key={docId} variant="outline">{docId}</Badge>
+									<Badge key={docId} variant="outline" className="text-[11px]">{docId}</Badge>
 								))}
 							</div>
-						</OverviewProperty>
+						</div>
 					)}
-					<OverviewProperty label="Watchers">
-						{currentMemberId ? (
-							<TaskWatchers
-								task={task}
-								currentMemberId={currentMemberId}
-								members={membersData?.documents ?? []}
-							/>
-						) : (
-							<span className="text-sm text-muted-foreground">
-								{task.watcherIds && task.watcherIds.length > 0
-									? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
-									: "No watchers"}
-							</span>
-						)}
-					</OverviewProperty>
+					<div className="flex items-center justify-between">
+						<span className="text-[12px] text-muted-foreground">Watchers</span>
+						<div className="text-[12px]">
+							{currentMemberId ? (
+								<TaskWatchers
+									task={task}
+									currentMemberId={currentMemberId}
+									members={membersData?.documents ?? []}
+								/>
+							) : (
+								<span className="text-muted-foreground">
+									{task.watcherIds && task.watcherIds.length > 0
+										? `${task.watcherIds.length} watcher${task.watcherIds.length !== 1 ? "s" : ""}`
+										: "No watchers"}
+								</span>
+							)}
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

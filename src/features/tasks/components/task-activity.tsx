@@ -1,7 +1,6 @@
 "use client";
 
 import { format, formatDistanceToNow } from "date-fns";
-import { DottedSeperator } from "@/components/dotted-seperator";
 import { useGetActivity } from "../api/use-get-activity";
 import { TaskActivity as TaskActivityType } from "../types";
 import { formatMinutes, snakeCaseToTitleCase } from "@/lib/utils";
@@ -66,14 +65,13 @@ export const TaskActivity = ({ taskId }: TaskActivityProps) => {
 	const { data, isLoading } = useGetActivity({ taskId });
 
 	return (
-		<div className="p-4 border rounded-lg">
-			<p className="text-lg font-semibold">Activity</p>
-			<DottedSeperator className="my-4" />
+		<div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
+			<h3 className="text-[14px] font-semibold text-foreground">Activity</h3>
 			{isLoading && (
-				<p className="text-sm text-muted-foreground">Loading activity...</p>
+				<p className="text-[13px] text-muted-foreground">Loading activity...</p>
 			)}
 			{!isLoading && (!data?.documents || data.documents.length === 0) && (
-				<p className="text-sm text-muted-foreground">No activity yet.</p>
+				<p className="text-[13px] italic text-muted-foreground/50">No activity yet.</p>
 			)}
 			{data?.documents && data.documents.length > 0 && (
 				<div className="relative">
