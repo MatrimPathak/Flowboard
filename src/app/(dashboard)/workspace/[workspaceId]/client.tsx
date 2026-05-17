@@ -6,6 +6,7 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetWorkspace } from "@/features/workspaces/api/use-get-workspace";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetWorkspaceAnalytics } from "@/features/workspaces/api/use-get-workspace-analytics";
+import { useCurrent } from "@/features/auth/api/use-current";
 import { PageLoader } from "@/components/page-loader";
 import { IntelligencePanel } from "@/components/intelligence-panel";
 import { TaskStatus } from "@/features/tasks/types";
@@ -16,9 +17,6 @@ import {
   Rocket,
   GitPullRequest,
   Sparkles,
-  TrendingUp,
-  TrendingDown,
-  Minus,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -29,24 +27,20 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { useTheme } from "next-themes";
+import { DashboardCard } from "@/components/chronicle/dashboard-card";
 import { useMemo, useState, useEffect } from "react";
 import { format, subDays, isBefore } from "date-fns";
 
 const DATE_FMT = "MMM d";
-const TREND_NEUTRAL = "neutral";
 const AREA_TYPE = "monotone";
 
-const SURFACE = "#0F172A";
-const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
-const BG_HOVER = "rgba(255,255,255,0.04)";
-const TEXT_DIM = "rgba(255,255,255,0.3)";
-const PRIMARY = "#4F7CFF";
-const SUCCESS = "#22C55E";
-const DANGER = "#EF4444";
-const BORDER_1PX = `1px solid ${BORDER_SUBTLE}`;
-
-const TREND_ICON = { up: TrendingUp, down: TrendingDown, neutral: Minus } as const;
-const TREND_COLOR = { up: SUCCESS, down: DANGER, neutral: TEXT_DIM } as const;
+/* Chronicle brand colors — used in SVG chart rendering where CSS vars can't reach */
+const C_PRIMARY = "#4F7CFF";
+const C_SUCCESS = "#22C55E";
+const C_DANGER = "#EF4444";
+const C_WARNING = "#F59E0B";
+const C_PURPLE = "#8B5CF6";
 
 // Helper: hour-based greeting
 function getGreeting(name?: string | null) {
@@ -76,128 +70,12 @@ function buildSparklineData(tasks: { $createdAt: string; status: string }[]) {
   return days;
 }
 
-interface IntelCardProps {
-  readonly title: string;
-  readonly value: string | number;
-  readonly subtitle: string;
-  readonly icon: React.ElementType;
-  readonly iconBg: string;
-  readonly iconColor: string;
-  readonly trend?: "up" | "down" | "neutral";
-  readonly trendLabel?: string;
-  readonly accent?: string;
-  readonly chart?: { day: string; count: number }[];
-}
-
-function IntelCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  iconBg,
-  iconColor,
-  trend,
-  trendLabel,
-  accent,
-  chart,
-}: IntelCardProps) {
-  const TrendIcon = TREND_ICON[trend ?? TREND_NEUTRAL];
-  const trendColor = TREND_COLOR[trend ?? TREND_NEUTRAL];
-
-  return (
-    <div
-      className="relative flex flex-col justify-between p-5 rounded-card overflow-hidden"
-      style={{
-        background: SURFACE,
-        border: BORDER_1PX,
-        boxShadow:
-          "0 0 0 1px rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.2)",
-        minHeight: 140,
-      }}
-    >
-      {/* Top row */}
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
-          <span
-            className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: "rgba(255,255,255,0.35)" }}
-          >
-            {title}
-          </span>
-          <span className="text-3xl font-bold text-white leading-none">
-            {value}
-          </span>
-          <span
-            className="text-[13px]"
-            style={{ color: "rgba(255,255,255,0.45)" }}
-          >
-            {subtitle}
-          </span>
-        </div>
-        <div
-          className="flex items-center justify-center size-10 rounded-xl shrink-0"
-          style={{ background: iconBg }}
-        >
-          <Icon className="size-5" style={{ color: iconColor }} />
-        </div>
-      </div>
-
-      {/* Bottom: trend or mini chart */}
-      <div className="flex items-end justify-between mt-3">
-        {trendLabel && (
-          <div className="flex items-center gap-1.5">
-            <TrendIcon className="size-3.5" style={{ color: trendColor }} />
-            <span className="text-[12px]" style={{ color: trendColor }}>
-              {trendLabel}
-            </span>
-          </div>
-        )}
-        {chart && chart.some((d) => d.count > 0) && (
-          <div className="w-full h-10 -mb-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chart}
-                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id={`grad-${title}`}
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor={accent ?? PRIMARY}
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={accent ?? PRIMARY}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type={AREA_TYPE}
-                  dataKey="count"
-                  stroke={accent ?? PRIMARY}
-                  strokeWidth={1.5}
-                  fill={`url(#grad-${title})`}
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export const WorkspaceIdClient = () => {
   const workspaceId = useWorkspaceId();
+  const { data: user } = useCurrent();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
   const { data: workspace } = useGetWorkspace({
     workspaceId,
     enabled: !!workspaceId,
@@ -258,124 +136,99 @@ export const WorkspaceIdClient = () => {
     <div className="flex flex-col gap-8">
       {/* Greeting header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">
-          {getGreeting(workspace?.name)}
+        <h1 className="text-2xl font-bold text-foreground">
+          {getGreeting(user?.name)}
         </h1>
-        <p
-          className="text-[15px] mt-1"
-          style={{ color: "rgba(255,255,255,0.45)" }}
-        >
-          Here&apos;s what&apos;s happening across your workspace
+        <p className="text-[15px] mt-1 text-muted-foreground">
+          Here&apos;s what&apos;s happening across {workspace?.name ?? "your workspace"}
         </p>
       </div>
 
       {/* 6 intelligence cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <IntelCard
+        <DashboardCard
           title="Today's Focus"
           value={todayDue.length}
           subtitle={todayDue.length === 1 ? "item due today" : "items due today"}
           icon={Target}
-          iconBg="rgba(79,124,255,0.12)"
-          iconColor={PRIMARY}
-          trend={todayDue.length > 3 ? "down" : TREND_NEUTRAL}
-          trendLabel={
-            todayDue.length > 0
-              ? `${todayDue.length} need attention`
-              : "All clear"
-          }
-          accent={PRIMARY}
+          iconBgClass="bg-primary/10"
+          iconColorClass="text-primary"
+          trend={todayDue.length > 3 ? "down" : "neutral"}
+          trendLabel={todayDue.length > 0 ? `${todayDue.length} need attention` : "All clear"}
+          accentColor={C_PRIMARY}
           chart={sparkData}
         />
-        <IntelCard
+        <DashboardCard
           title="Blocked Work"
           value={blocked.length}
-          subtitle={
-            blocked.length === 1 ? "blocker active" : "blockers active"
-          }
+          subtitle={blocked.length === 1 ? "blocker active" : "blockers active"}
           icon={AlertCircle}
-          iconBg="rgba(239,68,68,0.12)"
-          iconColor={DANGER}
-          trend={blocked.length > 0 ? "down" : TREND_NEUTRAL}
+          iconBgClass="bg-destructive/10"
+          iconColorClass="text-destructive"
+          trend={blocked.length > 0 ? "down" : "neutral"}
           trendLabel={blocked.length > 0 ? "Review blockers" : "No blockers"}
-          accent={DANGER}
+          accentColor={C_DANGER}
         />
-        <IntelCard
+        <DashboardCard
           title="Sprint Health"
           value={`${completionPct}%`}
           subtitle={`${inProgress.length} in progress · ${done.length} done`}
           icon={Zap}
-          iconBg="rgba(34,197,94,0.12)"
-          iconColor={SUCCESS}
+          iconBgClass="bg-success/10"
+          iconColorClass="text-success"
           trend={completionPct >= 50 ? "up" : "down"}
           trendLabel={`${tasks.length} total items`}
-          accent={SUCCESS}
+          accentColor={C_SUCCESS}
         />
-        <IntelCard
+        <DashboardCard
           title="Upcoming Releases"
           value={projects.length}
           subtitle="active projects"
           icon={Rocket}
-          iconBg="rgba(139,92,246,0.12)"
-          iconColor="#8B5CF6"
-          trend={TREND_NEUTRAL}
+          iconBgClass="bg-purple/10"
+          iconColorClass="text-purple"
+          trend="neutral"
           trendLabel={`${members.length} team members`}
-          accent="#8B5CF6"
+          accentColor={C_PURPLE}
         />
-        <IntelCard
+        <DashboardCard
           title="PRs Waiting Review"
           value="—"
           subtitle="GitHub integration coming"
           icon={GitPullRequest}
-          iconBg={BORDER_SUBTLE}
-          iconColor={TEXT_DIM}
-          trend={TREND_NEUTRAL}
+          iconBgClass="bg-muted"
+          iconColorClass="text-muted-foreground"
+          trend="neutral"
           trendLabel="Connect GitHub"
-          accent={PRIMARY}
+          accentColor={C_PRIMARY}
         />
-        <IntelCard
+        <DashboardCard
           title="AI Suggestions"
           value={blocked.length + todayDue.length}
           subtitle="items need attention"
           icon={Sparkles}
-          iconBg="rgba(245,158,11,0.12)"
-          iconColor="#F59E0B"
+          iconBgClass="bg-warning/10"
+          iconColorClass="text-warning"
           trend={blocked.length + todayDue.length > 0 ? "down" : "up"}
-          trendLabel={
-            blocked.length + todayDue.length > 0 ? "Review now" : "Looking good"
-          }
-          accent="#F59E0B"
+          trendLabel={blocked.length + todayDue.length > 0 ? "Review now" : "Looking good"}
+          accentColor={C_WARNING}
         />
       </div>
 
       {/* Sprint & burndown row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Velocity chart */}
-        <div
-          className="p-6 rounded-card"
-          style={{
-            background: SURFACE,
-            border: BORDER_1PX,
-            boxShadow:
-              "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
-          }}
-        >
+        <div className="p-6 rounded-card bg-surface border border-border/40 shadow-chronicle-sm">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-semibold text-foreground">
                 Sprint Progress
               </h2>
-              <p
-                className="text-[13px] mt-0.5"
-                style={{ color: "rgba(255,255,255,0.4)" }}
-              >
+              <p className="text-[13px] mt-0.5 text-muted-foreground">
                 Completed items over last 14 days
               </p>
             </div>
-            <span
-              className="text-xs px-2.5 py-1 rounded-full font-medium"
-              style={{ background: "rgba(34,197,94,0.12)", color: SUCCESS }}
-            >
+            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-success/10 text-success">
               {completionPct}% complete
             </span>
           </div>
@@ -386,55 +239,41 @@ export const WorkspaceIdClient = () => {
                 margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient
-                    id="grad-completed"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor={SUCCESS}
-                      stopOpacity={0.25}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={SUCCESS}
-                      stopOpacity={0}
-                    />
+                  <linearGradient id="grad-completed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C_SUCCESS} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={C_SUCCESS} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={BG_HOVER}
+                  stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)"}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: TEXT_DIM }}
+                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: TEXT_DIM }}
+                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "#16233F",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: isDark ? "hsl(222,40%,17%)" : "hsl(0,0%,100%)",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
                     borderRadius: 10,
                     fontSize: 12,
-                    color: "#fff",
+                    color: isDark ? "#fff" : "#0f172a",
                   }}
                 />
                 <Area
                   type={AREA_TYPE}
                   dataKey="completed"
-                  stroke={SUCCESS}
+                  stroke={C_SUCCESS}
                   strokeWidth={2}
                   fill="url(#grad-completed)"
                   dot={false}
@@ -446,29 +285,15 @@ export const WorkspaceIdClient = () => {
         </div>
 
         {/* Burndown chart */}
-        <div
-          className="p-6 rounded-card"
-          style={{
-            background: SURFACE,
-            border: BORDER_1PX,
-            boxShadow:
-              "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px rgba(0,0,0,0.25)",
-          }}
-        >
+        <div className="p-6 rounded-card bg-surface border border-border/40 shadow-chronicle-sm">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-base font-semibold text-white">Burndown</h2>
-              <p
-                className="text-[13px] mt-0.5"
-                style={{ color: "rgba(255,255,255,0.4)" }}
-              >
+              <h2 className="text-base font-semibold text-foreground">Burndown</h2>
+              <p className="text-[13px] mt-0.5 text-muted-foreground">
                 Remaining work items over time
               </p>
             </div>
-            <span
-              className="text-xs px-2.5 py-1 rounded-full font-medium"
-              style={{ background: "rgba(79,124,255,0.12)", color: PRIMARY }}
-            >
+            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-primary/10 text-primary">
               {tasks.filter((t) => t.status !== TaskStatus.DONE).length}{" "}
               remaining
             </span>
@@ -480,55 +305,41 @@ export const WorkspaceIdClient = () => {
                 margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient
-                    id="grad-remaining"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor={PRIMARY}
-                      stopOpacity={0.25}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={PRIMARY}
-                      stopOpacity={0}
-                    />
+                  <linearGradient id="grad-remaining" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C_PRIMARY} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={C_PRIMARY} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={BG_HOVER}
+                  stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)"}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: TEXT_DIM }}
+                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
                   axisLine={false}
                   tickLine={false}
                   interval={3}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: TEXT_DIM }}
+                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "#16233F",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: isDark ? "hsl(222,40%,17%)" : "hsl(0,0%,100%)",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
                     borderRadius: 10,
                     fontSize: 12,
-                    color: "#fff",
+                    color: isDark ? "#fff" : "#0f172a",
                   }}
                 />
                 <Area
                   type={AREA_TYPE}
                   dataKey="remaining"
-                  stroke={PRIMARY}
+                  stroke={C_PRIMARY}
                   strokeWidth={2}
                   fill="url(#grad-remaining)"
                   dot={false}

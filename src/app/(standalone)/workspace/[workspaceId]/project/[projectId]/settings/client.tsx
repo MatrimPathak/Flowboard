@@ -85,18 +85,15 @@ export const ProjectIdSettingsClient = () => {
         <SettingsCard danger>
           <div className="flex items-center gap-2 mb-1">
             <TriangleAlert className="size-4 text-red-400" />
-            <h2 className="text-[15px] font-semibold text-white">Danger Zone</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Danger Zone</h2>
           </div>
-          <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-[13px] mb-6 text-muted-foreground">
             Irreversible actions that affect this project.
           </p>
-          <div
-            className="flex items-center justify-between p-4 rounded-xl"
-            style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}
-          >
+          <div className="flex items-center justify-between p-4 rounded-xl bg-destructive/10 border border-destructive/20">
             <div>
-              <p className="text-[14px] font-medium text-white">Delete Project</p>
-              <p className="text-[13px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-[14px] font-medium text-foreground">Delete Project</p>
+              <p className="text-[13px] mt-0.5 text-muted-foreground">
                 Permanently deletes this project and all associated work items.
               </p>
             </div>
@@ -104,8 +101,7 @@ export const ProjectIdSettingsClient = () => {
               type="button"
               disabled={isDeleting || !isAdmin}
               onClick={handleDelete}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all disabled:opacity-50 shrink-0 ml-4"
-              style={{ background: "#EF4444", color: "#fff", boxShadow: "0 0 0 1px rgba(239,68,68,0.3), 0 4px 12px rgba(239,68,68,0.25)" }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all disabled:opacity-50 shrink-0 ml-4 bg-destructive text-white hover:bg-destructive/90 shadow-glow-destructive"
             >
               <Trash2 className="size-3.5" />
               {isDeleting ? "Deleting…" : "Delete Project"}

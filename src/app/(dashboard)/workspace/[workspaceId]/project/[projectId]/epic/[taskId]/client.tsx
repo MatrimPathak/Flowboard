@@ -29,63 +29,40 @@ import {
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 import { getTaskRoute } from "@/lib/task-routes";
+import { cn } from "@/lib/utils";
 
-const SURFACE = "#0F172A";
-const BORDER_SUBTLE = "rgba(255,255,255,0.06)";
-const TEXT_FAINT = "rgba(255,255,255,0.4)";
-const TEXT_BODY = "rgba(255,255,255,0.65)";
-const TEXT_LABEL = "rgba(255,255,255,0.35)";
-const PRIMARY = "#4F7CFF";
-const SUCCESS = "#22C55E";
-const WARNING = "#F59E0B";
-const PRIMARY_MUTED = "rgba(79,124,255,0.15)";
-const TEXT_XS = "text-[12px]";
-const BG_FAINT = "rgba(255,255,255,0.02)";
-const TEXT_CENTER = "text-center";
-const TEXT_SM_MT = "text-[13px] mt-1";
-const FLEX_BETWEEN = "flex items-center justify-between";
-const ICON_SM = "size-3.5";
-const LABEL_CLS = "text-[14px] font-semibold text-white";
-const TAB_OVERVIEW = "overview";
-const FLEX_GAP_XS = "flex items-center gap-1.5 text-[12px]";
-const CARD_PAD = "rounded-2xl p-5";
-
-const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: string }> = {
-  [TaskStatus.BACKLOG]: { label: "Backlog", color: "#6B7280", bg: "rgba(107,114,128,0.12)" },
-  [TaskStatus.TODO]: { label: "To Do", color: "#94A3B8", bg: "rgba(148,163,184,0.12)" },
-  [TaskStatus.IN_PROGRESS]: { label: "In Progress", color: PRIMARY, bg: "rgba(79,124,255,0.12)" },
-  [TaskStatus.UNDER_REVIEW]: { label: "In Review", color: WARNING, bg: "rgba(245,158,11,0.12)" },
-  [TaskStatus.DONE]: { label: "Done", color: SUCCESS, bg: "rgba(34,197,94,0.12)" },
+/* ── Status classes (Tailwind tokens only) ── */
+const STATUS_CLASS: Record<TaskStatus, { label: string; cls: string }> = {
+  [TaskStatus.BACKLOG]:      { label: "Backlog",     cls: "bg-muted/30 text-muted-foreground" },
+  [TaskStatus.TODO]:         { label: "To Do",       cls: "bg-muted/30 text-muted-foreground/80" },
+  [TaskStatus.IN_PROGRESS]:  { label: "In Progress", cls: "bg-primary/10 text-primary" },
+  [TaskStatus.UNDER_REVIEW]: { label: "In Review",   cls: "bg-warning/10 text-warning" },
+  [TaskStatus.DONE]:         { label: "Done",        cls: "bg-success/10 text-success" },
 };
 
-const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {
-  [TaskPriority.CRITICAL]: { label: "Critical", color: "#EF4444" },
-  [TaskPriority.HIGH]: { label: "High", color: "#F97316" },
-  [TaskPriority.MEDIUM]: { label: "Medium", color: WARNING },
-  [TaskPriority.LOW]: { label: "Low", color: SUCCESS },
-  [TaskPriority.BLOCKER]: { label: "Blocker", color: "#B91C1C" },
-  [TaskPriority.TRIVIAL]: { label: "Trivial", color: "#9CA3AF" },
+const PRIORITY_CLASS: Record<TaskPriority, { label: string; dotCls: string }> = {
+  [TaskPriority.BLOCKER]:  { label: "Blocker",  dotCls: "bg-destructive" },
+  [TaskPriority.CRITICAL]: { label: "Critical", dotCls: "bg-destructive" },
+  [TaskPriority.HIGH]:     { label: "High",     dotCls: "bg-orange-500" },
+  [TaskPriority.MEDIUM]:   { label: "Medium",   dotCls: "bg-warning" },
+  [TaskPriority.LOW]:      { label: "Low",      dotCls: "bg-success" },
+  [TaskPriority.TRIVIAL]:  { label: "Trivial",  dotCls: "bg-muted-foreground" },
 };
 
-const TYPE_CONFIG: Record<IssueType, { label: string; color: string; bg: string }> = {
-  [IssueType.EPIC]: { label: "Epic", color: "#8B5CF6", bg: "rgba(139,92,246,0.15)" },
-  [IssueType.STORY]: { label: "Story", color: PRIMARY, bg: PRIMARY_MUTED },
-  [IssueType.BUG]: { label: "Bug", color: "#EF4444", bg: "rgba(239,68,68,0.15)" },
-  [IssueType.SPIKE]: { label: "Spike", color: WARNING, bg: "rgba(245,158,11,0.15)" },
-  [IssueType.TASK]: { label: "Task", color: SUCCESS, bg: "rgba(34,197,94,0.15)" },
+const TYPE_CLASS: Record<IssueType, { label: string; cls: string }> = {
+  [IssueType.EPIC]:  { label: "Epic",  cls: "bg-purple/15 text-purple" },
+  [IssueType.STORY]: { label: "Story", cls: "bg-primary/10 text-primary" },
+  [IssueType.BUG]:   { label: "Bug",   cls: "bg-destructive/10 text-destructive" },
+  [IssueType.SPIKE]: { label: "Spike", cls: "bg-warning/10 text-warning" },
+  [IssueType.TASK]:  { label: "Task",  cls: "bg-success/10 text-success" },
 };
-
-function getButtonLabel(isPending: boolean, hasNotes: boolean): string {
-  if (isPending) return "Generating…";
-  return hasNotes ? "Regenerate" : "Generate AI Notes";
-}
 
 function ProgressBar({ value }: { readonly value: number }) {
   return (
-    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: BORDER_SUBTLE }}>
+    <div className="w-full h-1.5 rounded-full overflow-hidden bg-border/40">
       <div
-        className="h-full rounded-full transition-all"
-        style={{ width: `${value}%`, background: value === 100 ? SUCCESS : PRIMARY }}
+        className={cn("h-full rounded-full transition-all", value === 100 ? "bg-success" : "bg-primary")}
+        style={{ width: `${value}%` }}
       />
     </div>
   );
@@ -93,61 +70,43 @@ function ProgressBar({ value }: { readonly value: number }) {
 
 function WorkItemRow({ task, workspaceId, projectId }: { readonly task: Task; readonly workspaceId: string; readonly projectId: string }) {
   const href = getTaskRoute(workspaceId, projectId, task);
-  const typeCfg = task.issueType ? TYPE_CONFIG[task.issueType] : TYPE_CONFIG[IssueType.TASK];
-  const statusCfg = STATUS_CONFIG[task.status];
+  const typeCfg = task.issueType ? TYPE_CLASS[task.issueType] : TYPE_CLASS[IssueType.TASK];
+  const statusCfg = STATUS_CLASS[task.status];
 
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
-      style={{ background: BG_FAINT, border: "1px solid rgba(255,255,255,0.05)" }}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group bg-surface hover:bg-surface-2 border border-border/40"
     >
-      <span
-        className="text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0"
-        style={{ background: typeCfg.bg, color: typeCfg.color }}
-      >
+      <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0", typeCfg.cls)}>
         {typeCfg.label}
       </span>
-
-      <span className="flex-1 text-[14px] text-white/80 truncate group-hover:text-white transition-colors">
+      <span className="flex-1 text-[14px] text-foreground/80 truncate group-hover:text-foreground transition-colors">
         {task.name}
       </span>
-
-      <span
-        className="text-[11px] font-medium px-2 py-0.5 rounded-md shrink-0"
-        style={{ background: statusCfg.bg, color: statusCfg.color }}
-      >
+      <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-md shrink-0", statusCfg.cls)}>
         {statusCfg.label}
       </span>
-
       {task.assignee && (
         <MemberAvatar name={task.assignee.name ?? "?"} className="size-5 shrink-0" />
       )}
-
       {task.dueDate && (
-        <TaskDate value={task.dueDate} className="text-[12px] text-white/40 shrink-0" />
+        <TaskDate value={task.dueDate} className="text-[12px] text-muted-foreground shrink-0" />
       )}
-
-      <ChevronRight className="size-3.5 text-white/20 group-hover:text-white/50 transition-colors shrink-0" />
+      <ChevronRight className="size-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
     </Link>
   );
 }
 
 function TimelineTab() {
   return (
-    <div
-      className="flex flex-col items-center justify-center py-20 rounded-2xl gap-4"
-      style={{ background: BG_FAINT, border: "1px dashed rgba(255,255,255,0.08)" }}
-    >
-      <div
-        className="flex items-center justify-center size-14 rounded-2xl"
-        style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
-      >
-        <GitBranch className="size-6" style={{ color: PRIMARY }} />
+    <div className="flex flex-col items-center justify-center py-20 rounded-2xl gap-4 bg-surface border border-dashed border-border/40">
+      <div className="flex items-center justify-center size-14 rounded-2xl bg-primary/8 border border-primary/15">
+        <GitBranch className="size-6 text-primary" />
       </div>
-      <div className={TEXT_CENTER}>
-        <p className="text-[15px] font-semibold text-white">Timeline View</p>
-        <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
+      <div className="text-center">
+        <p className="text-[15px] font-semibold text-foreground">Timeline View</p>
+        <p className="text-[13px] mt-1 text-muted-foreground">
           Gantt-style timeline coming in a future release.
         </p>
       </div>
@@ -156,24 +115,29 @@ function TimelineTab() {
 }
 
 const MdH2 = ({ children }: { children?: React.ReactNode }) => (
-  <h2 className="text-[14px] font-semibold text-white mt-5 mb-2 first:mt-0">{children}</h2>
+  <h2 className="text-[14px] font-semibold text-foreground mt-5 mb-2 first:mt-0">{children}</h2>
 );
 const MdP = ({ children }: { children?: React.ReactNode }) => (
-  <p className="text-[13px] leading-relaxed mb-3" style={{ color: TEXT_BODY }}>{children}</p>
+  <p className="text-[13px] leading-relaxed mb-3 text-foreground/70">{children}</p>
 );
 const MdUl = ({ children }: { children?: React.ReactNode }) => (
   <ul className="list-none pl-0 flex flex-col gap-1.5 mb-3">{children}</ul>
 );
 const MdLi = ({ children }: { children?: React.ReactNode }) => (
-  <li className="flex items-start gap-2 text-[13px]" style={{ color: TEXT_BODY }}>
-    <span className="mt-1.5 size-1.5 rounded-full bg-blue-500/60 shrink-0" />
+  <li className="flex items-start gap-2 text-[13px] text-foreground/70">
+    <span className="mt-1.5 size-1.5 rounded-full bg-primary/60 shrink-0" />
     <span>{children}</span>
   </li>
 );
 const MdStrong = ({ children }: { children?: React.ReactNode }) => (
-  <strong className="text-white font-semibold">{children}</strong>
+  <strong className="text-foreground font-semibold">{children}</strong>
 );
 const MD_COMPONENTS = { h2: MdH2, p: MdP, ul: MdUl, li: MdLi, strong: MdStrong };
+
+function getButtonLabel(isPending: boolean, hasNotes: boolean): string {
+  if (isPending) return "Generating…";
+  return hasNotes ? "Regenerate" : "Generate AI Notes";
+}
 
 function AiNotesTab({ epic, childTasks }: { readonly epic: Task; readonly childTasks: Task[] }) {
   const { mutate: generateNotes, isPending, data: notes, isIdle, isError } = useGetEpicNotes();
@@ -194,46 +158,35 @@ function AiNotesTab({ epic, childTasks }: { readonly epic: Task; readonly childT
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={FLEX_BETWEEN}>
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-[15px] font-semibold text-white">AI Notes</h3>
-          <p className="text-[13px] mt-0.5" style={{ color: TEXT_FAINT }}>
+          <h3 className="text-[15px] font-semibold text-foreground">AI Notes</h3>
+          <p className="text-[13px] mt-0.5 text-muted-foreground">
             Generated by Claude based on this epic&apos;s data.
           </p>
         </div>
         <button
           onClick={handleGenerate}
           disabled={isPending}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn transition-all disabled:opacity-60"
-          style={{
-            background: isPending ? PRIMARY_MUTED : "rgba(79,124,255,0.12)",
-            color: PRIMARY,
-            border: "1px solid rgba(79,124,255,0.25)",
-          }}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-btn bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-all disabled:opacity-60"
         >
           {isPending ? (
             <RefreshCw className="size-3.5 animate-spin" />
           ) : (
-            <Sparkles className={ICON_SM} />
+            <Sparkles className="size-3.5" />
           )}
           {getButtonLabel(isPending, !!notes)}
         </button>
       </div>
 
       {isIdle && !notes && (
-        <div
-          className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4"
-          style={{ background: "rgba(79,124,255,0.04)", border: "1px dashed rgba(79,124,255,0.15)" }}
-        >
-          <div
-            className="flex items-center justify-center size-14 rounded-2xl"
-            style={{ background: "rgba(79,124,255,0.08)", border: "1px solid rgba(79,124,255,0.15)" }}
-          >
-            <Sparkles className="size-6" style={{ color: PRIMARY }} />
+        <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 bg-primary/[0.04] border border-dashed border-primary/15">
+          <div className="flex items-center justify-center size-14 rounded-2xl bg-primary/8 border border-primary/15">
+            <Sparkles className="size-6 text-primary" />
           </div>
-          <div className={TEXT_CENTER}>
-            <p className={LABEL_CLS}>Generate AI Notes</p>
-            <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
+          <div className="text-center">
+            <p className="text-[14px] font-semibold text-foreground">Generate AI Notes</p>
+            <p className="text-[13px] mt-1 text-muted-foreground">
               Claude will analyze this epic and provide a summary, risks, and next steps.
             </p>
           </div>
@@ -241,20 +194,14 @@ function AiNotesTab({ epic, childTasks }: { readonly epic: Task; readonly childT
       )}
 
       {isError && (
-        <div
-          className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
-        >
-          <AlertTriangle className="size-4 text-red-400 shrink-0" />
-          <p className="text-[13px] text-red-400">Failed to generate AI notes. Please try again.</p>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/8 border border-destructive/20">
+          <AlertTriangle className="size-4 text-destructive shrink-0" />
+          <p className="text-[13px] text-destructive">Failed to generate AI notes. Please try again.</p>
         </div>
       )}
 
       {notes && (
-        <div
-          className="rounded-2xl p-6"
-          style={{ background: SURFACE, border: "1px solid rgba(255,255,255,0.07)" }}
-        >
+        <div className="rounded-2xl p-6 bg-surface border border-border/40">
           <div className="prose prose-invert prose-sm max-w-none">
             <ReactMarkdown components={MD_COMPONENTS}>
               {notes}
@@ -275,7 +222,7 @@ export const EpicDetailClient = () => {
   const { data: epic, isLoading } = useGetTask({ taskId });
   const { data: allTasks } = useGetTasks({ workspaceId, projectId, enabled: !!epic });
 
-  const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
+  const [activeTab, setActiveTab] = useState("overview");
 
   if (isLoading) return <PageLoader />;
   if (!epic) return <PageError message="Epic not found" />;
@@ -284,61 +231,52 @@ export const EpicDetailClient = () => {
   const doneCount = childTasks.filter((t) => t.status === TaskStatus.DONE).length;
   const progressPct = childTasks.length > 0 ? Math.round((doneCount / childTasks.length) * 100) : 0;
 
-  const statusCfg = STATUS_CONFIG[epic.status];
-  const priorityCfg = epic.priority ? PRIORITY_CONFIG[epic.priority] : null;
+  const statusCfg = STATUS_CLASS[epic.status];
+  const priorityCfg = epic.priority ? PRIORITY_CLASS[epic.priority] : null;
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-4xl">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <span
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-md"
-            style={{ background: "rgba(139,92,246,0.15)", color: "#8B5CF6" }}
-          >
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-purple/15 text-purple">
             EPIC
           </span>
           {epic.project && (
-            <span className="text-[13px]" style={{ color: TEXT_FAINT }}>
-              {epic.project.name}
-            </span>
+            <span className="text-[13px] text-muted-foreground">{epic.project.name}</span>
           )}
         </div>
 
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-white leading-tight">{epic.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground leading-tight">{epic.name}</h1>
           <button
             onClick={() => openEdit(epic.$id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg shrink-0 transition-all"
-            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg shrink-0 transition-all bg-surface-2 text-muted-foreground border border-border/40 hover:text-foreground"
           >
-            <PencilIcon className={ICON_SM} />
+            <PencilIcon className="size-3.5" />
             Edit
           </button>
         </div>
 
         {/* Meta row */}
         <div className="flex items-center gap-3 flex-wrap">
-          <span
-            className="text-[12px] font-medium px-2.5 py-1 rounded-md"
-            style={{ background: statusCfg.bg, color: statusCfg.color }}
-          >
+          <span className={cn("text-[12px] font-medium px-2.5 py-1 rounded-md", statusCfg.cls)}>
             {statusCfg.label}
           </span>
           {priorityCfg && (
-            <span className={FLEX_GAP_XS} style={{ color: "rgba(255,255,255,0.5)" }}>
-              <span className="size-1.5 rounded-full shrink-0" style={{ background: priorityCfg.color }} />
+            <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <span className={cn("size-1.5 rounded-full shrink-0", priorityCfg.dotCls)} />
               {priorityCfg.label}
             </span>
           )}
           {epic.dueDate && (
-            <span className={FLEX_GAP_XS} style={{ color: TEXT_FAINT }}>
+            <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <Clock className="size-3" />
-              Due <TaskDate value={epic.dueDate} className={TEXT_XS} />
+              Due <TaskDate value={epic.dueDate} className="text-[12px]" />
             </span>
           )}
           {epic.assignee && (
-            <span className={FLEX_GAP_XS} style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <MemberAvatar name={epic.assignee.name} className="size-4" />
               {epic.assignee.name}
             </span>
@@ -348,14 +286,11 @@ export const EpicDetailClient = () => {
         {/* Progress bar */}
         {childTasks.length > 0 && (
           <div className="flex flex-col gap-1.5 mt-1">
-            <div className={FLEX_BETWEEN}>
-              <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-muted-foreground">
                 {doneCount} of {childTasks.length} work items complete
               </span>
-              <span
-                className="text-[12px] font-semibold"
-                style={{ color: progressPct === 100 ? SUCCESS : PRIMARY }}
-              >
+              <span className={cn("text-[12px] font-semibold", progressPct === 100 ? "text-success" : "text-primary")}>
                 {progressPct}%
               </span>
             </div>
@@ -366,28 +301,22 @@ export const EpicDetailClient = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList
-          className="flex items-center gap-1 p-1 rounded-xl w-fit"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-        >
+        <TabsList className="flex items-center gap-1 p-1 rounded-xl w-fit bg-surface border border-border/40">
           {[
-            { value: TAB_OVERVIEW, icon: Circle, label: "Overview" },
-            { value: "work-items", icon: LayoutList, label: "Work Items", count: childTasks.length },
-            { value: "timeline", icon: GitBranch, label: "Timeline" },
-            { value: "ai-notes", icon: Sparkles, label: "AI Notes" },
+            { value: "overview",    icon: Circle,     label: "Overview" },
+            { value: "work-items",  icon: LayoutList,  label: "Work Items", count: childTasks.length },
+            { value: "timeline",    icon: GitBranch,   label: "Timeline" },
+            { value: "ai-notes",    icon: Sparkles,    label: "AI Notes" },
           ].map(({ value, icon: Icon, label, count }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-all data-[state=active]:text-white data-[state=inactive]:text-white/40 data-[state=active]:bg-white/[0.08] data-[state=inactive]:bg-transparent border-none shadow-none"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-all data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=active]:bg-surface-2 data-[state=inactive]:bg-transparent border-none shadow-none"
             >
-              <Icon className={ICON_SM} />
+              <Icon className="size-3.5" />
               {label}
               {count != null && count > 0 && (
-                <span
-                  className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(79,124,255,0.2)", color: PRIMARY }}
-                >
+                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">
                   {count}
                 </span>
               )}
@@ -396,27 +325,23 @@ export const EpicDetailClient = () => {
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value={TAB_OVERVIEW} className="mt-6">
+        <TabsContent value="overview" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-5">
-            <div
-              className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: SURFACE, border: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <h3 className={LABEL_CLS}>Description</h3>
+            <div className="rounded-2xl p-5 flex flex-col gap-4 bg-surface border border-border/40">
+              <h3 className="text-[14px] font-semibold text-foreground">Description</h3>
               {epic.description ? (
-                <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: TEXT_BODY }}>
+                <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-foreground/70">
                   {epic.description}
                 </p>
               ) : (
-                <p className="text-[13px] italic" style={{ color: "rgba(255,255,255,0.25)" }}>
+                <p className="text-[13px] italic text-muted-foreground/50">
                   No description provided.
                 </p>
               )}
-
               {epic.acceptanceCriteria && (
-                <div style={{ borderTop: `1px solid ${BORDER_SUBTLE}` }} className="pt-4">
-                  <h4 className="text-[13px] font-semibold text-white mb-2">Acceptance Criteria</h4>
-                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: TEXT_BODY }}>
+                <div className="pt-4 border-t border-border/40">
+                  <h4 className="text-[13px] font-semibold text-foreground mb-2">Acceptance Criteria</h4>
+                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/70">
                     {epic.acceptanceCriteria}
                   </p>
                 </div>
@@ -425,20 +350,17 @@ export const EpicDetailClient = () => {
 
             <div className="flex flex-col gap-3">
               {/* Stats card */}
-              <div
-                className={CARD_PAD}
-                style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-              >
-                <h3 className="text-[13px] font-semibold text-white/50 uppercase tracking-wider mb-4">Progress</h3>
+              <div className="rounded-2xl p-5 bg-surface border border-border/40">
+                <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">Progress</h3>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {[
-                    { label: "Total", value: childTasks.length, color: PRIMARY },
-                    { label: "Done", value: doneCount, color: SUCCESS },
-                    { label: "Left", value: childTasks.length - doneCount, color: WARNING },
-                  ].map(({ label, value, color }) => (
+                    { label: "Total", value: childTasks.length, cls: "text-primary" },
+                    { label: "Done",  value: doneCount,         cls: "text-success" },
+                    { label: "Left",  value: childTasks.length - doneCount, cls: "text-warning" },
+                  ].map(({ label, value, cls }) => (
                     <div key={label} className="flex flex-col items-center gap-1">
-                      <span className="text-xl font-bold" style={{ color }}>{value}</span>
-                      <span className="text-[11px]" style={{ color: TEXT_FAINT }}>{label}</span>
+                      <span className={cn("text-xl font-bold", cls)}>{value}</span>
+                      <span className="text-[11px] text-muted-foreground">{label}</span>
                     </div>
                   ))}
                 </div>
@@ -446,33 +368,29 @@ export const EpicDetailClient = () => {
               </div>
 
               {/* Details card */}
-              <div
-                className="rounded-2xl p-5 flex flex-col gap-3"
-                style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-              >
-                <h3 className="text-[13px] font-semibold text-white/50 uppercase tracking-wider">Details</h3>
+              <div className="rounded-2xl p-5 flex flex-col gap-3 bg-surface border border-border/40">
+                <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Details</h3>
                 {(
                   [
-                    { label: "Status", value: statusCfg.label, color: statusCfg.color },
-                    ...(priorityCfg ? [{ label: "Priority", value: priorityCfg.label, color: priorityCfg.color }] : []),
-                    ...(epic.storyPoints == null ? [] : [{ label: "Story Points", value: `${epic.storyPoints} pts`, color: TEXT_BODY }]),
-                  ] as { label: string; value: string; color: string }[]
+                    { label: "Status",   value: statusCfg.label,     cls: statusCfg.cls.split(" ").find(c => c.startsWith("text-")) ?? "text-foreground" },
+                    ...(priorityCfg ? [{ label: "Priority", value: priorityCfg.label, cls: "text-foreground/80" }] : []),
+                    ...(epic.storyPoints == null ? [] : [{ label: "Story Points", value: `${epic.storyPoints} pts`, cls: "text-foreground/80" }]),
+                  ] as { label: string; value: string; cls: string }[]
                 ).map((item) => (
-                  <div key={item.label} className={FLEX_BETWEEN}>
-                    <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>{item.label}</span>
-                    <span className="text-[12px] font-medium" style={{ color: item.color }}>{item.value}</span>
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className="text-[12px] text-muted-foreground">{item.label}</span>
+                    <span className={cn("text-[12px] font-medium", item.cls)}>{item.value}</span>
                   </div>
                 ))}
 
                 {epic.labels && epic.labels.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>Labels</span>
+                    <span className="text-[12px] text-muted-foreground">Labels</span>
                     <div className="flex flex-wrap gap-1.5">
                       {epic.labels.map((label) => (
                         <span
                           key={label}
-                          className="text-[11px] font-medium px-2 py-0.5 rounded-md"
-                          style={{ background: BORDER_SUBTLE, color: "rgba(255,255,255,0.6)" }}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-border/40 text-foreground/60"
                         >
                           {label}
                         </span>
@@ -487,26 +405,17 @@ export const EpicDetailClient = () => {
 
         {/* Work Items Tab */}
         <TabsContent value="work-items" className="mt-6">
-          <div
-            className={CARD_PAD}
-            style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-          >
+          <div className="rounded-2xl p-5 bg-surface border border-border/40">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={LABEL_CLS}>Work Items</h3>
-              <span className={TEXT_XS} style={{ color: TEXT_FAINT }}>
-                {childTasks.length} items
-              </span>
+              <h3 className="text-[14px] font-semibold text-foreground">Work Items</h3>
+              <span className="text-[12px] text-muted-foreground">{childTasks.length} items</span>
             </div>
-
             {childTasks.length === 0 ? (
-              <div
-                className="flex flex-col items-center justify-center py-12 rounded-xl gap-3"
-                style={{ background: BG_FAINT, border: "1px dashed rgba(255,255,255,0.08)" }}
-              >
-                <CheckCircle2 className="size-8" style={{ color: "rgba(255,255,255,0.15)" }} />
-                <div className={TEXT_CENTER}>
-                  <p className="text-[14px] font-medium text-white">No work items yet</p>
-                  <p className={TEXT_SM_MT} style={{ color: TEXT_LABEL }}>
+              <div className="flex flex-col items-center justify-center py-12 rounded-xl gap-3 bg-surface border border-dashed border-border/40">
+                <CheckCircle2 className="size-8 text-muted-foreground/20" />
+                <div className="text-center">
+                  <p className="text-[14px] font-medium text-foreground">No work items yet</p>
+                  <p className="text-[13px] mt-1 text-muted-foreground">
                     Create stories, bugs, or tasks and link them to this epic.
                   </p>
                 </div>
@@ -533,10 +442,7 @@ export const EpicDetailClient = () => {
 
         {/* AI Notes Tab */}
         <TabsContent value="ai-notes" className="mt-6">
-          <div
-            className={CARD_PAD}
-            style={{ background: SURFACE, border: `1px solid ${BORDER_SUBTLE}` }}
-          >
+          <div className="rounded-2xl p-5 bg-surface border border-border/40">
             <AiNotesTab epic={epic} childTasks={childTasks} />
           </div>
         </TabsContent>

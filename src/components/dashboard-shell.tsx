@@ -11,9 +11,9 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, rightRail }: DashboardShellProps) {
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-[#070B14]">
+    <div className="flex w-full h-screen overflow-hidden bg-background">
       {/* Fixed 280px sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-[280px] hidden lg:flex flex-col z-40 bg-[#070B14] border-r border-white/5">
+      <aside className="fixed left-0 top-0 h-full w-[280px] hidden lg:flex flex-col z-40 bg-background border-r border-border/30">
         <Sidebar />
       </aside>
 
@@ -30,7 +30,7 @@ export function DashboardShell({ children, rightRail }: DashboardShellProps) {
 
         {/* Right intelligence rail — 340px, optional */}
         {rightRail && (
-          <aside className="hidden xl:flex flex-col w-[340px] shrink-0 border-l border-white/5 overflow-y-auto thin-scrollbar">
+          <aside className="hidden xl:flex flex-col w-[340px] shrink-0 border-l border-border/30 overflow-y-auto thin-scrollbar">
             {rightRail}
           </aside>
         )}

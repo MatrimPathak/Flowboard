@@ -14,7 +14,7 @@ export const Sidebar = () => {
   return (
     <div className="flex flex-col h-full w-full select-none">
       {/* Logo */}
-      <div className="flex items-center h-14 px-5 border-b border-white/5 shrink-0">
+      <div className="flex items-center h-14 px-5 border-b border-border/30 shrink-0">
         <ChronicleLogoFull />
       </div>
 
@@ -30,10 +30,10 @@ export const Sidebar = () => {
       </div>
 
       {/* Bottom bar: theme + profile */}
-      <div className="shrink-0 border-t border-white/5 px-3 py-3 flex items-center justify-between">
+      <div className="shrink-0 border-t border-border/30 px-3 py-3 flex items-center justify-between">
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-all"
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all"
           aria-label="Toggle theme"
         >
           {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
