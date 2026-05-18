@@ -34,10 +34,9 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
   const hasLinkedPR = task.linkedPRs && task.linkedPRs.length > 0;
 
   return (
-    <button
-      type="button"
+    <div
       className={cn(
-        "group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-pointer transition-all duration-150 w-full text-left bg-surface shadow-sm hover:-translate-y-px hover:shadow-md",
+        "group relative flex flex-col gap-3 p-3.5 mb-2 rounded-xl cursor-grab active:cursor-grabbing transition-all duration-150 w-full text-left bg-surface shadow-sm hover:-translate-y-px hover:shadow-md",
         isBlocked
           ? "border border-destructive/25 hover:border-destructive/40"
           : "border border-border/40 hover:border-primary/25"
@@ -112,6 +111,6 @@ export const KanbanCard = ({ task }: KanbanCardProps) => {
           </span>
         )}
       </div>
-    </button>
+    </div>
   );
 };

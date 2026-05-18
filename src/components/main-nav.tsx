@@ -28,7 +28,7 @@ export function MainNav() {
     { label: "Overview", href: base, icon: LayoutDashboard, exact: true },
     { label: "Projects", href: `${base}/projects`, icon: FolderKanban },
     { label: "Docs", href: `${base}/docs`, icon: FileText },
-    { label: "Activity", href: `${base}/activity`, icon: Activity, soon: true },
+    { label: "Activity", href: `${base}/activity`, icon: Activity },
     { label: "Knowledge", href: `${base}/knowledge`, icon: FileText },
     { label: "Members", href: `${base}/members`, icon: Users2 },
     { label: "Settings", href: `${base}/settings`, icon: Settings },

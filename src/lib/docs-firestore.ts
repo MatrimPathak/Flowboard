@@ -6,7 +6,6 @@ import {
   doc,
   getDocs,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -32,10 +31,10 @@ export type ChronicleDocument = {
 const docsCollection = collection(db, "docs");
 
 export async function listDocuments(workspaceId: string, projectId?: string) {
-  const constraints = [where("workspaceId", "==", workspaceId), orderBy("order", "asc")];
-  if (projectId) constraints.unshift(where("projectId", "==", projectId));
-  const snapshot = await getDocs(query(docsCollection, ...constraints));
-  return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChronicleDocument, "id">) }));
+  const snapshot = await getDocs(query(docsCollection, where("workspaceId", "==", workspaceId)));
+  const docs = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChronicleDocument, "id">) }));
+  const filtered = projectId ? docs.filter((d) => d.projectId === projectId) : docs;
+  return filtered.sort((a, b) => a.order - b.order);
 }
 
 export function subscribeDocuments(
@@ -43,11 +42,10 @@ export function subscribeDocuments(
   projectId: string | undefined,
   onData: (docs: ChronicleDocument[]) => void,
 ) {
-  const constraints = [where("workspaceId", "==", workspaceId), orderBy("order", "asc")];
-  if (projectId) constraints.unshift(where("projectId", "==", projectId));
-  return onSnapshot(query(docsCollection, ...constraints), (snapshot) => {
+  return onSnapshot(query(docsCollection, where("workspaceId", "==", workspaceId)), (snapshot) => {
     const docs = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChronicleDocument, "id">) }));
-    onData(docs);
+    const filtered = projectId ? docs.filter((d) => d.projectId === projectId) : docs;
+    onData(filtered.sort((a, b) => a.order - b.order));
   });
 }
 

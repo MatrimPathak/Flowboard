@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle, ArrowRight, CheckCircle2,
@@ -10,7 +10,13 @@ import {
   FolderKanban, Timer, LogIn, Rocket, Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
+import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { subscribeDocuments, ChronicleDocument } from "@/lib/docs-firestore";
+import { TaskStatus } from "@/features/tasks/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,30 +39,7 @@ interface ActivityEvent {
   meta?: string;
 }
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-
-const now = new Date();
-const minsAgo  = (n: number) => new Date(now.getTime() - n * 60 * 1000);
-const hoursAgo = (n: number) => new Date(now.getTime() - n * 3600 * 1000);
-const daysAgo  = (n: number) => new Date(now.getTime() - n * 86400 * 1000);
-
-const FEED: ActivityEvent[] = [
-  { id:"1",  type:"doc_edit",       actor:"Matrim",    actorInitial:"M", actorColor:"#4F7CFF", action:"updated",        target:"Authentication Flow v2",           project:"Chronicle",  timestamp: minsAgo(18),   isNew: true },
-  { id:"2",  type:"task_complete",  actor:"Sarah",     actorInitial:"S", actorColor:"#22c55e", action:"completed",      target:"AUTH-204 · OAuth callback handler", project:"Chronicle",  timestamp: hoursAgo(1),   isNew: true },
-  { id:"3",  type:"decision",       actor:"Alex",      actorInitial:"A", actorColor:"#a855f7", action:"created ADR",    target:"Adopt MCP protocol",               project:"Spendwise",  timestamp: hoursAgo(3) },
-  { id:"4",  type:"comment",        actor:"Raj",       actorInitial:"R", actorColor:"#f59e0b", action:"commented on",   target:"API Architecture Guide",           project:"Chronicle",  timestamp: hoursAgo(5) },
-  { id:"5",  type:"ai_insight",     actor:"Flowboard AI", actorInitial:"AI", actorColor:"#a855f7", action:"detected",  target:"Duplicate auth logic in 2 projects", project:"All",       timestamp: hoursAgo(7),   meta:"3 files affected" },
-  { id:"6",  type:"issue_created",  actor:"Matrim",    actorInitial:"M", actorColor:"#4F7CFF", action:"created",        target:"BUG-89 · Token expiry not handled", project:"Jarvis",    timestamp: hoursAgo(9) },
-  { id:"7",  type:"doc_edit",       actor:"Sarah",     actorInitial:"S", actorColor:"#22c55e", action:"created",        target:"Sprint Retrospective · May 2026",   project:"Spendwise",  timestamp: daysAgo(1) },
-  { id:"8",  type:"sprint_complete",actor:"Matrim",    actorInitial:"M", actorColor:"#4F7CFF", action:"completed sprint","target":"Sprint 3 · 18/22 tasks done",   project:"Chronicle",  timestamp: daysAgo(1),   meta:"82% completion rate" },
-  { id:"9",  type:"task_complete",  actor:"Alex",      actorInitial:"A", actorColor:"#a855f7", action:"completed",      target:"SPIKE-12 · Evaluate LLM providers", project:"Spendwise", timestamp: daysAgo(1) },
-  { id:"10", type:"comment",        actor:"Raj",       actorInitial:"R", actorColor:"#f59e0b", action:"commented on",   target:"Firebase Rules Reference",          project:"Jarvis",    timestamp: daysAgo(2) },
-  { id:"11", type:"deployment",     actor:"CI",        actorInitial:"CI",actorColor:"#22c55e", action:"deployed",       target:"chronicle-prod · v2.4.1",           project:"Chronicle",  timestamp: daysAgo(2),   meta:"Build #214 passed" },
-  { id:"12", type:"member_joined",  actor:"Priya",     actorInitial:"P", actorColor:"#f59e0b", action:"joined",         target:"Spendwise workspace",               project:"Spendwise",  timestamp: daysAgo(3) },
-  { id:"13", type:"project_created",actor:"Matrim",    actorInitial:"M", actorColor:"#4F7CFF", action:"created project","target":"Jarvis",                          project:"Jarvis",    timestamp: daysAgo(4) },
-  { id:"14", type:"decision",       actor:"Alex",      actorInitial:"A", actorColor:"#a855f7", action:"updated ADR",    target:"Migrate from Appwrite to Firebase",  project:"Chronicle",  timestamp: daysAgo(5) },
-  { id:"15", type:"ai_insight",     actor:"Flowboard AI", actorInitial:"AI", actorColor:"#a855f7", action:"generated",  target:"Knowledge summary for Sprint 3",   project:"Chronicle",  timestamp: daysAgo(6) },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DATE_RANGES = ["Today", "7d", "30d", "All"] as const;
 type DateRange = (typeof DATE_RANGES)[number];
@@ -68,32 +51,17 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
   deployment: "Deployment",
 };
 
-const PROJECTS = ["Chronicle", "Spendwise", "Jarvis"];
+const ACTOR_COLORS = ["#4F7CFF", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#f97316"];
 
-const AI_INSIGHTS = [
-  { text: "Authentication work occurred across 4 projects this week", cta: "Review" },
-  { text: "2 duplicate implementation patterns detected in Chronicle and Spendwise", cta: "Merge" },
-  { text: "Spendwise had a 35% activity increase compared to last week", cta: "View" },
-];
+function actorColor(name: string): string {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffffffff;
+  return ACTOR_COLORS[Math.abs(hash) % ACTOR_COLORS.length];
+}
 
-const ACTIVE_PROJECTS = [
-  { name: "Chronicle", events: 24, trend: 12 },
-  { name: "Spendwise", events: 18, trend: 35 },
-  { name: "Jarvis", events: 7, trend: -8 },
-];
-
-const ALERTS: { type: "warning" | "error"; message: string; count: number }[] = [
-  { type: "warning", message: "Unreviewed decision records", count: 3 },
-  { type: "warning", message: "Docs stale >30 days", count: 7 },
-  { type: "error",   message: "Build failures", count: 2 },
-  { type: "warning", message: "Tasks blocked", count: 4 },
-];
-
-const COLLABORATION = [
-  { text: "Matrim and Sarah edited the same document", time: "Today" },
-  { text: "3 people commented on API Architecture", time: "Today" },
-  { text: "5 teammates active in last hour", time: "Now" },
-];
+function todayStr() {
+  return format(new Date(), "yyyy-MM-dd");
+}
 
 // ─── Event config ─────────────────────────────────────────────────────────────
 
@@ -142,22 +110,29 @@ function ActorAvatar({ initial, color, size = "md" }: Readonly<{ initial: string
 
 // ─── Section 1: Workspace Summary ─────────────────────────────────────────────
 
-const STATS = [
-  { label: "Active today",       value: "32", trend: "+18%", up: true,  icon: Activity },
-  { label: "People active",      value: "8",  trend: "+2",   up: true,  icon: Users },
-  { label: "Docs updated",       value: "14", trend: "+4",   up: true,  icon: FileText },
-  { label: "Tasks completed",    value: "21", trend: "-6%",  up: false, icon: CheckCircle2 },
-  { label: "Decisions added",    value: "3",  trend: "+1",   up: true,  icon: GitBranch },
-];
+interface SummaryStats {
+  activeToday: number;
+  peopleActive: number;
+  docsUpdated: number;
+  tasksCompleted: number;
+}
 
 function Activity({ className }: Readonly<{ className?: string }>) {
   return <Zap className={className} />;
 }
 
-function WorkspaceSummary() {
+function WorkspaceSummary({ stats }: Readonly<{ stats: SummaryStats }>) {
+  const statItems = [
+    { label: "Active today",    value: String(stats.activeToday),    trend: "", up: stats.activeToday > 0,    icon: Activity },
+    { label: "People active",   value: String(stats.peopleActive),   trend: "", up: stats.peopleActive > 0,   icon: Users },
+    { label: "Docs updated",    value: String(stats.docsUpdated),    trend: "", up: stats.docsUpdated > 0,    icon: FileText },
+    { label: "Tasks completed", value: String(stats.tasksCompleted), trend: "", up: stats.tasksCompleted > 0, icon: CheckCircle2 },
+    { label: "Decisions added", value: "—",                          trend: "", up: true,                     icon: GitBranch },
+  ];
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      {STATS.map(({ label, value, trend, up, icon: Icon }, i) => (
+      {statItems.map(({ label, value, up, icon: Icon }, i) => (
         <motion.div
           key={label}
           initial={{ opacity: 0, y: 12 }}
@@ -171,10 +146,12 @@ function WorkspaceSummary() {
             </div>
             <div className="flex items-end gap-2">
               <span className="text-2xl font-bold text-foreground">{value}</span>
-              <span className={cn("text-[10px] font-medium mb-0.5 flex items-center gap-0.5", up ? "text-success" : "text-destructive")}>
-                {up ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
-                {trend}
-              </span>
+              {value !== "—" && (
+                <span className={cn("text-[10px] font-medium mb-0.5 flex items-center gap-0.5", up ? "text-success" : "text-muted-foreground")}>
+                  {up ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
+                  today
+                </span>
+              )}
             </div>
           </Card>
         </motion.div>
@@ -224,9 +201,11 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
           <span className="font-medium text-foreground/80">{event.target}</span>
         </p>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-2 text-muted-foreground border border-border/30">
-            {event.project}
-          </span>
+          {event.project && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-2 text-muted-foreground border border-border/30">
+              {event.project}
+            </span>
+          )}
           {event.meta && (
             <span className="text-[10px] text-muted-foreground">{event.meta}</span>
           )}
@@ -325,7 +304,9 @@ function TimelineView({ events }: Readonly<{ events: ActivityEvent[] }>) {
 
 // ─── Section 3: AI Insights ───────────────────────────────────────────────────
 
-function AIInsights() {
+interface AiInsight { text: string; cta: string }
+
+function AIInsights({ insights }: Readonly<{ insights: AiInsight[] }>) {
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -333,7 +314,7 @@ function AIInsights() {
         <h2 className="text-[13px] font-semibold text-foreground">AI Activity Insights</h2>
       </div>
       <div className="flex flex-col gap-2.5">
-        {AI_INSIGHTS.map((insight, i) => (
+        {insights.map((insight, i) => (
           <motion.div
             key={insight.text}
             initial={{ opacity: 0, x: 8 }}
@@ -355,12 +336,17 @@ function AIInsights() {
 
 // ─── Section 4: Active Projects ───────────────────────────────────────────────
 
-function ActiveProjects() {
+interface ActiveProject { name: string; taskCount: number }
+
+function ActiveProjects({ projects }: Readonly<{ projects: ActiveProject[] }>) {
   return (
     <Card className="p-5">
       <h2 className="text-[13px] font-semibold text-foreground mb-4">Active Projects</h2>
       <div className="flex flex-col gap-2">
-        {ACTIVE_PROJECTS.map((proj, i) => (
+        {projects.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">No projects yet</p>
+        )}
+        {projects.map((proj, i) => (
           <motion.div
             key={proj.name}
             initial={{ opacity: 0, y: 6 }}
@@ -375,11 +361,7 @@ function ActiveProjects() {
               <p className="text-[12px] font-semibold text-foreground/90 group-hover:text-foreground transition-colors">
                 {proj.name}
               </p>
-              <p className="text-[10px] text-muted-foreground">{proj.events} events today</p>
-            </div>
-            <div className={cn("flex items-center gap-0.5 text-[10px]", proj.trend >= 0 ? "text-success" : "text-destructive")}>
-              {proj.trend >= 0 ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
-              {Math.abs(proj.trend)}%
+              <p className="text-[10px] text-muted-foreground">{proj.taskCount} work items</p>
             </div>
             <ArrowRight className="size-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
           </motion.div>
@@ -391,12 +373,15 @@ function ActiveProjects() {
 
 // ─── Section 5: Attention Required ───────────────────────────────────────────
 
-function AttentionRequired() {
+interface Alert { type: "warning" | "error"; message: string; count: number }
+
+function AttentionRequired({ alerts }: Readonly<{ alerts: Alert[] }>) {
+  if (alerts.length === 0) return null;
   return (
     <Card className="p-5">
       <h2 className="text-[13px] font-semibold text-foreground mb-4">Attention Required</h2>
       <div className="flex flex-col gap-2">
-        {ALERTS.map((alert) => (
+        {alerts.map((alert) => (
           <div
             key={alert.message}
             className={cn(
@@ -418,7 +403,10 @@ function AttentionRequired() {
 
 // ─── Section 6: Collaboration ─────────────────────────────────────────────────
 
-function CollaborationActivity() {
+interface CollabItem { text: string; time: string }
+
+function CollaborationActivity({ items }: Readonly<{ items: CollabItem[] }>) {
+  if (items.length === 0) return null;
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -426,7 +414,7 @@ function CollaborationActivity() {
         <h2 className="text-[13px] font-semibold text-foreground">Collaboration</h2>
       </div>
       <div className="flex flex-col gap-2.5">
-        {COLLABORATION.map((item) => (
+        {items.map((item) => (
           <div key={item.text} className="flex items-start gap-3">
             <div className="size-1.5 rounded-full bg-primary/50 mt-1.5 shrink-0" />
             <div className="flex-1">
@@ -443,44 +431,245 @@ function CollaborationActivity() {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function ActivityClient() {
+  const workspaceId = useWorkspaceId();
   const [dateRange, setDateRange] = useState<DateRange>("7d");
   const [view, setView] = useState<"feed" | "timeline">("feed");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<EventType | "all">("all");
+  const [docs, setDocs] = useState<ChronicleDocument[]>([]);
+
+  const { data: tasksData } = useGetTasks({ workspaceId });
+  const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: projectsData } = useGetProjects({ workspaceId });
+
+  const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
+  const members = useMemo(() => membersData?.documents ?? [], [membersData]);
+  const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const unsub = subscribeDocuments(workspaceId, undefined, setDocs);
+    return unsub;
+  }, [workspaceId]);
+
+  const getMemberName = useCallback(
+    (userId: string) => members.find((m) => m.userId === userId)?.name ?? "Someone",
+    [members]
+  );
+
+  const allEvents = useMemo((): ActivityEvent[] => {
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const events: ActivityEvent[] = [];
+
+    for (const task of tasks) {
+      const name = getMemberName(task.assigneeId);
+      const color = actorColor(name);
+      const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
+      const createdAt = new Date(task.$createdAt);
+
+      events.push({
+        id: `task-${task.$id}`,
+        type: "issue_created",
+        actor: name,
+        actorInitial: (name[0] ?? "?").toUpperCase(),
+        actorColor: color,
+        action: "created",
+        target: task.name,
+        project: proj,
+        timestamp: createdAt,
+        isNew: now - createdAt.getTime() < oneDayMs,
+      });
+
+      if (task.status === TaskStatus.DONE) {
+        const updatedAtStr = (task as { $updatedAt?: string }).$updatedAt;
+        if (updatedAtStr && updatedAtStr !== task.$createdAt) {
+          const doneAt = new Date(updatedAtStr);
+          events.push({
+            id: `done-${task.$id}`,
+            type: "task_complete",
+            actor: name,
+            actorInitial: (name[0] ?? "?").toUpperCase(),
+            actorColor: color,
+            action: "completed",
+            target: task.name,
+            project: proj,
+            timestamp: doneAt,
+            isNew: now - doneAt.getTime() < oneDayMs,
+          });
+        }
+      }
+    }
+
+    for (const member of members) {
+      const name = member.name ?? "Someone";
+      const joinedAt = new Date(member.$createdAt);
+      events.push({
+        id: `member-${member.$id}`,
+        type: "member_joined",
+        actor: name,
+        actorInitial: (name[0] ?? "?").toUpperCase(),
+        actorColor: actorColor(name),
+        action: "joined",
+        target: "workspace",
+        project: "",
+        timestamp: joinedAt,
+        isNew: now - joinedAt.getTime() < oneDayMs,
+      });
+    }
+
+    for (const docItem of docs) {
+      const name = getMemberName(docItem.createdBy);
+      const docAt = new Date(docItem.updatedAt);
+      events.push({
+        id: `doc-${docItem.id}`,
+        type: "doc_edit",
+        actor: name,
+        actorInitial: (name[0] ?? "?").toUpperCase(),
+        actorColor: actorColor(name),
+        action: docItem.updatedAt !== docItem.createdAt ? "updated" : "created",
+        target: docItem.title,
+        project: "",
+        timestamp: docAt,
+        isNew: now - docAt.getTime() < oneDayMs,
+      });
+    }
+
+    return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [tasks, members, docs, projects, getMemberName]);
+
+  const newCount = useMemo(
+    () => allEvents.filter((e) => e.isNew).length,
+    [allEvents]
+  );
 
   const filtered = useMemo(() => {
-    let events = FEED;
+    let events = allEvents;
     if (dateRange !== "All") {
       const cutoff = new Date();
-      if (dateRange === "Today") {
-        cutoff.setHours(0, 0, 0, 0);
-      } else if (dateRange === "7d") {
-        cutoff.setDate(cutoff.getDate() - 7);
-      } else if (dateRange === "30d") {
-        cutoff.setDate(cutoff.getDate() - 30);
-      }
+      if (dateRange === "Today") cutoff.setHours(0, 0, 0, 0);
+      else if (dateRange === "7d") cutoff.setDate(cutoff.getDate() - 7);
+      else if (dateRange === "30d") cutoff.setDate(cutoff.getDate() - 30);
       events = events.filter((e) => e.timestamp >= cutoff);
     }
     if (search) {
       const q = search.toLowerCase();
-      events = events.filter((e) =>
-        e.actor.toLowerCase().includes(q) ||
-        e.target.toLowerCase().includes(q) ||
-        e.project.toLowerCase().includes(q)
+      events = events.filter(
+        (e) =>
+          e.actor.toLowerCase().includes(q) ||
+          e.target.toLowerCase().includes(q) ||
+          e.project.toLowerCase().includes(q)
       );
     }
     if (typeFilter !== "all") {
       events = events.filter((e) => e.type === typeFilter);
     }
     return events;
-  }, [dateRange, search, typeFilter]);
+  }, [allEvents, dateRange, search, typeFilter]);
 
-  const newCount = FEED.filter((e) => e.isNew).length;
+  // Stats
+  const stats = useMemo((): SummaryStats => {
+    const today = todayStr();
+    const tasksCompleted = tasks.filter((t) => {
+      if (t.status !== TaskStatus.DONE) return false;
+      const upd = (t as { $updatedAt?: string }).$updatedAt ?? t.$createdAt;
+      return format(new Date(upd), "yyyy-MM-dd") === today;
+    }).length;
+    const docsUpdated = docs.filter(
+      (d) => format(new Date(d.updatedAt), "yyyy-MM-dd") === today
+    ).length;
+    const activeSet = new Set(
+      tasks
+        .filter((t) => {
+          const upd = (t as { $updatedAt?: string }).$updatedAt ?? t.$createdAt;
+          return format(new Date(upd), "yyyy-MM-dd") === today;
+        })
+        .map((t) => t.assigneeId)
+        .filter(Boolean)
+    );
+    return {
+      activeToday: activeSet.size + docsUpdated,
+      peopleActive: activeSet.size,
+      docsUpdated,
+      tasksCompleted,
+    };
+  }, [tasks, docs]);
+
+  // AI insights from real data
+  const aiInsights = useMemo((): AiInsight[] => {
+    const insights: AiInsight[] = [];
+    const blocked = tasks.filter((t) => t.blockedBy && t.blockedBy.length > 0);
+    if (blocked.length > 0) {
+      insights.push({
+        text: `${blocked.length} task${blocked.length > 1 ? "s are" : " is"} blocked across your projects`,
+        cta: "Review",
+      });
+    }
+    const inProgress = tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS);
+    if (inProgress.length > 5) {
+      insights.push({
+        text: `${inProgress.length} tasks currently in progress — consider limiting WIP`,
+        cta: "View",
+      });
+    }
+    const staleDocs = docs.filter(
+      (d) => Date.now() - d.updatedAt > 30 * 24 * 60 * 60 * 1000
+    );
+    if (staleDocs.length > 0) {
+      insights.push({
+        text: `${staleDocs.length} doc${staleDocs.length > 1 ? "s" : ""} haven't been updated in over 30 days`,
+        cta: "Review",
+      });
+    }
+    if (insights.length === 0) {
+      insights.push({ text: "No critical issues detected. Keep up the good work!", cta: "View" });
+    }
+    return insights;
+  }, [tasks, docs]);
+
+  // Active projects
+  const activeProjects = useMemo((): ActiveProject[] => {
+    return projects.map((proj) => ({
+      name: proj.name,
+      taskCount: tasks.filter((t) => t.projectId === proj.$id).length,
+    }));
+  }, [projects, tasks]);
+
+  // Attention alerts
+  const alerts = useMemo((): Alert[] => {
+    const result: Alert[] = [];
+    const blocked = tasks.filter((t) => t.blockedBy && t.blockedBy.length > 0).length;
+    const stale = docs.filter((d) => Date.now() - d.updatedAt > 30 * 24 * 60 * 60 * 1000).length;
+    if (blocked > 0) result.push({ type: "warning", message: "Tasks blocked", count: blocked });
+    if (stale > 0) result.push({ type: "warning", message: "Docs stale >30 days", count: stale });
+    return result;
+  }, [tasks, docs]);
+
+  // Collaboration items
+  const collabItems = useMemo((): CollabItem[] => {
+    const items: CollabItem[] = [];
+    if (members.length > 0) {
+      items.push({ text: `${members.length} team member${members.length !== 1 ? "s" : ""} in this workspace`, time: "Now" });
+    }
+    const today = todayStr();
+    const activeMembersToday = new Set(
+      tasks
+        .filter((t) => {
+          const upd = (t as { $updatedAt?: string }).$updatedAt ?? t.$createdAt;
+          return format(new Date(upd), "yyyy-MM-dd") === today;
+        })
+        .map((t) => t.assigneeId)
+    ).size;
+    if (activeMembersToday > 0) {
+      items.push({ text: `${activeMembersToday} member${activeMembersToday !== 1 ? "s" : ""} active today`, time: "Today" });
+    }
+    return items;
+  }, [members, tasks]);
 
   const fadeUp = (delay: number) => ({
     initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] as [number,number,number,number] },
+    transition: { duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   });
 
   return (
@@ -506,7 +695,6 @@ export function ActivityClient() {
 
           {/* Controls */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Date range */}
             <div className="flex items-center p-0.5 rounded-btn gap-0.5 bg-surface border border-border/40">
               {DATE_RANGES.map((r) => (
                 <button
@@ -522,7 +710,6 @@ export function ActivityClient() {
               ))}
             </div>
 
-            {/* View toggle */}
             <div className="flex items-center p-0.5 rounded-btn gap-0.5 bg-surface border border-border/40">
               {(["feed", "timeline"] as const).map((v) => (
                 <button
@@ -555,7 +742,7 @@ export function ActivityClient() {
             />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {(["all", "doc_edit", "task_complete", "decision", "ai_insight", "deployment"] as const).map((t) => (
+            {(["all", "doc_edit", "task_complete", "issue_created", "member_joined"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
@@ -576,7 +763,7 @@ export function ActivityClient() {
       {/* ── Section 1: Summary ── */}
       <motion.section {...fadeUp(0.06)}>
         <SectionLabel>Workspace Overview</SectionLabel>
-        <WorkspaceSummary />
+        <WorkspaceSummary stats={stats} />
       </motion.section>
 
       {/* ── Main layout: feed + sidebar ── */}
@@ -600,7 +787,11 @@ export function ActivityClient() {
             {filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <Search className="size-8 text-muted-foreground/20" />
-                <p className="text-[13px] text-muted-foreground">No events match your filters</p>
+                <p className="text-[13px] text-muted-foreground">
+                  {allEvents.length === 0
+                    ? "No activity yet — create tasks, docs, or add members to get started"
+                    : "No events match your filters"}
+                </p>
               </div>
             )}
             {filtered.length > 0 && (view === "feed" ? (
@@ -612,10 +803,10 @@ export function ActivityClient() {
 
           {/* Sidebar */}
           <div className="flex flex-col gap-4">
-            <AIInsights />
-            <ActiveProjects />
-            <AttentionRequired />
-            <CollaborationActivity />
+            <AIInsights insights={aiInsights} />
+            <ActiveProjects projects={activeProjects} />
+            <AttentionRequired alerts={alerts} />
+            <CollaborationActivity items={collabItems} />
           </div>
         </div>
       </motion.section>
