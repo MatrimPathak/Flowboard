@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle, ArrowRight, CheckCircle2,
@@ -15,7 +15,7 @@ import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { subscribeDocuments, ChronicleDocument } from "@/lib/docs-firestore";
+import { useDocuments } from "@/features/docs/hooks/use-documents";
 import { TaskStatus } from "@/features/tasks/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -436,21 +436,16 @@ export function ActivityClient() {
   const [view, setView] = useState<"feed" | "timeline">("feed");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<EventType | "all">("all");
-  const [docs, setDocs] = useState<ChronicleDocument[]>([]);
 
   const { data: tasksData } = useGetTasks({ workspaceId });
   const { data: membersData } = useGetMembers({ workspaceId });
   const { data: projectsData } = useGetProjects({ workspaceId });
+  const { docsQuery } = useDocuments(workspaceId);
 
   const tasks = useMemo(() => tasksData?.documents ?? [], [tasksData]);
   const members = useMemo(() => membersData?.documents ?? [], [membersData]);
   const projects = useMemo(() => projectsData?.documents ?? [], [projectsData]);
-
-  useEffect(() => {
-    if (!workspaceId) return;
-    const unsub = subscribeDocuments(workspaceId, undefined, setDocs);
-    return unsub;
-  }, [workspaceId]);
+  const docs = useMemo(() => docsQuery.data ?? [], [docsQuery.data]);
 
   const getMemberName = useCallback(
     (userId: string) => members.find((m) => m.userId === userId)?.name ?? "Someone",
