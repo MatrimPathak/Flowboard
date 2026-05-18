@@ -7,7 +7,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
-  AlertTriangle, ArrowRight, BookOpen, Brain, CheckCircle2,
+  AlertTriangle, ArrowRight, BookOpen, CheckCircle2,
   Clock, Eye, FileText, GitBranch, Link2, RefreshCw,
   Sparkles, TrendingDown, TrendingUp, XCircle, Activity,
   Zap, Shield,
@@ -838,6 +838,7 @@ function KnowledgeAlerts() {
                   {alert.action}
                 </button>
                 <button
+                  aria-label="Dismiss alert"
                   onClick={() => setDismissed((prev) => [...prev, i])}
                   className="opacity-40 hover:opacity-70 transition-opacity text-[16px] leading-none"
                 >

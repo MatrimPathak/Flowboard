@@ -20,8 +20,8 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
       if (user) { setFirebaseReady(true); return; }
       fetch("/api/auth/firebase-token")
         .then((r) => r.json())
-        .then(({ token }) => signInWithCustomToken(auth, token))
-        .catch(console.error);
+        .then(({ token }: { token: string }) => signInWithCustomToken(auth, token))
+        .catch(() => { /* Firebase client sign-in failed; Firestore will remain unauthenticated */ });
     });
     return unsub;
   }, []);

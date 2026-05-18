@@ -3,11 +3,11 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  AlertTriangle, ArrowRight, BookOpen, Brain, CheckCircle2,
-  Clock, Eye, FileText, GitBranch, Link2, MessageSquare,
-  Plus, RefreshCw, Search, Sparkles, TrendingUp, TrendingDown,
-  Users, Zap, Bell, Filter, LayoutList, GitCommit,
-  FolderKanban, Timer, LogIn, Rocket, Bug, Target,
+  AlertTriangle, ArrowRight, CheckCircle2,
+  FileText, GitBranch, MessageSquare,
+  RefreshCw, Search, Sparkles, TrendingUp, TrendingDown,
+  Users, Zap, Bell, LayoutList, GitCommit,
+  FolderKanban, Timer, LogIn, Rocket, Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -18,8 +18,6 @@ type EventType =
   | "doc_edit" | "task_complete" | "comment" | "issue_created"
   | "decision" | "ai_insight" | "sprint_complete" | "member_joined"
   | "project_created" | "deployment";
-
-type Priority = "low" | "medium" | "high";
 
 interface ActivityEvent {
   id: string;
@@ -532,7 +530,9 @@ export function ActivityClient() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
+            <label htmlFor="activity-search" className="sr-only">Search activity</label>
             <input
+              id="activity-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search activity..."
@@ -576,7 +576,7 @@ export function ActivityClient() {
               </h2>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground">{filtered.length} events</span>
-                <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                <button aria-label="Refresh feed" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
                   <RefreshCw className="size-3" />
                 </button>
               </div>
