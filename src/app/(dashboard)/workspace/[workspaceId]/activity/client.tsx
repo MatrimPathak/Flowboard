@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle, ArrowRight, CheckCircle2,
   FileText, GitBranch, MessageSquare,
-  RefreshCw, Search, Sparkles, TrendingUp, TrendingDown,
+  RefreshCw, Search, Sparkles, TrendingUp,
   Users, Zap, Bell, LayoutList, GitCommit,
   FolderKanban, Timer, LogIn, Rocket, Bug,
 } from "lucide-react";
