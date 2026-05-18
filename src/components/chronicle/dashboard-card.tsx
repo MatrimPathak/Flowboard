@@ -38,7 +38,7 @@ export function DashboardCard({
   const TrendIcon = TREND_ICON[trend];
   const trendColorClass = TREND_COLOR_CLASS[trend];
   const hasChartData = chart && chart.some((d) => d.count > 0);
-  const gradId = `grad-${title.replace(/[\s']+/g, "-")}`;
+  const gradId = `grad-${title.replace(/[\s']+/g, "-")}-${accentColor?.replace(/[^a-zA-Z0-9]/g, "") ?? "none"}`;
 
   return (
     <div className="relative flex flex-col justify-between p-5 rounded-card overflow-hidden bg-surface border border-border/40 shadow-chronicle-sm min-h-[140px] hover:bg-surface-2 transition-colors duration-150">

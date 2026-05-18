@@ -146,9 +146,9 @@ function WorkspaceSummary({ stats }: Readonly<{ stats: SummaryStats }>) {
             </div>
             <div className="flex items-end gap-2">
               <span className="text-2xl font-bold text-foreground">{value}</span>
-              {value !== "—" && (
-                <span className={cn("text-[10px] font-medium mb-0.5 flex items-center gap-0.5", up ? "text-success" : "text-muted-foreground")}>
-                  {up ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
+              {value !== "—" && up && (
+                <span className="text-[10px] font-medium mb-0.5 flex items-center gap-0.5 text-success">
+                  <TrendingUp className="size-2.5" />
                   today
                 </span>
               )}
@@ -520,6 +520,9 @@ export function ActivityClient() {
 
     for (const docItem of docs) {
       const name = getMemberName(docItem.createdBy);
+      const proj = docItem.projectId
+        ? projects.find((p) => p.$id === docItem.projectId)?.name ?? ""
+        : "";
       const docAt = new Date(docItem.updatedAt);
       events.push({
         id: `doc-${docItem.id}`,
@@ -529,7 +532,7 @@ export function ActivityClient() {
         actorColor: actorColor(name),
         action: docItem.updatedAt === docItem.createdAt ? "created" : "updated",
         target: docItem.title,
-        project: "",
+        project: proj,
         timestamp: docAt,
         isNew: now - docAt.getTime() < oneDayMs,
       });
@@ -659,6 +662,7 @@ export function ActivityClient() {
           return format(new Date(upd), "yyyy-MM-dd") === today;
         })
         .map((t) => t.assigneeId)
+        .filter((id): id is string => Boolean(id))
     ).size;
     if (activeMembersToday > 0) {
       items.push({ text: `${activeMembersToday} member${activeMembersToday === 1 ? "" : "s"} active today`, time: "Today" });
