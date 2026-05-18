@@ -28,7 +28,7 @@ export function MainNav() {
     { label: "Overview", href: base, icon: LayoutDashboard, exact: true },
     { label: "Projects", href: `${base}/projects`, icon: FolderKanban },
     { label: "Docs", href: `${base}/docs`, icon: FileText },
-    { label: "Activity", href: `${base}/activity`, icon: Activity, soon: true },
+    { label: "Activity", href: `${base}/activity`, icon: Activity },
     { label: "Knowledge", href: `${base}/knowledge`, icon: FileText },
     { label: "Members", href: `${base}/members`, icon: Users2 },
     { label: "Settings", href: `${base}/settings`, icon: Settings },
@@ -60,11 +60,6 @@ export function MainNav() {
             <div className={cn("nav-item", isActive && "active")}>
               <route.icon className="size-3.5 shrink-0" />
               <span>{route.label}</span>
-              {route.soon && (
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/25 font-medium">
-                  soon
-                </span>
-              )}
             </div>
           </Link>
         );
