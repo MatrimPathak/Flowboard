@@ -192,13 +192,13 @@ export function CommandPalette() {
             onClick={closeCommandPalette}
           />
 
-          {/* Palette */}
+          {/* Palette — outer div owns the CSS centering transform, inner motion.div owns the animation */}
+          <div className="fixed left-1/2 top-[15vh] -translate-x-1/2 z-50 w-[760px] max-w-[calc(100vw-2rem)]">
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed left-1/2 top-[15vh] -translate-x-1/2 z-50 w-[760px] max-w-[calc(100vw-2rem)]"
           >
             <div className="rounded-panel overflow-hidden bg-panel border border-border shadow-chronicle-lg">
               <Command
@@ -358,6 +358,7 @@ export function CommandPalette() {
               </Command>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
