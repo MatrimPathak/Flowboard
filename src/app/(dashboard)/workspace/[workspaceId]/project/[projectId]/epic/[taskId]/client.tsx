@@ -26,11 +26,13 @@ import {
   AlertTriangle,
   RefreshCw,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 import { getTaskRoute } from "@/lib/task-routes";
 import { cn } from "@/lib/utils";
+import { TaskComments } from "@/features/tasks/components/task-comments";
 
 
 function ProgressBar({ value }: { readonly value: number }) {
@@ -279,10 +281,11 @@ export const EpicDetailClient = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex items-center gap-1 p-1 rounded-xl w-fit bg-surface border border-border/40">
           {[
-            { value: "overview",    icon: Circle,     label: "Overview" },
-            { value: "work-items",  icon: LayoutList,  label: "Work Items", count: childTasks.length },
-            { value: "timeline",    icon: GitBranch,   label: "Timeline" },
-            { value: "ai-notes",    icon: Sparkles,    label: "AI Notes" },
+            { value: "overview",    icon: Circle,        label: "Overview" },
+            { value: "work-items",  icon: LayoutList,    label: "Work Items", count: childTasks.length },
+            { value: "comments",    icon: MessageSquare, label: "Comments" },
+            { value: "timeline",    icon: GitBranch,     label: "Timeline" },
+            { value: "ai-notes",    icon: Sparkles,      label: "AI Notes" },
           ].map(({ value, icon: Icon, label, count }) => (
             <TabsTrigger
               key={value}
@@ -409,6 +412,11 @@ export const EpicDetailClient = () => {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Comments Tab */}
+        <TabsContent value="comments" className="mt-6">
+          <TaskComments taskId={epic.$id} />
         </TabsContent>
 
         {/* Timeline Tab */}
