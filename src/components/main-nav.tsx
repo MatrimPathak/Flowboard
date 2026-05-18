@@ -60,11 +60,6 @@ export function MainNav() {
             <div className={cn("nav-item", isActive && "active")}>
               <route.icon className="size-3.5 shrink-0" />
               <span>{route.label}</span>
-              {route.soon && (
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/25 font-medium">
-                  soon
-                </span>
-              )}
             </div>
           </Link>
         );
