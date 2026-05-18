@@ -492,9 +492,15 @@ function KnowledgeGraph() {
             return (
               <g
                 key={node.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`${node.label} node`}
                 transform={`translate(${node.x}, ${node.y})`}
                 onMouseEnter={() => setHovered(node.id)}
                 onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(node.id)}
+                onBlur={() => setHovered(null)}
+                onKeyDown={(e) => { if (e.key === "Escape") setHovered(null); }}
                 style={{ cursor: "pointer" }}
               >
                 {/* Glow ring when hovered */}
@@ -843,7 +849,7 @@ function KnowledgeAlerts() {
                 </button>
                 <button
                   aria-label="Dismiss alert"
-                  onClick={() => setDismissed((prev) => [...prev, i])}
+                  onClick={() => setDismissed((prev) => prev.includes(i) ? prev : [...prev, i])}
                   className="opacity-40 hover:opacity-70 transition-opacity text-[16px] leading-none"
                 >
                   ×
@@ -852,7 +858,7 @@ function KnowledgeAlerts() {
             </motion.div>
           );
         })}
-        {dismissed.length === alerts.length && (
+        {new Set(dismissed).size === alerts.length && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <CheckCircle2 className="size-6 text-success" />
             <p className="text-[13px] text-muted-foreground">All alerts resolved</p>

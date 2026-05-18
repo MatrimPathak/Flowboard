@@ -196,8 +196,11 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: idx * 0.04, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      tabIndex={0}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
+      onFocus={() => setShowActions(true)}
+      onBlur={() => setShowActions(false)}
       className="flex items-start gap-3 py-3.5 px-4 -mx-4 hover:bg-surface-2 rounded-xl transition-colors group cursor-pointer relative"
     >
       {/* New badge */}
@@ -447,6 +450,17 @@ export function ActivityClient() {
 
   const filtered = useMemo(() => {
     let events = FEED;
+    if (dateRange !== "All") {
+      const cutoff = new Date();
+      if (dateRange === "Today") {
+        cutoff.setHours(0, 0, 0, 0);
+      } else if (dateRange === "7d") {
+        cutoff.setDate(cutoff.getDate() - 7);
+      } else if (dateRange === "30d") {
+        cutoff.setDate(cutoff.getDate() - 30);
+      }
+      events = events.filter((e) => e.timestamp >= cutoff);
+    }
     if (search) {
       const q = search.toLowerCase();
       events = events.filter((e) =>
@@ -459,7 +473,7 @@ export function ActivityClient() {
       events = events.filter((e) => e.type === typeFilter);
     }
     return events;
-  }, [search, typeFilter]);
+  }, [dateRange, search, typeFilter]);
 
   const newCount = FEED.filter((e) => e.isNew).length;
 

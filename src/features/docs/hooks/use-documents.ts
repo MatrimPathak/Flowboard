@@ -16,12 +16,19 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
 
   useEffect(() => {
     if (auth.currentUser) { setFirebaseReady(true); return; }
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) { setFirebaseReady(true); return; }
-      fetch("/api/auth/firebase-token")
-        .then((r) => r.json())
-        .then(({ token }: { token: string }) => signInWithCustomToken(auth, token))
-        .catch(() => { /* Firebase client sign-in failed; Firestore will remain unauthenticated */ });
+      setFirebaseReady(false);
+      try {
+        const r = await fetch("/api/auth/firebase-token");
+        if (!r.ok) throw new Error("token fetch failed");
+        const { token }: { token?: string } = await r.json();
+        if (!token) throw new Error("missing token");
+        await signInWithCustomToken(auth, token);
+        // firebaseReady flips to true via the next onAuthStateChanged(user) call
+      } catch {
+        setFirebaseReady(false);
+      }
     });
     return unsub;
   }, []);
