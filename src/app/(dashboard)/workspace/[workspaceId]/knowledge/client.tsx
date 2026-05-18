@@ -485,8 +485,10 @@ function KnowledgeGraph() {
           {GRAPH_NODES.map((node) => {
             const active = isNodeActive(node.id);
             const isHovered = hovered === node.id;
-            const circleFillOpacity = active ? (isHovered ? 0.22 : 0.12) : 0.04;
-            const circleStrokeOpacity = active ? (isHovered ? 1 : 0.6) : 0.15;
+            const hoveredFillOpacity = isHovered ? 0.22 : 0.12;
+            const circleFillOpacity = active ? hoveredFillOpacity : 0.04;
+            const hoveredStrokeOpacity = isHovered ? 1 : 0.6;
+            const circleStrokeOpacity = active ? hoveredStrokeOpacity : 0.15;
             return (
               <g
                 key={node.id}
