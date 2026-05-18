@@ -86,6 +86,11 @@ const app = new Hono()
 		deleteCookie(c, AUTH_COOKIE);
 		return c.json({ success: true });
 	})
+	.get("/firebase-token", sessionMiddleware, async (c) => {
+		const user = c.get("user");
+		const customToken = await adminAuth.createCustomToken(user.$id);
+		return c.json({ token: customToken });
+	})
 	.post("/session", zValidator("json", z.object({ idToken: z.string() })), async (c) => {
 		const { idToken } = c.req.valid("json");
 		try {

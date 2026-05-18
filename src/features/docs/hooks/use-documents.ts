@@ -1,7 +1,7 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 import { createDocument, deleteDocument, listDocuments, subscribeDocuments, type ChronicleDocument, updateDocument } from "@/lib/docs-firestore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -10,15 +10,18 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["docs", workspaceId, projectId ?? "workspace"], [workspaceId, projectId]);
 
-  // The app uses Appwrite for primary auth, but Firestore rules require Firebase Auth.
-  // Sign in anonymously so the client has a valid Firebase token for Firestore access.
+  // Firebase Auth uses server-side session cookies; the client SDK has no signed-in
+  // user. Exchange the session cookie for a custom token so Firestore rules pass.
   const [firebaseReady, setFirebaseReady] = useState(!!auth.currentUser);
 
   useEffect(() => {
     if (auth.currentUser) { setFirebaseReady(true); return; }
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) { setFirebaseReady(true); }
-      else { signInAnonymously(auth).catch(console.error); }
+      if (user) { setFirebaseReady(true); return; }
+      fetch("/api/auth/firebase-token")
+        .then((r) => r.json())
+        .then(({ token }) => signInWithCustomToken(auth, token))
+        .catch(console.error);
     });
     return unsub;
   }, []);
