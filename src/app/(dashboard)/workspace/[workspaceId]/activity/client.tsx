@@ -112,7 +112,7 @@ const EVENT_CONFIG: Record<EventType, { icon: React.ElementType; iconCls: string
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Card({ children, className }: Readonly<{ children: React.ReactNode; className?: string }>) {
   return (
     <div className={cn("rounded-card bg-surface border border-border/40 shadow-chronicle-sm", className)}>
       {children}
@@ -120,7 +120,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">
       {children}
@@ -128,7 +128,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ActorAvatar({ initial, color, size = "md" }: { initial: string; color: string; size?: "sm" | "md" }) {
+function ActorAvatar({ initial, color, size = "md" }: Readonly<{ initial: string; color: string; size?: "sm" | "md" }>) {
   const dim = size === "sm" ? "size-6 text-[9px]" : "size-8 text-[11px]";
   return (
     <div
@@ -150,7 +150,7 @@ const STATS = [
   { label: "Decisions added",    value: "3",  trend: "+1",   up: true,  icon: GitBranch },
 ];
 
-function Activity({ className }: { className?: string }) {
+function Activity({ className }: Readonly<{ className?: string }>) {
   return <Zap className={className} />;
 }
 
@@ -185,7 +185,7 @@ function WorkspaceSummary() {
 
 // ─── Section 2: Activity Feed ─────────────────────────────────────────────────
 
-function EventCard({ event, idx }: { event: ActivityEvent; idx: number }) {
+function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number }>) {
   const [showActions, setShowActions] = useState(false);
   const cfg = EVENT_CONFIG[event.type];
   const Icon = cfg.icon;
@@ -283,14 +283,15 @@ function groupByDate(events: ActivityEvent[]): { label: string; events: Activity
     else if (d >= yesterday) label = "Yesterday";
     else if (d >= lastWeek) label = "Last week";
     else label = "Earlier";
-    (groups[label] ??= []).push(e);
+    groups[label] ??= [];
+    groups[label].push(e);
   }
   return ["Today", "Yesterday", "Last week", "Earlier"]
     .filter((l) => groups[l])
     .map((label) => ({ label, events: groups[label] }));
 }
 
-function FeedView({ events }: { events: ActivityEvent[] }) {
+function FeedView({ events }: Readonly<{ events: ActivityEvent[] }>) {
   return (
     <div className="flex flex-col divide-y divide-border/20">
       {events.map((e, i) => <EventCard key={e.id} event={e} idx={i} />)}
@@ -298,7 +299,7 @@ function FeedView({ events }: { events: ActivityEvent[] }) {
   );
 }
 
-function TimelineView({ events }: { events: ActivityEvent[] }) {
+function TimelineView({ events }: Readonly<{ events: ActivityEvent[] }>) {
   const groups = groupByDate(events);
   return (
     <div className="flex flex-col gap-8">
@@ -331,7 +332,7 @@ function AIInsights() {
       <div className="flex flex-col gap-2.5">
         {AI_INSIGHTS.map((insight, i) => (
           <motion.div
-            key={i}
+            key={insight.text}
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1, duration: 0.3 }}
@@ -392,9 +393,9 @@ function AttentionRequired() {
     <Card className="p-5">
       <h2 className="text-[13px] font-semibold text-foreground mb-4">Attention Required</h2>
       <div className="flex flex-col gap-2">
-        {ALERTS.map((alert, i) => (
+        {ALERTS.map((alert) => (
           <div
-            key={i}
+            key={alert.message}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-[12px]",
               alert.type === "error"
@@ -422,8 +423,8 @@ function CollaborationActivity() {
         <h2 className="text-[13px] font-semibold text-foreground">Collaboration</h2>
       </div>
       <div className="flex flex-col gap-2.5">
-        {COLLABORATION.map((item, i) => (
-          <div key={i} className="flex items-start gap-3">
+        {COLLABORATION.map((item) => (
+          <div key={item.text} className="flex items-start gap-3">
             <div className="size-1.5 rounded-full bg-primary/50 mt-1.5 shrink-0" />
             <div className="flex-1">
               <p className="text-[12px] text-foreground/80">{item.text}</p>
@@ -582,16 +583,17 @@ export function ActivityClient() {
               </div>
             </div>
 
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <Search className="size-8 text-muted-foreground/20" />
                 <p className="text-[13px] text-muted-foreground">No events match your filters</p>
               </div>
-            ) : view === "feed" ? (
+            )}
+            {filtered.length > 0 && (view === "feed" ? (
               <FeedView events={filtered} />
             ) : (
               <TimelineView events={filtered} />
-            )}
+            ))}
           </Card>
 
           {/* Sidebar */}

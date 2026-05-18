@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   AlertTriangle, ArrowRight, BookOpen, CheckCircle2,
-  Clock, Eye, FileText, GitBranch, Link2, RefreshCw,
+  Clock, Eye, FileText, Link2, RefreshCw,
   Sparkles, TrendingDown, TrendingUp, XCircle, Activity,
   Zap, Shield,
 } from "lucide-react";
@@ -118,7 +118,7 @@ const GRAPH_EDGES: [string, string][] = [
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Card({ children, className }: Readonly<{ children: React.ReactNode; className?: string }>) {
   return (
     <div className={cn("rounded-card bg-surface border border-border/40 shadow-chronicle-sm", className)}>
       {children}
@@ -126,7 +126,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-1">
       {children}
@@ -134,7 +134,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SectionHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+function SectionHeader({ title, description, action }: Readonly<{ title: string; description?: string; action?: React.ReactNode }>) {
   return (
     <div className="flex items-start justify-between gap-4 mb-5">
       <div>
@@ -146,7 +146,7 @@ function SectionHeader({ title, description, action }: { title: string; descript
   );
 }
 
-function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
+function Pill({ children, className }: Readonly<{ children: React.ReactNode; className?: string }>) {
   return (
     <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md border", className)}>
       {children}
@@ -485,6 +485,8 @@ function KnowledgeGraph() {
           {GRAPH_NODES.map((node) => {
             const active = isNodeActive(node.id);
             const isHovered = hovered === node.id;
+            const circleFillOpacity = active ? (isHovered ? 0.22 : 0.12) : 0.04;
+            const circleStrokeOpacity = active ? (isHovered ? 1 : 0.6) : 0.15;
             return (
               <g
                 key={node.id}
@@ -507,9 +509,9 @@ function KnowledgeGraph() {
                 <circle
                   r={isHovered ? node.r + 2 : node.r}
                   fill={node.color}
-                  fillOpacity={active ? (isHovered ? 0.22 : 0.12) : 0.04}
+                  fillOpacity={circleFillOpacity}
                   stroke={node.color}
-                  strokeOpacity={active ? (isHovered ? 1 : 0.6) : 0.15}
+                  strokeOpacity={circleStrokeOpacity}
                   strokeWidth={isHovered ? 2 : 1.5}
                   style={{ transition: "all 0.2s" }}
                 />
@@ -686,7 +688,7 @@ function DecisionRecords() {
 
 // ─── Section 7: Project Evolution ─────────────────────────────────────────────
 
-const CUSTOM_TOOLTIP = ({ active, payload, label }: {
+const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
   payload?: { name: string; value: number; color: string }[];
   label?: string;
@@ -726,7 +728,7 @@ function ProjectEvolution() {
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
             <Bar dataKey="commits" name="Commits" fill="#4F7CFF" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
             <Bar dataKey="docs" name="Docs" fill="#22c55e" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
             <Bar dataKey="notes" name="Notes" fill="#a855f7" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
@@ -823,7 +825,7 @@ function KnowledgeAlerts() {
           const { icon: Icon, cls, iconCls } = ALERT_CONFIG[alert.type];
           return (
             <motion.div
-              key={i}
+              key={alert.message}
               layout
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
