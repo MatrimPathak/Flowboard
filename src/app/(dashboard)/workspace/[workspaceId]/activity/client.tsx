@@ -55,7 +55,7 @@ const ACTOR_COLORS = ["#4F7CFF", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#0
 
 function actorColor(name: string): string {
   let hash = 0;
-  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffffffff;
+  for (const ch of name) hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) & 0xffffffff;
   return ACTOR_COLORS[Math.abs(hash) % ACTOR_COLORS.length];
 }
 
@@ -527,7 +527,7 @@ export function ActivityClient() {
         actor: name,
         actorInitial: (name[0] ?? "?").toUpperCase(),
         actorColor: actorColor(name),
-        action: docItem.updatedAt !== docItem.createdAt ? "updated" : "created",
+        action: docItem.updatedAt === docItem.createdAt ? "created" : "updated",
         target: docItem.title,
         project: "",
         timestamp: docAt,
@@ -649,7 +649,7 @@ export function ActivityClient() {
   const collabItems = useMemo((): CollabItem[] => {
     const items: CollabItem[] = [];
     if (members.length > 0) {
-      items.push({ text: `${members.length} team member${members.length !== 1 ? "s" : ""} in this workspace`, time: "Now" });
+      items.push({ text: `${members.length} team member${members.length === 1 ? "" : "s"} in this workspace`, time: "Now" });
     }
     const today = todayStr();
     const activeMembersToday = new Set(
@@ -661,7 +661,7 @@ export function ActivityClient() {
         .map((t) => t.assigneeId)
     ).size;
     if (activeMembersToday > 0) {
-      items.push({ text: `${activeMembersToday} member${activeMembersToday !== 1 ? "s" : ""} active today`, time: "Today" });
+      items.push({ text: `${activeMembersToday} member${activeMembersToday === 1 ? "" : "s"} active today`, time: "Today" });
     }
     return items;
   }, [members, tasks]);
