@@ -471,8 +471,10 @@ function CollaborationActivity({ items }: Readonly<{ items: CollabItem[] }>) {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function taskUrl(task: Task, workspaceId: string): string | undefined {
-  if (!task.projectId) return undefined;
-  return `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
+  if (task.projectId) {
+    return `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
+  }
+  return undefined;
 }
 
 function initial(name: string): string {

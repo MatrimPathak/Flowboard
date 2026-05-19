@@ -154,6 +154,8 @@ interface HealthStats {
 }
 
 function KnowledgeHealthCard({ stats }: Readonly<{ stats: HealthStats }>) {
+  const staleSuffix = stats.staleDocs === 1 ? "" : "s";
+  const staleLabel = stats.staleDocs === 0 ? "All docs current" : `${stats.staleDocs} stale doc${staleSuffix}`;
   return (
     <Card className="p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -164,7 +166,7 @@ function KnowledgeHealthCard({ stats }: Readonly<{ stats: HealthStats }>) {
         <span className="text-4xl font-bold text-foreground">{stats.score}%</span>
         <div className={cn("flex items-center gap-1.5 text-[11px]", stats.score >= 70 ? "text-success" : "text-warning")}>
           {stats.score >= 70 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-          <span>{stats.staleDocs === 0 ? "All docs current" : `${stats.staleDocs} stale doc${stats.staleDocs === 1 ? "" : "s"}`}</span>
+          <span>{staleLabel}</span>
         </div>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden bg-border/40">
@@ -563,8 +565,10 @@ function KnowledgeGraph({ projects, topics }: Readonly<{ projects: Project[]; to
           {nodes.map((node) => {
             const active = isNodeActive(node.id);
             const isH = hovered === node.id;
-            const circleFillOpacity = active ? (isH ? 0.22 : 0.12) : 0.04;
-            const circleStrokeOpacity = active ? (isH ? 1 : 0.6) : 0.15;
+            let circleFillOpacity: number;
+            if (active) { circleFillOpacity = isH ? 0.22 : 0.12; } else { circleFillOpacity = 0.04; }
+            let circleStrokeOpacity: number;
+            if (active) { circleStrokeOpacity = isH ? 1 : 0.6; } else { circleStrokeOpacity = 0.15; }
             return (
               <g key={node.id} role="button" tabIndex={0} aria-label={`${node.label} node`}
                 transform={`translate(${node.x}, ${node.y})`}
