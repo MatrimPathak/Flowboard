@@ -27,6 +27,7 @@ import {
   addCommentSchema, updateCommentSchema,
   addTaskLinkSchema,
   addProjectMemberSchema, updateProjectMemberSchema, removeProjectMemberSchema,
+  getDocsSchema, createDocSchema, updateDocSchema, deleteDocSchema,
 } from "@/lib/mcp-schemas";
 
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -335,6 +336,38 @@ function tasksCol(wId: string, pId: string) { return projRef(wId, pId).collectio
 function taskDocRef(wId: string, pId: string, taskId: string) { return tasksCol(wId, pId).doc(taskId); }
 function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collection("sprints"); }
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
+function wsDocsCol(wId: string) { return adminDb.collection(WORKSPACES).doc(wId).collection("docs"); }
+function projDocsCol(wId: string, pId: string) { return projRef(wId, pId).collection("docs"); }
+
+function generateDocId(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return `DOC-${10000000 + (buf[0] % 90000000)}`;
+}
+
+function docContentToText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!content || typeof content !== "object") return "";
+  const node = content as { text?: string; content?: unknown[] };
+  if (node.text) return node.text;
+  if (Array.isArray(node.content)) return node.content.map(docContentToText).filter(Boolean).join("\n");
+  return "";
+}
+
+async function findDocRef(workspaceId: string, docId: string, projectId?: string) {
+  if (projectId) {
+    const ref = projDocsCol(workspaceId, projectId).doc(docId);
+    if ((await ref.get()).exists) return ref;
+  }
+  const wsRef = wsDocsCol(workspaceId).doc(docId);
+  if ((await wsRef.get()).exists) return wsRef;
+  const projectsSnap = await adminDb.collection(WORKSPACES).doc(workspaceId).collection(PROJECTS).get();
+  for (const pDoc of projectsSnap.docs) {
+    const ref = projDocsCol(workspaceId, pDoc.id).doc(docId);
+    if ((await ref.get()).exists) return ref;
+  }
+  throw new Error(`Document ${docId} not found`);
+}
 
 
 const handler = globalForMcp.mcpHandler || createMcpHandler(
@@ -1249,6 +1282,78 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             text: JSON.stringify({ url: signedUrl, name: args.name || "uploaded-image" }, null, 2),
           }],
         };
+      }
+    );
+
+    // ── Docs ──────────────────────────────────────────────────────────────────
+
+    server.registerTool(
+      "get_docs",
+      { title: "Get Docs", description: D.getDocs, inputSchema: getDocsSchema as any },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        const results: any[] = [];
+        const wsSnap = await wsDocsCol(args.workspaceId).get();
+        for (const d of wsSnap.docs) {
+          const data = d.data();
+          results.push({ $id: d.id, scope: "workspace", title: data.title, icon: data.icon, createdAt: data.createdAt, updatedAt: data.updatedAt, textContent: docContentToText(data.content) });
+        }
+        if (args.projectId) {
+          const projSnap = await projDocsCol(args.workspaceId, args.projectId).get();
+          for (const d of projSnap.docs) {
+            const data = d.data();
+            results.push({ $id: d.id, scope: "project", projectId: args.projectId, title: data.title, icon: data.icon, createdAt: data.createdAt, updatedAt: data.updatedAt, textContent: docContentToText(data.content) });
+          }
+        }
+        return textResult(results.toSorted((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)));
+      }
+    );
+
+    server.registerTool(
+      "create_doc",
+      { title: "Create Doc", description: D.createDoc, inputSchema: createDocSchema as any },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        const id = generateDocId();
+        const now = Date.now();
+        const coll = args.projectId ? projDocsCol(args.workspaceId, args.projectId) : wsDocsCol(args.workspaceId);
+        await coll.doc(id).set({
+          title: args.title ?? "Untitled",
+          content: args.content ?? "",
+          icon: args.icon ?? "📄",
+          order: now,
+          createdBy: getMcpUserId(),
+          linkedWorkItems: [],
+          createdAt: now,
+          updatedAt: now,
+        });
+        return textResult(docJson(await coll.doc(id).get()));
+      }
+    );
+
+    server.registerTool(
+      "update_doc",
+      { title: "Update Doc", description: D.updateDoc, inputSchema: updateDocSchema as any },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        const ref = await findDocRef(args.workspaceId, args.docId, args.projectId);
+        const patch: Record<string, unknown> = { updatedAt: Date.now() };
+        if (args.title !== undefined) patch.title = args.title;
+        if (args.content !== undefined) patch.content = args.content;
+        if (args.icon !== undefined) patch.icon = args.icon;
+        await ref.update(patch);
+        return textResult(docJson(await ref.get()));
+      }
+    );
+
+    server.registerTool(
+      "delete_doc",
+      { title: "Delete Doc", description: D.deleteDoc, inputSchema: deleteDocSchema as any },
+      async (args: any) => {
+        await verifyWorkspaceAccess(args.workspaceId);
+        const ref = await findDocRef(args.workspaceId, args.docId, args.projectId);
+        await ref.delete();
+        return textResult({ deleted: true, docId: args.docId });
       }
     );
   },

@@ -174,6 +174,12 @@ export function CommandPalette() {
       icon: Timer,
       action: () => { closeCommandPalette(); openSprintModal({}); },
     },
+    {
+      label: "New Doc",
+      description: "Create a workspace document",
+      icon: FileText,
+      action: () => { closeCommandPalette(); router.push(`/workspace/${workspaceId}/docs`); },
+    },
   ].filter((a) =>
     !query || a.label.toLowerCase().includes(query.toLowerCase())
   );
@@ -312,8 +318,8 @@ export function CommandPalette() {
                           key={d.id}
                           onSelect={() => {
                             closeCommandPalette();
-                            if (d.projectId) router.push(`/workspace/${workspaceId}/project/${d.projectId}/docs?docId=${d.id}`);
-                            else router.push(`/workspace/${workspaceId}/docs?docId=${d.id}`);
+                            if (d.projectId) router.push(`/workspace/${workspaceId}/project/${d.projectId}/docs/${d.id}`);
+                            else router.push(`/workspace/${workspaceId}/docs/${d.id}`);
                           }}
                           className={ITEM_CLS}
                         >

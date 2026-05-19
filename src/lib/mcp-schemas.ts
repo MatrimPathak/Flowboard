@@ -206,3 +206,33 @@ export const removeProjectMemberSchema = z.object({
   projectId: z.string(),
   userId: z.string().describe("The userId of the project member to remove"),
 });
+
+// ── Doc schemas ───────────────────────────────────────────────────────────────
+
+export const getDocsSchema = z.object({
+  workspaceId: z.string().describe(D.workspaceId),
+  projectId: z.string().optional().describe(D.docProjectId),
+});
+
+export const createDocSchema = z.object({
+  workspaceId: z.string().describe(D.workspaceId),
+  projectId: z.string().optional().describe(D.docProjectId),
+  title: z.string().describe(D.docTitle),
+  content: z.string().optional().describe(D.docContent),
+  icon: z.string().optional().describe(D.docIcon),
+});
+
+export const updateDocSchema = z.object({
+  workspaceId: z.string().describe(D.workspaceId),
+  docId: z.string().describe(D.docId),
+  projectId: z.string().optional().describe("Hint: provide if you know the doc is project-scoped (speeds up lookup)"),
+  title: z.string().optional().describe(D.docTitle),
+  content: z.string().optional().describe(D.docContent),
+  icon: z.string().optional().describe(D.docIcon),
+});
+
+export const deleteDocSchema = z.object({
+  workspaceId: z.string().describe(D.workspaceId),
+  docId: z.string().describe(D.docId),
+  projectId: z.string().optional().describe("Hint: provide if you know the doc is project-scoped (speeds up lookup)"),
+});
