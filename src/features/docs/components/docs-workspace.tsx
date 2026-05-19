@@ -251,7 +251,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
           onError: () => toast.error("Failed to update title"),
         }
       );
-    }, 1000);
+    }, 5000);
 
     return () => clearTimeout(handle);
   }, [titleDraft, selected, updateDoc]);
