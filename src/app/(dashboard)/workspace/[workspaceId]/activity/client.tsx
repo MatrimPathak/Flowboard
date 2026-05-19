@@ -11,12 +11,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
+import { useRouter } from "next/navigation";
 import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useDocuments } from "@/features/docs/hooks/use-documents";
-import { TaskStatus } from "@/features/tasks/types";
+import { IssueType, TaskStatus } from "@/features/tasks/types";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,7 @@ interface ActivityEvent {
   timestamp: Date;
   isNew?: boolean;
   meta?: string;
+  url?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -52,6 +55,15 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 };
 
 const ACTOR_COLORS = ["#4F7CFF", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#f97316"];
+
+function taskTypeSegment(issueType?: IssueType): string {
+  switch (issueType) {
+    case IssueType.EPIC: return "epic";
+    case IssueType.SPIKE: return "spike";
+    case IssueType.BUG: return "bug";
+    default: return "story";
+  }
+}
 
 function actorColor(name: string): string {
   let hash = 0;
@@ -164,9 +176,24 @@ function WorkspaceSummary({ stats }: Readonly<{ stats: SummaryStats }>) {
 
 function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number }>) {
   const [showActions, setShowActions] = useState(false);
+  const router = useRouter();
   const cfg = EVENT_CONFIG[event.type];
   const Icon = cfg.icon;
   const timeAgo = formatDistanceToNow(event.timestamp, { addSuffix: true });
+
+  const handleOpen = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    if (event.url) router.push(event.url);
+  };
+
+  const handleCopyLink = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    if (event.url) {
+      navigator.clipboard.writeText(window.location.origin + event.url).then(() => {
+        toast.success("Link copied to clipboard");
+      });
+    }
+  };
 
   return (
     <motion.div
@@ -224,14 +251,20 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
               transition={{ duration: 0.12 }}
               className="flex items-center gap-1"
             >
-              {["Open", "Copy link"].map((label) => (
-                <button
-                  key={label}
-                  className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all"
-                >
-                  {label}
-                </button>
-              ))}
+              <button
+                onClick={handleOpen}
+                disabled={!event.url}
+                className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Open
+              </button>
+              <button
+                onClick={handleCopyLink}
+                disabled={!event.url}
+                className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Copy link
+              </button>
             </motion.div>
           ) : (
             <motion.span
@@ -463,6 +496,7 @@ export function ActivityClient() {
       const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
       const createdAt = new Date(task.$createdAt);
 
+      const taskUrl = `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
       events.push({
         id: `task-${task.$id}`,
         type: "issue_created",
@@ -474,6 +508,7 @@ export function ActivityClient() {
         project: proj,
         timestamp: createdAt,
         isNew: now - createdAt.getTime() < oneDayMs,
+        url: taskUrl,
       });
 
       if (task.status === TaskStatus.DONE) {
@@ -491,6 +526,7 @@ export function ActivityClient() {
             project: proj,
             timestamp: doneAt,
             isNew: now - doneAt.getTime() < oneDayMs,
+            url: taskUrl,
           });
         }
       }
@@ -510,6 +546,7 @@ export function ActivityClient() {
         project: "",
         timestamp: joinedAt,
         isNew: now - joinedAt.getTime() < oneDayMs,
+        url: `/workspace/${workspaceId}/members`,
       });
     }
 
@@ -519,6 +556,9 @@ export function ActivityClient() {
         ? projects.find((p) => p.$id === docItem.projectId)?.name ?? ""
         : "";
       const docAt = new Date(docItem.updatedAt);
+      const docUrl = docItem.projectId
+        ? `/workspace/${workspaceId}/project/${docItem.projectId}/docs?docId=${docItem.id}`
+        : `/workspace/${workspaceId}/docs?docId=${docItem.id}`;
       events.push({
         id: `doc-${docItem.id}`,
         type: "doc_edit",
@@ -530,6 +570,7 @@ export function ActivityClient() {
         project: proj,
         timestamp: docAt,
         isNew: now - docAt.getTime() < oneDayMs,
+        url: docUrl,
       });
     }
 
