@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -143,7 +143,6 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
   const { docsQuery, createDoc, createWorkspaceDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(initialDocId ?? null);
   const [search, setSearch] = useState("");
   const [titleDraft, setTitleDraft] = useState("");
@@ -162,11 +161,11 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
 
   const hasLinkedWork = (selected?.linkedWorkItems?.length ?? 0) > 0;
 
+  const docsBasePath = pathname.replace(/\/docs(\/[^/]*)?$/, "/docs");
+
   const setDocInUrl = useCallback((docId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("docId", docId);
-    router.replace(`${pathname}?${params.toString()}`);
-  }, [pathname, router, searchParams]);
+    router.replace(`${docsBasePath}/${docId}`);
+  }, [docsBasePath, router]);
 
   const flushPendingContentSave = useCallback((docId: string) => {
     if (!saveTimerRef.current || pendingContentRef.current === null) return;
@@ -213,9 +212,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
           handleSelectDoc(remaining[0].id);
         } else {
           setSelectedId(null);
-          const params = new URLSearchParams(searchParams.toString());
-          params.delete("docId");
-          router.replace(`${pathname}?${params.toString()}`);
+          router.replace(docsBasePath);
         }
       }
       toast.success("Document deleted");

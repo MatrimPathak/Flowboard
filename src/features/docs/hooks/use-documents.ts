@@ -47,49 +47,43 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
     return unsubscribe;
   }, [workspaceId, projectId, queryClient, queryKey, firebaseReady]);
 
+  const payload = (data: Partial<ChronicleDocument>) => ({
+    title: data.title ?? "Untitled",
+    content: data.content ?? { type: "doc", content: [] },
+    icon: data.icon,
+    coverImage: data.coverImage,
+    parentId: data.parentId,
+    order: data.order ?? Date.now(),
+    createdBy: auth.currentUser?.uid ?? "unknown",
+    linkedWorkItems: data.linkedWorkItems ?? [],
+  });
+
   const createDoc = useMutation({
-    mutationFn: async (data: Partial<ChronicleDocument>) => {
-      return createDocument({
-        workspaceId,
-        ...(projectId !== undefined && { projectId }),
-        title: data.title ?? "Untitled",
-        content: data.content ?? { type: "doc", content: [] },
-        icon: data.icon,
-        coverImage: data.coverImage,
-        parentId: data.parentId,
-        order: data.order ?? Date.now(),
-        createdBy: auth.currentUser?.uid ?? "unknown",
-        linkedWorkItems: data.linkedWorkItems ?? [],
-      });
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    mutationFn: async (data: Partial<ChronicleDocument>) =>
+      createDocument(workspaceId, projectId, payload(data)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] }),
   });
 
   const createWorkspaceDoc = useMutation({
-    mutationFn: async (data: Partial<ChronicleDocument>) => {
-      return createDocument({
-        workspaceId,
-        title: data.title ?? "Untitled",
-        content: data.content ?? { type: "doc", content: [] },
-        icon: data.icon,
-        coverImage: data.coverImage,
-        parentId: data.parentId,
-        order: data.order ?? Date.now(),
-        createdBy: auth.currentUser?.uid ?? "unknown",
-        linkedWorkItems: data.linkedWorkItems ?? [],
-      });
-    },
+    mutationFn: async (data: Partial<ChronicleDocument>) =>
+      createDocument(workspaceId, undefined, payload(data)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] }),
   });
 
   const updateDoc = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<ChronicleDocument> }) => updateDocument(id, patch),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<ChronicleDocument> }) => {
+      const docProjectId = queryClient.getQueryData<ChronicleDocument[]>(queryKey)?.find((d) => d.id === id)?.projectId;
+      return updateDocument(workspaceId, docProjectId, id, patch);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] }),
   });
 
   const removeDoc = useMutation({
-    mutationFn: (id: string) => deleteDocument(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    mutationFn: (id: string) => {
+      const docProjectId = queryClient.getQueryData<ChronicleDocument[]>(queryKey)?.find((d) => d.id === id)?.projectId;
+      return deleteDocument(workspaceId, docProjectId, id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] }),
   });
 
   return { docsQuery, createDoc, createWorkspaceDoc, updateDoc, removeDoc };
