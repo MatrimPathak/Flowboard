@@ -134,7 +134,7 @@ function EmptyState({
 }
 
 export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { workspaceId: string; projectId?: string; initialDocId?: string }) {
-  const { docsQuery, createDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
+  const { docsQuery, createDoc, createWorkspaceDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -220,6 +220,16 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
 
   const handleTemplateCreate = async (templateName: string) => {
     await handleCreateDoc(templateName, templateHtml[templateName] ?? "");
+  };
+
+  const handleCreateWorkspaceDoc = async () => {
+    try {
+      const id = await createWorkspaceDoc.mutateAsync({ title: "Untitled", content: "", icon: "📄" });
+      handleSelectDoc(id);
+      toast.success("Document created");
+    } catch {
+      toast.error("Failed to create document");
+    }
   };
 
   useEffect(() => {
@@ -320,17 +330,29 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
             { key: "project", label: "Project Docs", items: grouped.projectDocs },
           ].map((group) => (
             <div key={group.key} className="mb-4">
-              <button
-                className="text-xs text-white/50 mb-2 flex items-center gap-1 hover:text-white/70 transition-colors"
-                onClick={() => setOpen((p) => ({ ...p, [group.key]: !p[group.key] }))}
-              >
-                {open[group.key] ? (
-                  <ChevronDown className="size-3" />
-                ) : (
-                  <ChevronRight className="size-3" />
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  className="text-xs text-white/50 flex items-center gap-1 hover:text-white/70 transition-colors"
+                  onClick={() => setOpen((p) => ({ ...p, [group.key]: !p[group.key] }))}
+                >
+                  {open[group.key] ? (
+                    <ChevronDown className="size-3" />
+                  ) : (
+                    <ChevronRight className="size-3" />
+                  )}
+                  {group.label}
+                </button>
+                {group.key === "workspace" && projectId && (
+                  <button
+                    onClick={() => void handleCreateWorkspaceDoc()}
+                    disabled={createWorkspaceDoc.isPending}
+                    className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                    title="New workspace doc"
+                  >
+                    <Plus className="size-3" />
+                  </button>
                 )}
-                {group.label}
-              </button>
+              </div>
               {open[group.key] && (
                 <div className="space-y-0.5">
                   {group.items.map((d) => (
@@ -382,14 +404,15 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
               <span>Updated {new Date(selected.updatedAt).toLocaleString()}</span>
             </div>
             <ChronicleEditor
+              key={selected.id}
               content={selected.content}
               onChange={(content) => {
                 if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-                setSaveState("saving");
                 pendingContentRef.current = content;
                 saveTimerRef.current = setTimeout(() => {
                   pendingContentRef.current = null;
                   saveTimerRef.current = null;
+                  setSaveState("saving");
                   updateDoc.mutate(
                     { id: selected.id, patch: { content } },
                     {
