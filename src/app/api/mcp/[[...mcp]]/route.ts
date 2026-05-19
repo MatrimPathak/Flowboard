@@ -1305,7 +1305,7 @@ const handler = globalForMcp.mcpHandler || createMcpHandler(
             results.push({ $id: d.id, scope: "project", projectId: args.projectId, title: data.title, icon: data.icon, createdAt: data.createdAt, updatedAt: data.updatedAt, textContent: docContentToText(data.content) });
           }
         }
-        return textResult(results.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)));
+        return textResult(results.toSorted((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)));
       }
     );
 

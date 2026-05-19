@@ -4,9 +4,9 @@ import { DocsWorkspace } from "@/features/docs/components/docs-workspace";
 
 export default async function ProjectDocsPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ workspaceId: string; projectId: string; docId?: string[] }>;
-}) {
+}>) {
   const user = await getCurrent();
   if (!user) redirect("/sign-in");
   const { workspaceId, projectId, docId } = await params;

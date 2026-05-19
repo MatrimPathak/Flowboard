@@ -101,7 +101,7 @@ export async function createDocument(
     createdAt: now,
     updatedAt: now,
     serverCreatedAt: serverTimestamp(),
-  } as StoredFields & { serverCreatedAt: unknown }));
+  }));
   return id;
 }
 
