@@ -340,7 +340,9 @@ function wsDocsCol(wId: string) { return adminDb.collection(WORKSPACES).doc(wId)
 function projDocsCol(wId: string, pId: string) { return projRef(wId, pId).collection("docs"); }
 
 function generateDocId(): string {
-  return `DOC-${Math.floor(10000000 + Math.random() * 90000000)}`;
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return `DOC-${10000000 + (buf[0] % 90000000)}`;
 }
 
 function docContentToText(content: unknown): string {
