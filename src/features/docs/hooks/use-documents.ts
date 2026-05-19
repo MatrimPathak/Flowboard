@@ -65,6 +65,23 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  const createWorkspaceDoc = useMutation({
+    mutationFn: async (data: Partial<ChronicleDocument>) => {
+      return createDocument({
+        workspaceId,
+        title: data.title ?? "Untitled",
+        content: data.content ?? { type: "doc", content: [] },
+        icon: data.icon,
+        coverImage: data.coverImage,
+        parentId: data.parentId,
+        order: data.order ?? Date.now(),
+        createdBy: auth.currentUser?.uid ?? "unknown",
+        linkedWorkItems: data.linkedWorkItems ?? [],
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] }),
+  });
+
   const updateDoc = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<ChronicleDocument> }) => updateDocument(id, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
@@ -75,5 +92,5 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  return { docsQuery, createDoc, updateDoc, removeDoc };
+  return { docsQuery, createDoc, createWorkspaceDoc, updateDoc, removeDoc };
 };

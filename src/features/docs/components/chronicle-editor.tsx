@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -56,8 +56,12 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
         if (event.key === "/") {
           setOpen(true);
           setQuery("");
+          return true;
         }
-        if (open && event.key === "Escape") setOpen(false);
+        if (open && event.key === "Escape") {
+          setOpen(false);
+          return true;
+        }
         return false;
       },
     },
@@ -67,16 +71,6 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
   });
 
   const filtered = useMemo(() => slashItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())), [query]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const next = content ?? "";
-    const current = editor.getJSON();
-    const same = JSON.stringify(current) === JSON.stringify(next);
-    if (!same) {
-      editor.commands.setContent(next, { emitUpdate: false });
-    }
-  }, [editor, content]);
 
   if (!editor) return null;
 
@@ -89,11 +83,26 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
       </div>
       <EditorContent editor={editor} />
       {open && (
-        <div className="absolute left-4 top-14 w-[320px] rounded-lg border border-white/10 bg-[#0A0F1A] p-2 shadow-xl z-20">
-          <input className="w-full bg-transparent text-sm text-white/80 p-2 border-b border-white/10" placeholder="Search commands" value={query} onChange={(e)=>setQuery(e.target.value)} />
+        <div
+          className="absolute left-4 top-14 w-[320px] rounded-lg border border-white/10 bg-[#0A0F1A] p-2 shadow-xl z-20"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <input
+            autoFocus
+            className="w-full bg-transparent text-sm text-white/80 p-2 border-b border-white/10"
+            placeholder="Search commands"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={() => setOpen(false)}
+          />
           <div className="max-h-60 overflow-y-auto">
             {filtered.map((item) => (
-              <button key={item.label} className="w-full text-left text-sm px-2 py-1.5 hover:bg-white/10 rounded" onClick={() => { item.run(editor); setOpen(false); }}>
+              <button
+                key={item.label}
+                className="w-full text-left text-sm px-2 py-1.5 hover:bg-white/10 rounded"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { item.run(editor); setOpen(false); }}
+              >
                 {item.label}
               </button>
             ))}
