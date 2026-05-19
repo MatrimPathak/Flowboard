@@ -6,12 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDocuments } from "@/features/docs/hooks/use-documents";
-import { ChevronDown, ChevronRight, FileText, Plus, Search, Trash2, Loader2 } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, FileText, FolderOpen, Plus, Search, Trash2, Loader2 } from "lucide-react";
 import { ChronicleEditor } from "@/features/docs/components/chronicle-editor";
 import { ImportDocDialog } from "@/features/docs/components/import-doc-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useCreateDocModal } from "@/features/docs/hooks/use-create-doc-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { createDocument } from "@/lib/docs-firestore";
+import { auth } from "@/lib/firebase";
+import { useQueryClient } from "@tanstack/react-query";
 
 const templateHtml: Record<string, string> = {
   "Blank": "",
@@ -136,7 +141,7 @@ function EmptyState({
 
 export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { workspaceId: string; projectId?: string; initialDocId?: string }) {
   const { docsQuery, createDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
-  const { open: openCreateDocModal } = useCreateDocModal();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const [selectedId, setSelectedId] = useState<string | null>(initialDocId ?? null);
@@ -144,9 +149,14 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
   const [titleDraft, setTitleDraft] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({ workspace: true, project: true });
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
+  const [newDocDialogOpen, setNewDocDialogOpen] = useState(false);
+  const [newDocProjectId, setNewDocProjectId] = useState("");
+  const [newDocLoading, setNewDocLoading] = useState<"workspace" | "project" | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingContentRef = useRef<unknown>(null);
+
+  const { data: projectsData } = useGetProjects({ workspaceId });
 
   const isLoading = docsQuery.isLoading;
   const isError = docsQuery.isError;
@@ -196,6 +206,37 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
     } catch (error) {
       toast.error("Failed to create document");
       throw error;
+    }
+  };
+
+  const handleNewDocCreate = async (scope: "workspace" | "project") => {
+    const targetProjectId = scope === "project" ? (projectId || newDocProjectId || undefined) : undefined;
+    if (scope === "project" && !targetProjectId) {
+      toast.error("Please select a project");
+      return;
+    }
+    setNewDocLoading(scope);
+    try {
+      const id = await createDocument(workspaceId, targetProjectId, {
+        title: "Untitled",
+        content: { type: "doc", content: [] },
+        icon: "📄",
+        order: Date.now(),
+        createdBy: auth.currentUser?.uid ?? "unknown",
+        linkedWorkItems: [],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["docs", workspaceId] });
+      setNewDocDialogOpen(false);
+      setNewDocProjectId("");
+      if (targetProjectId) {
+        router.push(`/workspace/${workspaceId}/project/${targetProjectId}/docs/${id}`);
+      } else {
+        router.push(`/workspace/${workspaceId}/docs/${id}`);
+      }
+    } catch {
+      toast.error("Failed to create document");
+    } finally {
+      setNewDocLoading(null);
     }
   };
 
@@ -297,7 +338,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
           <Button
             size="sm"
             variant="ghost"
-            onClick={openCreateDocModal}
+            onClick={() => setNewDocDialogOpen(true)}
           >
             <Plus className="size-3.5 mr-1" />
             New Doc
@@ -418,6 +459,64 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
           </div>
         </aside>
       )}
+
+      <Dialog open={newDocDialogOpen} onOpenChange={(v) => { if (!newDocLoading) { setNewDocDialogOpen(v); setNewDocProjectId(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Document</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Choose where to create the document.</p>
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <button
+              type="button"
+              disabled={!!newDocLoading}
+              onClick={() => void handleNewDocCreate("workspace")}
+              className="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium hover:bg-accent disabled:opacity-50 transition-colors"
+            >
+              {newDocLoading === "workspace"
+                ? <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                : <Building2 className="size-6 text-muted-foreground" />}
+              Workspace Document
+            </button>
+            <button
+              type="button"
+              disabled={!!newDocLoading}
+              onClick={() => void handleNewDocCreate("project")}
+              className="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium hover:bg-accent disabled:opacity-50 transition-colors"
+            >
+              {newDocLoading === "project"
+                ? <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                : <FolderOpen className="size-6 text-muted-foreground" />}
+              Project Document
+            </button>
+          </div>
+          {!projectId && (projectsData?.documents?.length ?? 0) > 0 && (
+            <div className="space-y-1.5 mt-1">
+              <p className="text-xs text-muted-foreground">Select a project for &ldquo;Project Document&rdquo;</p>
+              <Select value={newDocProjectId} onValueChange={setNewDocProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a project…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectsData?.documents?.map((p) => (
+                    <SelectItem key={p.$id} value={p.$id}>
+                      <span className="flex items-center gap-2">
+                        <FileText className="size-3.5 text-muted-foreground" />
+                        {p.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="flex justify-end mt-1">
+            <Button variant="ghost" size="sm" onClick={() => { setNewDocDialogOpen(false); setNewDocProjectId(""); }} disabled={!!newDocLoading}>
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
