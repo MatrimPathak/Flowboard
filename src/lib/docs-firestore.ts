@@ -51,19 +51,23 @@ export function subscribeDocuments(
   });
 }
 
+function stripUndefined<T extends object>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
 export async function createDocument(payload: Omit<ChronicleDocument, "id" | "createdAt" | "updatedAt">) {
   const now = Date.now();
-  const ref = await addDoc(docsCollection, {
+  const ref = await addDoc(docsCollection, stripUndefined({
     ...payload,
     createdAt: now,
     updatedAt: now,
     serverCreatedAt: serverTimestamp(),
-  });
+  }));
   return ref.id;
 }
 
 export async function updateDocument(id: string, patch: Partial<ChronicleDocument>) {
-  await updateDoc(doc(db, "docs", id), { ...patch, updatedAt: Date.now() });
+  await updateDoc(doc(db, "docs", id), stripUndefined({ ...patch, updatedAt: Date.now() }));
 }
 
 export async function deleteDocument(id: string) {
