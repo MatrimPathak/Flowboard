@@ -139,7 +139,7 @@ function EmptyState({
   );
 }
 
-export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { workspaceId: string; projectId?: string; initialDocId?: string }) {
+export function DocsWorkspace({ workspaceId, projectId, initialDocId }: Readonly<{ workspaceId: string; projectId?: string; initialDocId?: string }>) {
   const { docsQuery, createDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
   const queryClient = useQueryClient();
   const router = useRouter();
