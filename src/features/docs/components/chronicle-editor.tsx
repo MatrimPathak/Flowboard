@@ -84,6 +84,7 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
       <EditorContent editor={editor} />
       {open && (
         <div
+          role="menu"
           className="absolute left-4 top-14 w-[320px] rounded-lg border border-white/10 bg-[#0A0F1A] p-2 shadow-xl z-20"
           onMouseDown={(e) => e.preventDefault()}
         >
