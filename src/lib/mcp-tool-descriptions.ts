@@ -104,4 +104,17 @@ export const D = {
   deleteTaskLink: "Remove a link between tasks",
   getWorkspaceAnalytics: "Get ticket metrics for a workspace: total, assigned-to-me, incomplete, completed, and overdue counts. Each metric includes the current month value and the month-over-month difference.",
   getProjectAnalytics: "Get ticket metrics for a specific project: total, assigned-to-me, incomplete, completed, and overdue counts with month-over-month differences.",
+
+  // Doc fields
+  docId: "Document ID (DOC-XXXXXXXX) — use get_docs to find",
+  docTitle: "Title of the document",
+  docContent: "Document body as plain text or markdown",
+  docIcon: "Emoji icon for the document (e.g. '📄')",
+  docProjectId: "Project ID (PRJ-xxxxxxxx) to scope to a project's docs; omit for workspace-level docs",
+
+  // Doc tools
+  getDocs: "List Chronicle documents in a workspace. When projectId is omitted, returns only workspace-level docs. When projectId is provided, returns both workspace-level and project-scoped docs. Each result includes a textContent field with the document body as plain text.",
+  createDoc: "Create a new Chronicle document. Omit projectId to create a workspace-level doc; provide projectId to create a project-scoped doc. Content is stored as plain text/markdown.",
+  updateDoc: "Update a Chronicle document's title, icon, or content. The doc is located automatically across workspace and project collections by its DOC-XXXXXXXX id.",
+  deleteDoc: "Permanently delete a Chronicle document. The doc is located automatically across workspace and project collections.",
 } as const;
