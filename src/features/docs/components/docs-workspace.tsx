@@ -11,6 +11,12 @@ import { ChronicleEditor } from "@/features/docs/components/chronicle-editor";
 import { ImportDocDialog } from "@/features/docs/components/import-doc-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const templateHtml: Record<string, string> = {
   "Blank": "",
@@ -305,15 +311,38 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
       <aside className="w-[280px] border-r border-white/10 p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white/90">Documentation</h2>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void handleCreateDoc("Untitled", "")}
-            disabled={createDoc.isPending}
-          >
-            <Plus className="size-3.5 mr-1" />
-            New Doc
-          </Button>
+          {projectId ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={createDoc.isPending || createWorkspaceDoc.isPending}
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  New Doc
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => void handleCreateDoc("Untitled", "")}>
+                  Project Document
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void handleCreateWorkspaceDoc()}>
+                  Workspace Document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void handleCreateDoc("Untitled", "")}
+              disabled={createDoc.isPending}
+            >
+              <Plus className="size-3.5 mr-1" />
+              New Doc
+            </Button>
+          )}
         </div>
         <div className="relative">
           <Search className="size-3.5 absolute left-2.5 top-2.5 text-white/30" />
@@ -330,29 +359,17 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
             { key: "project", label: "Project Docs", items: grouped.projectDocs },
           ].map((group) => (
             <div key={group.key} className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  className="text-xs text-white/50 flex items-center gap-1 hover:text-white/70 transition-colors"
-                  onClick={() => setOpen((p) => ({ ...p, [group.key]: !p[group.key] }))}
-                >
-                  {open[group.key] ? (
-                    <ChevronDown className="size-3" />
-                  ) : (
-                    <ChevronRight className="size-3" />
-                  )}
-                  {group.label}
-                </button>
-                {group.key === "workspace" && projectId && (
-                  <button
-                    onClick={() => void handleCreateWorkspaceDoc()}
-                    disabled={createWorkspaceDoc.isPending}
-                    className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-                    title="New workspace doc"
-                  >
-                    <Plus className="size-3" />
-                  </button>
+              <button
+                className="text-xs text-white/50 mb-2 flex items-center gap-1 hover:text-white/70 transition-colors"
+                onClick={() => setOpen((p) => ({ ...p, [group.key]: !p[group.key] }))}
+              >
+                {open[group.key] ? (
+                  <ChevronDown className="size-3" />
+                ) : (
+                  <ChevronRight className="size-3" />
                 )}
-              </div>
+                {group.label}
+              </button>
               {open[group.key] && (
                 <div className="space-y-0.5">
                   {group.items.map((d) => (

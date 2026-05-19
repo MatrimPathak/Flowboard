@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 import type { ChangeEvent } from "react";
+import { marked } from "marked";
 
 const extractTitle = (text: string, fallback: string) => {
   const lines = text.split(/\r?\n/);
@@ -25,7 +26,8 @@ export function ImportDocDialog({ onImport }: { onImport: (title: string, conten
     if (!file) return;
     const text = await file.text();
     const baseName = file.name.replace(/\.[^/.]+$/, "");
-    onImport(extractTitle(text, baseName), text);
+    const html = await marked.parse(text);
+    onImport(extractTitle(text, baseName), html);
     event.target.value = "";
   };
 
