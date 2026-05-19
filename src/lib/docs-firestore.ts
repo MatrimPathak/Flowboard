@@ -29,9 +29,7 @@ export type ChronicleDocument = {
 type StoredFields = Omit<ChronicleDocument, "id" | "workspaceId" | "projectId">;
 
 function generateDocId(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let suffix = "";
-  for (let i = 0; i < 8; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  const suffix = Math.floor(10000000 + Math.random() * 90000000).toString();
   return `DOC-${suffix}`;
 }
 
