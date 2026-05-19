@@ -9,7 +9,7 @@ import {
 import {
   AlertTriangle, ArrowRight, BookOpen, CheckCircle2,
   Clock, Eye, FileText,
-  RefreshCw, Sparkles, TrendingUp, TrendingDown, XCircle,
+  RefreshCw, Sparkles, TrendingUp, TrendingDown,
   Activity, Zap, Shield, FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -164,7 +164,7 @@ function KnowledgeHealthCard({ stats }: Readonly<{ stats: HealthStats }>) {
         <span className="text-4xl font-bold text-foreground">{stats.score}%</span>
         <div className={cn("flex items-center gap-1.5 text-[11px]", stats.score >= 70 ? "text-success" : "text-warning")}>
           {stats.score >= 70 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-          <span>{stats.staleDocs > 0 ? `${stats.staleDocs} stale doc${stats.staleDocs > 1 ? "s" : ""}` : "All docs current"}</span>
+          <span>{stats.staleDocs === 0 ? "All docs current" : `${stats.staleDocs} stale doc${stats.staleDocs === 1 ? "" : "s"}`}</span>
         </div>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden bg-border/40">
@@ -435,7 +435,7 @@ function ProjectDocsOverview({
                   {row.name}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  {row.docCount} doc{row.docCount !== 1 ? "s" : ""} · {row.taskCount} task{row.taskCount !== 1 ? "s" : ""}
+                  {row.docCount} doc{row.docCount === 1 ? "" : "s"} · {row.taskCount} task{row.taskCount === 1 ? "" : "s"}
                 </p>
               </div>
               {row.taskCount > 0 && (
@@ -563,6 +563,8 @@ function KnowledgeGraph({ projects, topics }: Readonly<{ projects: Project[]; to
           {nodes.map((node) => {
             const active = isNodeActive(node.id);
             const isH = hovered === node.id;
+            const circleFillOpacity = active ? (isH ? 0.22 : 0.12) : 0.04;
+            const circleStrokeOpacity = active ? (isH ? 1 : 0.6) : 0.15;
             return (
               <g key={node.id} role="button" tabIndex={0} aria-label={`${node.label} node`}
                 transform={`translate(${node.x}, ${node.y})`}
@@ -572,8 +574,8 @@ function KnowledgeGraph({ projects, topics }: Readonly<{ projects: Project[]; to
               >
                 {isH && <circle r={node.r + 10} fill={node.color} fillOpacity={0.08} filter="url(#nodeGlow)" />}
                 <circle r={isH ? node.r + 2 : node.r}
-                  fill={node.color} fillOpacity={active ? (isH ? 0.22 : 0.12) : 0.04}
-                  stroke={node.color} strokeOpacity={active ? (isH ? 1 : 0.6) : 0.15}
+                  fill={node.color} fillOpacity={circleFillOpacity}
+                  stroke={node.color} strokeOpacity={circleStrokeOpacity}
                   strokeWidth={isH ? 2 : 1.5} style={{ transition: "all 0.2s" }}
                 />
                 <text textAnchor="middle" dy={node.r + 13} fill="white"

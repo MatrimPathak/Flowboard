@@ -17,7 +17,10 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useDocuments } from "@/features/docs/hooks/use-documents";
-import { IssueType, TaskStatus } from "@/features/tasks/types";
+import { IssueType, TaskStatus, type Task } from "@/features/tasks/types";
+import type { Project } from "@/features/projects/types";
+import type { Member } from "@/features/members/types";
+import type { ChronicleDocument } from "@/lib/docs-firestore";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -189,7 +192,7 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
   const handleCopyLink = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     if (event.url) {
-      navigator.clipboard.writeText(window.location.origin + event.url)
+      navigator.clipboard.writeText(globalThis.location.origin + event.url)
         .then(() => toast.success("Link copied to clipboard"))
         .catch(() => toast.error("Failed to copy link"));
     }
@@ -463,6 +466,74 @@ function CollaborationActivity({ items }: Readonly<{ items: CollabItem[] }>) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+// ─── Event builders ───────────────────────────────────────────────────────────
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function taskUrl(task: Task, workspaceId: string): string | undefined {
+  if (!task.projectId) return undefined;
+  return `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
+}
+
+function initial(name: string): string {
+  return (name[0] ?? "?").toUpperCase();
+}
+
+function buildTaskEvents(
+  tasks: Task[],
+  workspaceId: string,
+  projects: Project[],
+  getMemberName: (id: string) => string,
+  now: number,
+): ActivityEvent[] {
+  const events: ActivityEvent[] = [];
+  for (const task of tasks) {
+    const name = getMemberName(task.assigneeId);
+    const color = actorColor(name);
+    const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
+    const createdAt = new Date(task.$createdAt);
+    const url = taskUrl(task, workspaceId);
+    events.push({ id: `task-${task.$id}`, type: "issue_created", actor: name, actorInitial: initial(name), actorColor: color, action: "created", target: task.name, project: proj, timestamp: createdAt, isNew: now - createdAt.getTime() < ONE_DAY_MS, url });
+    if (task.status === TaskStatus.DONE) {
+      const updatedAtStr = (task as { $updatedAt?: string }).$updatedAt;
+      if (updatedAtStr && updatedAtStr !== task.$createdAt) {
+        const doneAt = new Date(updatedAtStr);
+        events.push({ id: `done-${task.$id}`, type: "task_complete", actor: name, actorInitial: initial(name), actorColor: color, action: "completed", target: task.name, project: proj, timestamp: doneAt, isNew: now - doneAt.getTime() < ONE_DAY_MS, url });
+      }
+    }
+  }
+  return events;
+}
+
+function buildMemberEvents(members: Member[], workspaceId: string, now: number): ActivityEvent[] {
+  return members.map((member) => {
+    const name = member.name ?? "Someone";
+    const joinedAt = new Date(member.$createdAt);
+    return { id: `member-${member.$id}`, type: "member_joined" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action: "joined", target: "workspace", project: "", timestamp: joinedAt, isNew: now - joinedAt.getTime() < ONE_DAY_MS, url: `/workspace/${workspaceId}/members` };
+  });
+}
+
+function buildDocEvents(
+  docs: ChronicleDocument[],
+  workspaceId: string,
+  projects: Project[],
+  getMemberName: (id: string) => string,
+  now: number,
+): ActivityEvent[] {
+  return docs.map((docItem) => {
+    const name = getMemberName(docItem.createdBy);
+    const proj = docItem.projectId ? (projects.find((p) => p.$id === docItem.projectId)?.name ?? "") : "";
+    const docAt = new Date(docItem.updatedAt);
+    const url = docItem.projectId
+      ? `/workspace/${workspaceId}/project/${docItem.projectId}/docs?docId=${docItem.id}`
+      : `/workspace/${workspaceId}/docs?docId=${docItem.id}`;
+    const action = docItem.updatedAt === docItem.createdAt ? "created" : "updated";
+    return { id: `doc-${docItem.id}`, type: "doc_edit" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action, target: docItem.title, project: proj, timestamp: docAt, isNew: now - docAt.getTime() < ONE_DAY_MS, url };
+  });
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
 export function ActivityClient() {
   const workspaceId = useWorkspaceId();
   const [dateRange, setDateRange] = useState<DateRange>("7d");
@@ -487,96 +558,11 @@ export function ActivityClient() {
 
   const allEvents = useMemo((): ActivityEvent[] => {
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const events: ActivityEvent[] = [];
-
-    for (const task of tasks) {
-      const name = getMemberName(task.assigneeId);
-      const color = actorColor(name);
-      const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
-      const createdAt = new Date(task.$createdAt);
-
-      const taskUrl = task.projectId
-        ? `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`
-        : undefined;
-      events.push({
-        id: `task-${task.$id}`,
-        type: "issue_created",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: color,
-        action: "created",
-        target: task.name,
-        project: proj,
-        timestamp: createdAt,
-        isNew: now - createdAt.getTime() < oneDayMs,
-        url: taskUrl,
-      });
-
-      if (task.status === TaskStatus.DONE) {
-        const updatedAtStr = (task as { $updatedAt?: string }).$updatedAt;
-        if (updatedAtStr && updatedAtStr !== task.$createdAt) {
-          const doneAt = new Date(updatedAtStr);
-          events.push({
-            id: `done-${task.$id}`,
-            type: "task_complete",
-            actor: name,
-            actorInitial: (name[0] ?? "?").toUpperCase(),
-            actorColor: color,
-            action: "completed",
-            target: task.name,
-            project: proj,
-            timestamp: doneAt,
-            isNew: now - doneAt.getTime() < oneDayMs,
-            url: taskUrl,
-          });
-        }
-      }
-    }
-
-    for (const member of members) {
-      const name = member.name ?? "Someone";
-      const joinedAt = new Date(member.$createdAt);
-      events.push({
-        id: `member-${member.$id}`,
-        type: "member_joined",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: actorColor(name),
-        action: "joined",
-        target: "workspace",
-        project: "",
-        timestamp: joinedAt,
-        isNew: now - joinedAt.getTime() < oneDayMs,
-        url: `/workspace/${workspaceId}/members`,
-      });
-    }
-
-    for (const docItem of docs) {
-      const name = getMemberName(docItem.createdBy);
-      const proj = docItem.projectId
-        ? projects.find((p) => p.$id === docItem.projectId)?.name ?? ""
-        : "";
-      const docAt = new Date(docItem.updatedAt);
-      const docUrl = docItem.projectId
-        ? `/workspace/${workspaceId}/project/${docItem.projectId}/docs?docId=${docItem.id}`
-        : `/workspace/${workspaceId}/docs?docId=${docItem.id}`;
-      events.push({
-        id: `doc-${docItem.id}`,
-        type: "doc_edit",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: actorColor(name),
-        action: docItem.updatedAt === docItem.createdAt ? "created" : "updated",
-        target: docItem.title,
-        project: proj,
-        timestamp: docAt,
-        isNew: now - docAt.getTime() < oneDayMs,
-        url: docUrl,
-      });
-    }
-
-    return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    return [
+      ...buildTaskEvents(tasks, workspaceId, projects, getMemberName, now),
+      ...buildMemberEvents(members, workspaceId, now),
+      ...buildDocEvents(docs, workspaceId, projects, getMemberName, now),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }, [tasks, members, docs, projects, getMemberName, workspaceId]);
 
   const newCount = useMemo(
