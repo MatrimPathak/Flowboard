@@ -11,12 +11,7 @@ import { ChronicleEditor } from "@/features/docs/components/chronicle-editor";
 import { ImportDocDialog } from "@/features/docs/components/import-doc-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useCreateDocModal } from "@/features/docs/hooks/use-create-doc-modal";
 
 const templateHtml: Record<string, string> = {
   "Blank": "",
@@ -140,7 +135,8 @@ function EmptyState({
 }
 
 export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { workspaceId: string; projectId?: string; initialDocId?: string }) {
-  const { docsQuery, createDoc, createWorkspaceDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
+  const { docsQuery, createDoc, updateDoc, removeDoc } = useDocuments(workspaceId, projectId);
+  const { open: openCreateDocModal } = useCreateDocModal();
   const router = useRouter();
   const pathname = usePathname();
   const [selectedId, setSelectedId] = useState<string | null>(initialDocId ?? null);
@@ -225,16 +221,6 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
     await handleCreateDoc(templateName, templateHtml[templateName] ?? "");
   };
 
-  const handleCreateWorkspaceDoc = async () => {
-    try {
-      const id = await createWorkspaceDoc.mutateAsync({ title: "Untitled", content: "", icon: "📄" });
-      handleSelectDoc(id);
-      toast.success("Document created");
-    } catch {
-      toast.error("Failed to create document");
-    }
-  };
-
   useEffect(() => {
     const hasSelected = selectedId ? docs.some((doc) => doc.id === selectedId) : false;
     if (hasSelected) return;
@@ -308,38 +294,14 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
       <aside className="w-[280px] border-r border-white/10 p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white/90">Documentation</h2>
-          {projectId ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={createDoc.isPending || createWorkspaceDoc.isPending}
-                >
-                  <Plus className="size-3.5 mr-1" />
-                  New Doc
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => void handleCreateDoc("Untitled", "")}>
-                  Project Document
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void handleCreateWorkspaceDoc()}>
-                  Workspace Document
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void handleCreateDoc("Untitled", "")}
-              disabled={createDoc.isPending}
-            >
-              <Plus className="size-3.5 mr-1" />
-              New Doc
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={openCreateDocModal}
+          >
+            <Plus className="size-3.5 mr-1" />
+            New Doc
+          </Button>
         </div>
         <div className="relative">
           <Search className="size-3.5 absolute left-2.5 top-2.5 text-white/30" />

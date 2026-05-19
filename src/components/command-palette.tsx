@@ -11,6 +11,7 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { useCreateProjectModal } from "@/features/projects/hooks/use-create-project-modal";
 import { useCreateSprintModal } from "@/features/sprints/hooks/use-create-sprint-modal";
+import { useCreateDocModal } from "@/features/docs/hooks/use-create-doc-modal";
 import { getTaskRoute } from "@/lib/task-routes";
 import { useRouter } from "next/navigation";
 import {
@@ -73,6 +74,7 @@ export function CommandPalette() {
   const { open: openTaskModal } = useCreateTaskModal();
   const { open: openProjectModal } = useCreateProjectModal();
   const { open: openSprintModal } = useCreateSprintModal();
+  const { open: openCreateDocModal } = useCreateDocModal();
 
   // Global CMD+K listener
   useEffect(() => {
@@ -176,9 +178,9 @@ export function CommandPalette() {
     },
     {
       label: "New Doc",
-      description: "Create a workspace document",
+      description: "Create a workspace or project document",
       icon: FileText,
-      action: () => { closeCommandPalette(); router.push(`/workspace/${workspaceId}/docs`); },
+      action: () => { closeCommandPalette(); openCreateDocModal(); },
     },
   ].filter((a) =>
     !query || a.label.toLowerCase().includes(query.toLowerCase())
