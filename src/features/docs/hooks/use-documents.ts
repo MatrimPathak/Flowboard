@@ -51,7 +51,7 @@ export const useDocuments = (workspaceId: string, projectId?: string) => {
     mutationFn: async (data: Partial<ChronicleDocument>) => {
       return createDocument({
         workspaceId,
-        projectId,
+        ...(projectId !== undefined && { projectId }),
         title: data.title ?? "Untitled",
         content: data.content ?? { type: "doc", content: [] },
         icon: data.icon,

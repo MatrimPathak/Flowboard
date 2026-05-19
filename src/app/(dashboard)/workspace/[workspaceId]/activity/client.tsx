@@ -11,12 +11,17 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
+import { useRouter } from "next/navigation";
 import { useGetTasks } from "@/features/tasks/api/use-get-tasks";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useDocuments } from "@/features/docs/hooks/use-documents";
-import { TaskStatus } from "@/features/tasks/types";
+import { IssueType, TaskStatus, type Task } from "@/features/tasks/types";
+import type { Project } from "@/features/projects/types";
+import type { Member } from "@/features/members/types";
+import type { ChronicleDocument } from "@/lib/docs-firestore";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +42,7 @@ interface ActivityEvent {
   timestamp: Date;
   isNew?: boolean;
   meta?: string;
+  url?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -52,6 +58,15 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 };
 
 const ACTOR_COLORS = ["#4F7CFF", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#f97316"];
+
+function taskTypeSegment(issueType?: IssueType): string {
+  switch (issueType) {
+    case IssueType.EPIC: return "epic";
+    case IssueType.SPIKE: return "spike";
+    case IssueType.BUG: return "bug";
+    default: return "story";
+  }
+}
 
 function actorColor(name: string): string {
   let hash = 0;
@@ -164,9 +179,24 @@ function WorkspaceSummary({ stats }: Readonly<{ stats: SummaryStats }>) {
 
 function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number }>) {
   const [showActions, setShowActions] = useState(false);
+  const router = useRouter();
   const cfg = EVENT_CONFIG[event.type];
   const Icon = cfg.icon;
   const timeAgo = formatDistanceToNow(event.timestamp, { addSuffix: true });
+
+  const handleOpen = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    if (event.url) router.push(event.url);
+  };
+
+  const handleCopyLink = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    if (event.url) {
+      navigator.clipboard.writeText(globalThis.location.origin + event.url)
+        .then(() => toast.success("Link copied to clipboard"))
+        .catch(() => toast.error("Failed to copy link"));
+    }
+  };
 
   return (
     <motion.div
@@ -224,14 +254,20 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
               transition={{ duration: 0.12 }}
               className="flex items-center gap-1"
             >
-              {["Open", "Copy link"].map((label) => (
-                <button
-                  key={label}
-                  className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all"
-                >
-                  {label}
-                </button>
-              ))}
+              <button
+                onClick={handleOpen}
+                disabled={!event.url}
+                className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Open
+              </button>
+              <button
+                onClick={handleCopyLink}
+                disabled={!event.url}
+                className="text-[10px] px-2 py-1 rounded-md bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Copy link
+              </button>
             </motion.div>
           ) : (
             <motion.span
@@ -430,6 +466,76 @@ function CollaborationActivity({ items }: Readonly<{ items: CollabItem[] }>) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+// ─── Event builders ───────────────────────────────────────────────────────────
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function taskUrl(task: Task, workspaceId: string): string | undefined {
+  if (task.projectId) {
+    return `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
+  }
+  return undefined;
+}
+
+function initial(name: string): string {
+  return (name[0] ?? "?").toUpperCase();
+}
+
+function buildTaskEvents(
+  tasks: Task[],
+  workspaceId: string,
+  projects: Project[],
+  getMemberName: (id: string) => string,
+  now: number,
+): ActivityEvent[] {
+  const events: ActivityEvent[] = [];
+  for (const task of tasks) {
+    const name = getMemberName(task.assigneeId);
+    const color = actorColor(name);
+    const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
+    const createdAt = new Date(task.$createdAt);
+    const url = taskUrl(task, workspaceId);
+    events.push({ id: `task-${task.$id}`, type: "issue_created", actor: name, actorInitial: initial(name), actorColor: color, action: "created", target: task.name, project: proj, timestamp: createdAt, isNew: now - createdAt.getTime() < ONE_DAY_MS, url });
+    if (task.status === TaskStatus.DONE) {
+      const updatedAtStr = (task as { $updatedAt?: string }).$updatedAt;
+      if (updatedAtStr && updatedAtStr !== task.$createdAt) {
+        const doneAt = new Date(updatedAtStr);
+        events.push({ id: `done-${task.$id}`, type: "task_complete", actor: name, actorInitial: initial(name), actorColor: color, action: "completed", target: task.name, project: proj, timestamp: doneAt, isNew: now - doneAt.getTime() < ONE_DAY_MS, url });
+      }
+    }
+  }
+  return events;
+}
+
+function buildMemberEvents(members: Member[], workspaceId: string, now: number): ActivityEvent[] {
+  return members.map((member) => {
+    const name = member.name ?? "Someone";
+    const joinedAt = new Date(member.$createdAt);
+    return { id: `member-${member.$id}`, type: "member_joined" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action: "joined", target: "workspace", project: "", timestamp: joinedAt, isNew: now - joinedAt.getTime() < ONE_DAY_MS, url: `/workspace/${workspaceId}/members` };
+  });
+}
+
+function buildDocEvents(
+  docs: ChronicleDocument[],
+  workspaceId: string,
+  projects: Project[],
+  getMemberName: (id: string) => string,
+  now: number,
+): ActivityEvent[] {
+  return docs.map((docItem) => {
+    const name = getMemberName(docItem.createdBy);
+    const proj = docItem.projectId ? (projects.find((p) => p.$id === docItem.projectId)?.name ?? "") : "";
+    const docAt = new Date(docItem.updatedAt);
+    const url = docItem.projectId
+      ? `/workspace/${workspaceId}/project/${docItem.projectId}/docs?docId=${docItem.id}`
+      : `/workspace/${workspaceId}/docs?docId=${docItem.id}`;
+    const action = docItem.updatedAt === docItem.createdAt ? "created" : "updated";
+    return { id: `doc-${docItem.id}`, type: "doc_edit" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action, target: docItem.title, project: proj, timestamp: docAt, isNew: now - docAt.getTime() < ONE_DAY_MS, url };
+  });
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
 export function ActivityClient() {
   const workspaceId = useWorkspaceId();
   const [dateRange, setDateRange] = useState<DateRange>("7d");
@@ -454,87 +560,12 @@ export function ActivityClient() {
 
   const allEvents = useMemo((): ActivityEvent[] => {
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const events: ActivityEvent[] = [];
-
-    for (const task of tasks) {
-      const name = getMemberName(task.assigneeId);
-      const color = actorColor(name);
-      const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
-      const createdAt = new Date(task.$createdAt);
-
-      events.push({
-        id: `task-${task.$id}`,
-        type: "issue_created",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: color,
-        action: "created",
-        target: task.name,
-        project: proj,
-        timestamp: createdAt,
-        isNew: now - createdAt.getTime() < oneDayMs,
-      });
-
-      if (task.status === TaskStatus.DONE) {
-        const updatedAtStr = (task as { $updatedAt?: string }).$updatedAt;
-        if (updatedAtStr && updatedAtStr !== task.$createdAt) {
-          const doneAt = new Date(updatedAtStr);
-          events.push({
-            id: `done-${task.$id}`,
-            type: "task_complete",
-            actor: name,
-            actorInitial: (name[0] ?? "?").toUpperCase(),
-            actorColor: color,
-            action: "completed",
-            target: task.name,
-            project: proj,
-            timestamp: doneAt,
-            isNew: now - doneAt.getTime() < oneDayMs,
-          });
-        }
-      }
-    }
-
-    for (const member of members) {
-      const name = member.name ?? "Someone";
-      const joinedAt = new Date(member.$createdAt);
-      events.push({
-        id: `member-${member.$id}`,
-        type: "member_joined",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: actorColor(name),
-        action: "joined",
-        target: "workspace",
-        project: "",
-        timestamp: joinedAt,
-        isNew: now - joinedAt.getTime() < oneDayMs,
-      });
-    }
-
-    for (const docItem of docs) {
-      const name = getMemberName(docItem.createdBy);
-      const proj = docItem.projectId
-        ? projects.find((p) => p.$id === docItem.projectId)?.name ?? ""
-        : "";
-      const docAt = new Date(docItem.updatedAt);
-      events.push({
-        id: `doc-${docItem.id}`,
-        type: "doc_edit",
-        actor: name,
-        actorInitial: (name[0] ?? "?").toUpperCase(),
-        actorColor: actorColor(name),
-        action: docItem.updatedAt === docItem.createdAt ? "created" : "updated",
-        target: docItem.title,
-        project: proj,
-        timestamp: docAt,
-        isNew: now - docAt.getTime() < oneDayMs,
-      });
-    }
-
-    return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [tasks, members, docs, projects, getMemberName]);
+    return [
+      ...buildTaskEvents(tasks, workspaceId, projects, getMemberName, now),
+      ...buildMemberEvents(members, workspaceId, now),
+      ...buildDocEvents(docs, workspaceId, projects, getMemberName, now),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [tasks, members, docs, projects, getMemberName, workspaceId]);
 
   const newCount = useMemo(
     () => allEvents.filter((e) => e.isNew).length,
