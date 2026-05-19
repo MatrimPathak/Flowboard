@@ -400,7 +400,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
                       },
                     }
                   );
-                }, 1000);
+                }, 2000);
               }}
             />
           </div>
