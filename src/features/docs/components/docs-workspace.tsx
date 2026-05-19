@@ -236,7 +236,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
   useEffect(() => {
     if (!selected) return;
     titleInputRef.current?.focus();
-  }, [selected]);
+  }, [selected?.id]);
 
   useEffect(() => {
     if (!selected) return;
@@ -251,7 +251,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: { worksp
           onError: () => toast.error("Failed to update title"),
         }
       );
-    }, 350);
+    }, 1000);
 
     return () => clearTimeout(handle);
   }, [titleDraft, selected, updateDoc]);
