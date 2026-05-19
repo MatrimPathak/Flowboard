@@ -189,9 +189,9 @@ function EventCard({ event, idx }: Readonly<{ event: ActivityEvent; idx: number 
   const handleCopyLink = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     if (event.url) {
-      navigator.clipboard.writeText(window.location.origin + event.url).then(() => {
-        toast.success("Link copied to clipboard");
-      });
+      navigator.clipboard.writeText(window.location.origin + event.url)
+        .then(() => toast.success("Link copied to clipboard"))
+        .catch(() => toast.error("Failed to copy link"));
     }
   };
 
@@ -496,7 +496,9 @@ export function ActivityClient() {
       const proj = projects.find((p) => p.$id === task.projectId)?.name ?? "";
       const createdAt = new Date(task.$createdAt);
 
-      const taskUrl = `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`;
+      const taskUrl = task.projectId
+        ? `/workspace/${workspaceId}/project/${task.projectId}/${taskTypeSegment(task.issueType)}/${task.$id}`
+        : undefined;
       events.push({
         id: `task-${task.$id}`,
         type: "issue_created",
@@ -575,7 +577,7 @@ export function ActivityClient() {
     }
 
     return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [tasks, members, docs, projects, getMemberName]);
+  }, [tasks, members, docs, projects, getMemberName, workspaceId]);
 
   const newCount = useMemo(
     () => allEvents.filter((e) => e.isNew).length,
