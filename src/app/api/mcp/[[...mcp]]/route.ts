@@ -9,6 +9,8 @@ import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
 import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
+import { generateDocId, docContentToText } from "@/lib/docs-utils";
+import { isAllowedUrl } from "@/lib/url-safety";
 import { adminDb, adminStorage, adminAuth } from "@/lib/firebase-admin";
 import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
@@ -75,29 +77,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-
-function isAllowedUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString);
-    const hostname = url.hostname.toLowerCase();
-
-    if (!["http:", "https:"].includes(url.protocol)) return false;
-
-    if (hostname === "localhost" || hostname.startsWith("127.") || hostname === "::1") return false;
-
-    const parts = hostname.split(".").map(Number);
-    if (parts.length === 4 && parts.every(n => !Number.isNaN(n))) {
-      if (parts[0] === 10) return false;
-      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
-      if (parts[0] === 192 && parts[1] === 168) return false;
-      if (parts[0] === 169 && parts[1] === 254) return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function fetchAndUploadImage(imageUrl: string, userId: string): Promise<string> {
   if (!isAllowedUrl(imageUrl)) {
@@ -338,21 +317,6 @@ function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collect
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
 function wsDocsCol(wId: string) { return adminDb.collection(WORKSPACES).doc(wId).collection("docs"); }
 function projDocsCol(wId: string, pId: string) { return projRef(wId, pId).collection("docs"); }
-
-function generateDocId(): string {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  return `DOC-${10000000 + (buf[0] % 90000000)}`;
-}
-
-function docContentToText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!content || typeof content !== "object") return "";
-  const node = content as { text?: string; content?: unknown[] };
-  if (node.text) return node.text;
-  if (Array.isArray(node.content)) return node.content.map(docContentToText).filter(Boolean).join("\n");
-  return "";
-}
 
 async function findDocRef(workspaceId: string, docId: string, projectId?: string) {
   if (projectId) {
