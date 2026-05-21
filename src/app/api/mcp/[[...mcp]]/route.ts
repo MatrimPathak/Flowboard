@@ -9,6 +9,7 @@ import { SprintStatus } from "@/features/sprints/types";
 import { VersionStatus } from "@/features/versions/types";
 import { generateInviteCode } from "@/lib/utils";
 import { generatePrefixedId, ID_PREFIX } from "@/lib/ids";
+import { docContentToText, generateDocId } from "@/lib/docs-core";
 import { adminDb, adminStorage, adminAuth } from "@/lib/firebase-admin";
 import { fileTypeFromBuffer } from "file-type";
 import { MemberRole } from "@/features/members/types";
@@ -338,21 +339,6 @@ function sprintsCol(wId: string, pId: string) { return projRef(wId, pId).collect
 function versionsCol(wId: string, pId: string) { return projRef(wId, pId).collection("versions"); }
 function wsDocsCol(wId: string) { return adminDb.collection(WORKSPACES).doc(wId).collection("docs"); }
 function projDocsCol(wId: string, pId: string) { return projRef(wId, pId).collection("docs"); }
-
-function generateDocId(): string {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  return `DOC-${10000000 + (buf[0] % 90000000)}`;
-}
-
-function docContentToText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!content || typeof content !== "object") return "";
-  const node = content as { text?: string; content?: unknown[] };
-  if (node.text) return node.text;
-  if (Array.isArray(node.content)) return node.content.map(docContentToText).filter(Boolean).join("\n");
-  return "";
-}
 
 async function findDocRef(workspaceId: string, docId: string, projectId?: string) {
   if (projectId) {
