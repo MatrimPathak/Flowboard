@@ -1,22 +1,8 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { parseImportedDocument } from "@/features/docs/lib";
 import { useRef } from "react";
 import type { ChangeEvent } from "react";
-import { marked } from "marked";
-
-const extractTitle = (text: string, fallback: string) => {
-  const lines = text.split(/\r?\n/);
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    if (line.startsWith("# ")) {
-      const heading = line.slice(2).trim();
-      if (heading) return heading;
-    }
-    return line;
-  }
-  return fallback;
-};
 
 export function ImportDocDialog({ onImport }: { onImport: (title: string, content: string) => void }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -26,8 +12,8 @@ export function ImportDocDialog({ onImport }: { onImport: (title: string, conten
     if (!file) return;
     const text = await file.text();
     const baseName = file.name.replace(/\.[^/.]+$/, "");
-    const html = await marked.parse(text);
-    onImport(extractTitle(text, baseName), html);
+    const imported = await parseImportedDocument(text, baseName);
+    onImport(imported.title, imported.content);
     event.target.value = "";
   };
 
