@@ -20,7 +20,7 @@ import { useDocuments } from "@/features/docs/hooks/use-documents";
 import { IssueType, TaskStatus, type Task } from "@/features/tasks/types";
 import type { Project } from "@/features/projects/types";
 import type { Member } from "@/features/members/types";
-import type { ChronicleDocument } from "@/lib/docs-firestore";
+import { buildDocEvents } from "./build-doc-events";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -512,25 +512,6 @@ function buildMemberEvents(members: Member[], workspaceId: string, now: number):
     const name = member.name ?? "Someone";
     const joinedAt = new Date(member.$createdAt);
     return { id: `member-${member.$id}`, type: "member_joined" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action: "joined", target: "workspace", project: "", timestamp: joinedAt, isNew: now - joinedAt.getTime() < ONE_DAY_MS, url: `/workspace/${workspaceId}/members` };
-  });
-}
-
-function buildDocEvents(
-  docs: ChronicleDocument[],
-  workspaceId: string,
-  projects: Project[],
-  getMemberName: (id: string) => string,
-  now: number,
-): ActivityEvent[] {
-  return docs.map((docItem) => {
-    const name = getMemberName(docItem.createdBy);
-    const proj = docItem.projectId ? (projects.find((p) => p.$id === docItem.projectId)?.name ?? "") : "";
-    const docAt = new Date(docItem.updatedAt);
-    const url = docItem.projectId
-      ? `/workspace/${workspaceId}/project/${docItem.projectId}/docs?docId=${docItem.id}`
-      : `/workspace/${workspaceId}/docs?docId=${docItem.id}`;
-    const action = docItem.updatedAt === docItem.createdAt ? "created" : "updated";
-    return { id: `doc-${docItem.id}`, type: "doc_edit" as const, actor: name, actorInitial: initial(name), actorColor: actorColor(name), action, target: docItem.title, project: proj, timestamp: docAt, isNew: now - docAt.getTime() < ONE_DAY_MS, url };
   });
 }
 
