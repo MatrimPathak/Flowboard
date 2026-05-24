@@ -27,12 +27,16 @@ import {
   RefreshCw,
   ChevronRight,
   MessageSquare,
+  Paperclip,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 import { getTaskRoute } from "@/lib/task-routes";
 import { cn } from "@/lib/utils";
 import { TaskComments } from "@/features/tasks/components/task-comments";
+import { TaskLinks } from "@/features/tasks/components/task-links";
+import { TaskAttachments } from "@/features/tasks/components/task-attachments";
+import { TaskDocLinks } from "@/features/tasks/components/task-doc-links";
 
 
 function ProgressBar({ value }: { readonly value: number }) {
@@ -284,6 +288,7 @@ export const EpicDetailClient = () => {
             { value: "overview",    icon: Circle,        label: "Overview" },
             { value: "work-items",  icon: LayoutList,    label: "Work Items", count: childTasks.length },
             { value: "comments",    icon: MessageSquare, label: "Comments" },
+            { value: "links",       icon: Paperclip,     label: "Links" },
             { value: "timeline",    icon: GitBranch,     label: "Timeline" },
             { value: "ai-notes",    icon: Sparkles,      label: "AI Notes" },
           ].map(({ value, icon: Icon, label, count }) => (
@@ -417,6 +422,15 @@ export const EpicDetailClient = () => {
         {/* Comments Tab */}
         <TabsContent value="comments" className="mt-6">
           <TaskComments taskId={epic.$id} />
+        </TabsContent>
+
+        {/* Links Tab */}
+        <TabsContent value="links" className="mt-6">
+          <div className="flex flex-col gap-5">
+            <TaskLinks taskId={epic.$id} workspaceId={workspaceId} projectId={projectId} />
+            <TaskDocLinks taskId={epic.$id} workspaceId={workspaceId} />
+            <TaskAttachments taskId={epic.$id} workspaceId={workspaceId} projectId={projectId} />
+          </div>
         </TabsContent>
 
         {/* Timeline Tab */}

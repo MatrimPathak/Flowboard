@@ -16,6 +16,15 @@ import TableHeader from "@tiptap/extension-table-header";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Button } from "@/components/ui/button";
+import { marked } from "marked";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveContent(content: any): any {
+  if (typeof content === "string" && content.trim()) {
+    return marked.parse(content) as string;
+  }
+  return content ?? "";
+}
 
 const lowlight = createLowlight(common);
 
@@ -47,7 +56,7 @@ export function ChronicleEditor({ content, onChange }: { content: any; onChange:
       Image,
       Link.configure({ openOnClick: false, autolink: true }),
     ],
-    content: content ?? "",
+    content: resolveContent(content),
     editorProps: {
       attributes: {
         class: "prose prose-invert max-w-none min-h-[360px] focus:outline-none",

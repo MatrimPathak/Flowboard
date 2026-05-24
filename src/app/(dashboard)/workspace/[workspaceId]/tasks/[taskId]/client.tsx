@@ -13,6 +13,7 @@ import { TaskOverview } from "@/features/tasks/components/task-overview";
 import { TaskComments } from "@/features/tasks/components/task-comments";
 import { TaskLinks } from "@/features/tasks/components/task-links";
 import { TaskAttachments } from "@/features/tasks/components/task-attachments";
+import { TaskDocLinks } from "@/features/tasks/components/task-doc-links";
 import { TaskActivity } from "@/features/tasks/components/task-activity";
 import { TaskTimeTracking } from "@/features/tasks/components/task-time-tracking";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
@@ -266,6 +267,7 @@ export const TaskIdClient = () => {
           <TabsContent value="links" className="mt-6">
             <div className="flex flex-col gap-5">
               <TaskLinks taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
+              <TaskDocLinks taskId={data.$id} workspaceId={data.workspaceId} />
               <TaskAttachments taskId={data.$id} workspaceId={data.workspaceId} projectId={data.projectId} />
             </div>
           </TabsContent>
