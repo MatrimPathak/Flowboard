@@ -549,6 +549,7 @@ workspaceId,
 				originalEstimate,
 				remainingEstimate,
 				rca,
+				linkedDocs,
 			} = c.req.valid("json");
 			const { taskId } = c.req.param();
 
@@ -604,7 +605,7 @@ workspaceId,
 				assigneeName: updatedAssigneeName,
 				description, acceptanceCriteria, issueType, priority, parentId,
 				labels, sprintId, storyPoints, epicId, fixVersionId,
-				originalEstimate, remainingEstimate, rca,
+				originalEstimate, remainingEstimate, rca, linkedDocs,
 			}));
 
 			// Write activity entries after main update
