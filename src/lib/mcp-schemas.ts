@@ -83,6 +83,7 @@ export const updateTicketBaseSchema = z.object({
   remainingEstimate: z.number().optional().describe(D.remainingEstimate),
   labels: z.array(z.string()).optional(),
   rca: z.string().optional().describe(D.rca),
+  linkedDocs: z.array(z.string()).optional().describe("Array of doc IDs to link to this ticket. Replaces the current list."),
 });
 
 // ── Sprint schemas ────────────────────────────────────────────────────────────
