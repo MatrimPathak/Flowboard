@@ -19,7 +19,7 @@ export const TaskDocLinks = ({ taskId, workspaceId }: TaskDocLinksProps) => {
 
 	const { data: task } = useGetTask({ taskId });
 	const { mutate: updateTask, isPending } = useUpdateTask();
-	const { docsQuery } = useDocuments(workspaceId);
+	const { docsQuery } = useDocuments(workspaceId, task?.projectId);
 
 	const linkedDocIds: string[] = task?.linkedDocs ?? [];
 	const allDocs: ChronicleDocument[] = docsQuery.data ?? [];
