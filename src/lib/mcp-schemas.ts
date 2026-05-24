@@ -9,6 +9,14 @@ import { TaskStatus, IssueType, TaskPriority } from "../features/tasks/types";
 import { MemberRole } from "../features/members/types";
 import { D } from "./mcp-tool-descriptions";
 
+// mcp-handler passes every param as a string when it can't resolve the schema
+// type (e.g. when properties:{} is served). This preprocessor coerces a
+// JSON-stringified array back to a real array before Zod validates it.
+const coerceJsonArray = (v: unknown) => {
+  if (typeof v === "string") { try { return JSON.parse(v); } catch { /* fall through */ } }
+  return v;
+};
+
 // ── Status / type enum helpers ────────────────────────────────────────────────
 
 const statusEnum = z.enum([
@@ -57,7 +65,7 @@ export const createTicketBaseSchema = z.object({
   storyPoints: z.number().optional().describe(D.storyPoints),
   originalEstimate: z.number().optional().describe(D.originalEstimate),
   remainingEstimate: z.number().optional().describe(D.remainingEstimate),
-  labels: z.array(z.string()).optional().describe(D.labels),
+  labels: z.preprocess(coerceJsonArray, z.array(z.string()).optional()).describe(D.labels),
   rca: z.string().optional().describe(D.rca),
 });
 
@@ -81,9 +89,9 @@ export const updateTicketBaseSchema = z.object({
   storyPoints: z.number().optional().describe(D.storyPointsUpdate),
   originalEstimate: z.number().optional().describe(D.originalEstimateShort),
   remainingEstimate: z.number().optional().describe(D.remainingEstimate),
-  labels: z.array(z.string()).optional(),
+  labels: z.preprocess(coerceJsonArray, z.array(z.string()).optional()),
   rca: z.string().optional().describe(D.rca),
-  linkedDocs: z.array(z.string()).optional().describe("Array of doc IDs to link to this ticket. Replaces the current list."),
+  linkedDocs: z.preprocess(coerceJsonArray, z.array(z.string()).optional()).describe("Array of doc IDs to link to this ticket. Replaces the current list."),
 });
 
 // ── Sprint schemas ────────────────────────────────────────────────────────────
