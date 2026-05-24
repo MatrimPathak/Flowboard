@@ -18,7 +18,8 @@ import Link from "@tiptap/extension-link";
 import { Button } from "@/components/ui/button";
 import { marked } from "marked";
 
-function resolveContent(content: unknown): unknown {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveContent(content: any): any {
   if (typeof content === "string" && content.trim()) {
     return marked.parse(content) as string;
   }
