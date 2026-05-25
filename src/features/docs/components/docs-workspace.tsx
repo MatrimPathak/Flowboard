@@ -13,10 +13,20 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { createDocument } from "@/lib/docs-firestore";
 import { auth } from "@/lib/firebase";
 import { useQueryClient } from "@tanstack/react-query";
+
+const DOC_EMOJIS = [
+  "📄","📝","📋","📃","📑","🗒️","📊","📈","📉","🗂️",
+  "📁","📂","🗃️","📌","📍","🔖","🏷️","✅","☑️","📅",
+  "🗓️","⚡","🔥","💡","🎯","🚀","🛠️","🔧","⚙️","🔍",
+  "💬","🗣️","💭","📢","📣","🎙️","🎤","📡","🌐","🔗",
+  "💻","🖥️","📱","⌨️","🖱️","💾","💿","🖨️","🖊️","✏️",
+  "📐","📏","🧮","🔬","🧪","🧬","🏗️","🏛️","🏢","🌍",
+];
 
 const templateHtml: Record<string, string> = {
   "Blank": "",
@@ -397,9 +407,36 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: Readonly
         <EmptyState onCreate={handleCreateDoc} onImport={handleCreateDoc} />
       ) : (
         <section className="flex-1 overflow-y-auto">
-          <div className="max-w-[800px] mx-auto px-12 py-10 space-y-5">
+          <div className="w-full px-12 py-10 space-y-5">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{selected.icon ?? "📄"}</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="text-2xl hover:bg-white/10 rounded-md p-1 transition-colors"
+                    title="Change icon"
+                  >
+                    {selected.icon ?? "📄"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-2" align="start">
+                  <div className="grid grid-cols-10 gap-0.5">
+                    {DOC_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() =>
+                          updateDoc.mutate(
+                            { id: selected.id, patch: { icon: emoji } },
+                            { onError: () => toast.error("Failed to update icon") }
+                          )
+                        }
+                        className="text-lg p-1 rounded hover:bg-accent transition-colors"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Input
                 ref={titleInputRef}
                 value={titleDraft}
