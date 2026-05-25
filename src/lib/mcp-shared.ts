@@ -169,9 +169,17 @@ export async function addComment(
   const ref = taskDocRef(db, args.workspaceId, args.projectId, args.taskId);
   if (!(await ref.get()).exists) throw new Error(TASK_NOT_FOUND);
 
+  // Resolve member doc ID so the GET comments handler can look up the author name
+  const memberSnap = await db.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", args.workspaceId)
+    .where(USER_ID, "==", userId)
+    .limit(1)
+    .get();
+  const authorId = memberSnap.empty ? userId : memberSnap.docs[0].id;
+
   const commentRef = await ref.collection(COMMENTS).add({
     content: args.content,
-    authorId: userId,
+    authorId,
     workspaceId: args.workspaceId,
     projectId: args.projectId,
     $createdAt: new Date().toISOString(),
