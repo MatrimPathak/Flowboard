@@ -397,7 +397,7 @@ export function DocsWorkspace({ workspaceId, projectId, initialDocId }: Readonly
         <EmptyState onCreate={handleCreateDoc} onImport={handleCreateDoc} />
       ) : (
         <section className="flex-1 overflow-y-auto">
-          <div className="max-w-[800px] mx-auto px-12 py-10 space-y-5">
+          <div className="w-full px-12 py-10 space-y-5">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{selected.icon ?? "📄"}</span>
               <Input
