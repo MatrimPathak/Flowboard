@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -18,9 +18,18 @@ export function MarkdownEditor({
 	value,
 	onChange,
 	placeholder = "Write your content here...",
-	minRows = 4,
+	minRows = 5,
 	className,
 }: MarkdownEditorProps) {
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+	useEffect(() => {
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+		textarea.style.height = "auto";
+		textarea.style.height = `${textarea.scrollHeight}px`;
+	}, [value]);
+
 	return (
 		<Tabs defaultValue="write" className={cn("w-full", className)}>
 			<TabsList className="grid grid-cols-2 w-fit mb-2">
@@ -29,11 +38,12 @@ export function MarkdownEditor({
 			</TabsList>
 			<TabsContent value="write" className="mt-0">
 				<Textarea
+					ref={textareaRef}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					placeholder={placeholder}
 					rows={minRows}
-					className="resize-none font-mono text-sm"
+					className="resize-none font-mono text-sm overflow-hidden"
 				/>
 			</TabsContent>
 			<TabsContent value="preview" className="mt-0">

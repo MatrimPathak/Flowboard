@@ -64,19 +64,22 @@ export const TaskDescription = ({ task }: TaskDescriptionProps) => {
 							value={descriptionValue}
 							onChange={setDescriptionValue}
 							placeholder="Describe the task"
-							minRows={4}
+							minRows={5}
 						/>
 					</div>
 					{showAc && (
-						<div>
-							<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
-							<MarkdownEditor
-								value={acValue}
-								onChange={setAcValue}
-								placeholder="Define the conditions that must be met for this to be considered done"
-								minRows={3}
-							/>
-						</div>
+						<>
+							<hr className="border-border/40" />
+							<div>
+								<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
+								<MarkdownEditor
+									value={acValue}
+									onChange={setAcValue}
+									placeholder="Define the conditions that must be met for this to be considered done"
+									minRows={5}
+								/>
+							</div>
+						</>
 					)}
 					<Button
 						size="sm"
@@ -99,16 +102,19 @@ export const TaskDescription = ({ task }: TaskDescriptionProps) => {
 						)}
 					</div>
 					{showAc && (
-						<div>
-							<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
-							{task.acceptanceCriteria ? (
-								<MarkdownRenderer content={task.acceptanceCriteria} />
-							) : (
-								<span className="text-muted-foreground text-sm italic">
-									No Acceptance Criteria
-								</span>
-							)}
-						</div>
+						<>
+							<hr className="border-border/40" />
+							<div>
+								<p className="text-sm font-medium mb-2">Acceptance Criteria</p>
+								{task.acceptanceCriteria ? (
+									<MarkdownRenderer content={task.acceptanceCriteria} />
+								) : (
+									<span className="text-muted-foreground text-sm italic">
+										No Acceptance Criteria
+									</span>
+								)}
+							</div>
+						</>
 					)}
 				</div>
 			)}
