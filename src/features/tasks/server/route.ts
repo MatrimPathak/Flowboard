@@ -10,6 +10,7 @@ import { Project } from "@/features/projects/types";
 import { adminAuth, adminDb, adminStorage } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { fileTypeFromBuffer } from "file-type";
+import { buildTaskUpdatePayload, filterDefined } from "../utils/task-update-payload";
 
 const ALLOWED_MIME_TYPES = new Set([
 	"image/jpeg",
@@ -53,10 +54,6 @@ function getIdPrefix(issueType: IssueType | undefined): string {
 		case IssueType.BUG: return ID_PREFIX.BUG;
 		default: return ID_PREFIX.SPIKE;
 	}
-}
-
-function filterDefined(obj: Record<string, unknown>): Record<string, unknown> {
-	return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
 async function resolveAssigneeName(
@@ -598,9 +595,9 @@ workspaceId,
 
 			const updatedAssigneeName = assigneeId === null ? null : await resolveAssigneeName(assigneeId, databases);
 
-			await updateRef.update(filterDefined({
+			await updateRef.update(buildTaskUpdatePayload({
 				name, status,
-				dueDate: dueDate?.toISOString(),
+				dueDate,
 				assigneeId,
 				assigneeName: updatedAssigneeName,
 				description, acceptanceCriteria, issueType, priority, parentId,
