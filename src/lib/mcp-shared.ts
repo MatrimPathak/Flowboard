@@ -161,6 +161,20 @@ export async function getComments(db: any, wId: string, pId: string, taskId: str
     .sort((a: any, b: any) => new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime());
 }
 
+async function resolveWorkspaceMemberDocId(db: any, workspaceId: string, userId: string) {
+  const memberSnap = await db.collection(MEMBERS)
+    .where(WORKSPACE_ID, "==", workspaceId)
+    .where(USER_ID, "==", userId)
+    .limit(1)
+    .get();
+  return memberSnap.empty ? userId : memberSnap.docs[0].id;
+}
+
+async function isCommentAuthor(db: any, workspaceId: string, userId: string, authorId: string) {
+  const memberId = await resolveWorkspaceMemberDocId(db, workspaceId, userId);
+  return authorId === memberId || authorId === userId;
+}
+
 export async function addComment(
   db: any,
   userId: string,
@@ -170,12 +184,7 @@ export async function addComment(
   if (!(await ref.get()).exists) throw new Error(TASK_NOT_FOUND);
 
   // Resolve member doc ID so the GET comments handler can look up the author name
-  const memberSnap = await db.collection(MEMBERS)
-    .where(WORKSPACE_ID, "==", args.workspaceId)
-    .where(USER_ID, "==", userId)
-    .limit(1)
-    .get();
-  const authorId = memberSnap.empty ? userId : memberSnap.docs[0].id;
+  const authorId = await resolveWorkspaceMemberDocId(db, args.workspaceId, userId);
 
   const commentRef = await ref.collection(COMMENTS).add({
     content: args.content,
@@ -196,7 +205,9 @@ export async function updateComment(
     .collection(COMMENTS).doc(args.commentId);
   const commentDoc = await commentRef.get();
   if (!commentDoc.exists) throw new Error("Comment not found");
-  if (commentDoc.data()!.authorId !== userId) throw new Error("Only the comment author can edit it");
+  if (!(await isCommentAuthor(db, args.workspaceId, userId, commentDoc.data()!.authorId))) {
+    throw new Error("Only the comment author can edit it");
+  }
 
   await commentRef.update({ content: args.content, updatedAt: new Date().toISOString() });
   return docJson(await commentRef.get());
@@ -211,7 +222,9 @@ export async function deleteComment(
     .collection(COMMENTS).doc(args.commentId);
   const commentDoc = await commentRef.get();
   if (!commentDoc.exists) throw new Error("Comment not found");
-  if (commentDoc.data()!.authorId !== userId) throw new Error("Only the comment author can delete it");
+  if (!(await isCommentAuthor(db, args.workspaceId, userId, commentDoc.data()!.authorId))) {
+    throw new Error("Only the comment author can delete it");
+  }
   await commentRef.delete();
 }
 
