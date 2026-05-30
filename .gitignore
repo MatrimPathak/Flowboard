@@ -38,3 +38,9 @@ next-env.d.ts
 
 # claude
 .claude/
+
+# Flutter — generated files that must not be committed
+mobile/lib/firebase_options.dart
+mobile/android/app/google-services.json
+mobile/android/app/*.keystore
+mobile/android/key.properties

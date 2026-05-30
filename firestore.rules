@@ -3,39 +3,150 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Chronicle Docs ────────────────────────────────────────────────────────
-    // The browser client SDK (docs-firestore.ts) reads and writes these
-    // subcollections directly. All other collections go through the server API
-    // which uses firebase-admin and bypasses these rules entirely.
-    match /workspaces/{workspaceId}/docs/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /workspaces/{workspaceId}/projects/{projectId}/docs/{docId} {
-      allow read, write: if request.auth != null;
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // ── Members ───────────────────────────────────────────────────────────────
-    // All member writes (create, update, delete) go through firebase-admin via
-    // the server API. Blocking client writes prevents any authenticated user
-    // from directly inserting a member record or elevating their own role.
+    // Returns true if the new/updated member document's userId matches the
+    // requesting user. Prevents users from creating member records on behalf
+    // of other users.
+    function isSelfMember() {
+      return isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // Returns true if the existing member document belongs to the requesting
+    // user. Used for update/delete to prevent modifying others' memberships.
+    function ownsMemberDoc() {
+      return isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Returns true if the existing document's userId matches the requesting
+    // user. Used to restrict destructive operations (update, delete) on
+    // top-level resources (workspaces, projects) to their creators.
+    function ownsResource() {
+      return isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    // ── Chronicle Docs ────────────────────────────────────────────────────────
+    // Both the web client SDK (docs-firestore.ts) and the Flutter app write
+    // directly to these subcollections. The web Admin SDK also writes here.
+    match /workspaces/{workspaceId}/docs/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /workspaces/{workspaceId}/projects/{projectId}/docs/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ── Members (root collection) ─────────────────────────────────────────────
+    // Members are created when a user creates a workspace or joins via invite
+    // code. Each member doc represents one user's membership in one workspace.
+    //
+    // Security model: a user may only create or delete their own member doc
+    // (userId must equal request.auth.uid). Role elevation (ADMIN ↔ MEMBER)
+    // is handled by the web app's Admin SDK which bypasses these rules; the
+    // Flutter app does not allow role changes directly.
     match /members/{memberId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if isAuthenticated();
+      allow create: if isSelfMember();
+      allow update: if ownsMemberDoc();
+      allow delete: if ownsMemberDoc();
     }
 
     // ── Legacy flat docs collection ───────────────────────────────────────────
-    // Docs were migrated to workspace/project subcollections. Deny all access
-    // to the old top-level collection so stale data cannot be read or written.
+    // Migrated to workspace/project subcollections. Deny all access.
     match /docs/{docId} {
       allow read, write: if false;
     }
 
-    // ── Everything else ───────────────────────────────────────────────────────
-    // Workspaces, projects, tasks, sprints, versions, comments, worklogs, and
-    // all other server-managed data. Clients may read (needed to render the UI)
-    // but must never write directly — all mutations go through the server API.
+    // ── Workspaces ────────────────────────────────────────────────────────────
+    match /workspaces/{workspaceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      // Only the workspace creator (userId) may rename or delete the workspace.
+      // Admin SDK (web) bypasses this; Flutter enforces it client-side.
+      allow update, delete: if ownsResource();
+
+      // ── Projects ────────────────────────────────────────────────────────────
+      match /projects/{projectId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        // Only the project creator may update or delete the project document.
+        allow update, delete: if ownsResource();
+
+        // Project members subcollection (mirrors workspace member rules)
+        match /members/{memberId} {
+          allow read: if isAuthenticated();
+          allow create: if isSelfMember();
+          allow update: if ownsMemberDoc();
+          allow delete: if ownsMemberDoc();
+        }
+
+        // ── Tasks and all task subcollections ────────────────────────────────
+        match /tasks/{taskId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isAuthenticated();
+
+          // Comments: any authenticated user can create; only the author can
+          // edit or delete their own comment.
+          match /comments/{commentId} {
+            allow read: if isAuthenticated();
+            allow create: if isAuthenticated();
+            allow update, delete: if isAuthenticated() &&
+              resource.data.authorId == request.auth.uid;
+          }
+
+          match /worklogs/{worklogId} {
+            allow read: if isAuthenticated();
+            allow create, update, delete: if isAuthenticated();
+          }
+
+          match /attachments/{attachmentId} {
+            allow read: if isAuthenticated();
+            allow create, update, delete: if isAuthenticated();
+          }
+
+          match /links/{linkId} {
+            allow read: if isAuthenticated();
+            allow create, update, delete: if isAuthenticated();
+          }
+
+          // Activity log is append-only — records are never modified or deleted.
+          match /activity/{activityId} {
+            allow read: if isAuthenticated();
+            allow create: if isAuthenticated();
+            allow update, delete: if false;
+          }
+        }
+
+        // ── Sprints ──────────────────────────────────────────────────────────
+        match /sprints/{sprintId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isAuthenticated();
+        }
+
+        // ── Versions / Releases ──────────────────────────────────────────────
+        match /versions/{versionId} {
+          allow read: if isAuthenticated();
+          allow create, update, delete: if isAuthenticated();
+        }
+      }
+    }
+
+    // ── Default: authenticated read, no write ─────────────────────────────────
+    // Catch-all for any collection not explicitly matched above.
+    // The web app's Admin SDK bypasses these rules for server-side writes.
     match /{document=**} {
-      allow read: if request.auth != null;
+      allow read: if isAuthenticated();
       allow write: if false;
     }
   }
