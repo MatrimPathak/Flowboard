@@ -1,0 +1,39 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+
+# Android
+android/app/google-services.json
+android/app/flowboard.keystore
+android/key.properties
+android/.gradle
+android/local.properties
+android/GeneratedPluginRegistrant.java
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+
+# Generated code
+*.g.dart
+*.freezed.dart
+
+# IDE
+.idea/
+*.iws
+*.ipr
+.vscode/
+*.swp
+.DS_Store
+
+# Test coverage
+coverage/

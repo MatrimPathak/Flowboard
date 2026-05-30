@@ -1,8 +1,8 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Restrict image uploads to authenticated users only
-    // and scope paths to prevent cross-tenant access
+
+    // Workspace and project avatar images — uploaded by the web app
     match /images/{imageId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
@@ -10,7 +10,15 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Deny all other paths by default
+    // Task attachments — uploaded by the Flutter app
+    // Path: attachments/{workspaceId}/{taskId}/{filename}
+    match /attachments/{workspaceId}/{taskId}/{filename} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 25 * 1024 * 1024; // 25 MB limit
+    }
+
+    // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;
     }
