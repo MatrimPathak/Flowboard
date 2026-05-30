@@ -5,27 +5,28 @@ service cloud.firestore {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    // Check if the requesting user has a member doc for this workspace.
-    // The members collection is flat (root-level) with workspaceId + userId fields.
-    // Because Firestore rules don't support queries, we check a known path pattern.
-    // NOTE: This requires the members collection to be queryable in rules, which
-    // it is since we're using exists() + get() on specific docs.
-    // For a scalable approach, set Firebase Auth Custom Claims on workspace join.
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isWorkspaceMember(workspaceId) {
+    // Returns true if the new/updated member document's userId matches the
+    // requesting user. Prevents users from creating member records on behalf
+    // of other users.
+    function isSelfMember() {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/members/$(request.auth.uid + '_' + workspaceId))
-        // Fallback: any authenticated user can read (for MVP).
-        // Tighten this once Custom Claims are implemented.
-        || isAuthenticated();
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // Returns true if the existing member document belongs to the requesting
+    // user. Used for update/delete to prevent modifying others' memberships.
+    function ownsMemberDoc() {
+      return isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
     }
 
     // ── Chronicle Docs ────────────────────────────────────────────────────────
     // Both the web client SDK (docs-firestore.ts) and the Flutter app write
-    // directly to these subcollections.
+    // directly to these subcollections. The web Admin SDK also writes here.
     match /workspaces/{workspaceId}/docs/{docId} {
       allow read, write: if isAuthenticated();
     }
@@ -35,16 +36,22 @@ service cloud.firestore {
     }
 
     // ── Members (root collection) ─────────────────────────────────────────────
-    // Flutter app reads members to resolve assignees, list workspace members, etc.
-    // Flutter app also writes members when creating workspaces or joining via
-    // invite code. Web app continues to use Admin SDK (bypasses rules).
+    // Members are created when a user creates a workspace or joins via invite
+    // code. Each member doc represents one user's membership in one workspace.
+    //
+    // Security model: a user may only create or delete their own member doc
+    // (userId must equal request.auth.uid). Role elevation (ADMIN ↔ MEMBER)
+    // is handled by the web app's Admin SDK which bypasses these rules; the
+    // Flutter app does not allow role changes directly.
     match /members/{memberId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      allow create: if isSelfMember();
+      allow update: if ownsMemberDoc();
+      allow delete: if ownsMemberDoc();
     }
 
     // ── Legacy flat docs collection ───────────────────────────────────────────
+    // Migrated to workspace/project subcollections. Deny all access.
     match /docs/{docId} {
       allow read, write: if false;
     }
@@ -60,10 +67,12 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create, update, delete: if isAuthenticated();
 
-        // Project members subcollection
+        // Project members subcollection (mirrors workspace member rules)
         match /members/{memberId} {
           allow read: if isAuthenticated();
-          allow create, update, delete: if isAuthenticated();
+          allow create: if isSelfMember();
+          allow update: if ownsMemberDoc();
+          allow delete: if ownsMemberDoc();
         }
 
         // ── Tasks and all task subcollections ────────────────────────────────
@@ -71,6 +80,8 @@ service cloud.firestore {
           allow read: if isAuthenticated();
           allow create, update, delete: if isAuthenticated();
 
+          // Comments: any authenticated user can create; only the author can
+          // edit or delete their own comment.
           match /comments/{commentId} {
             allow read: if isAuthenticated();
             allow create: if isAuthenticated();
@@ -93,10 +104,11 @@ service cloud.firestore {
             allow create, update, delete: if isAuthenticated();
           }
 
+          // Activity log is append-only — records are never modified or deleted.
           match /activity/{activityId} {
             allow read: if isAuthenticated();
             allow create: if isAuthenticated();
-            allow update, delete: if false; // Activity is immutable
+            allow update, delete: if false;
           }
         }
 
@@ -115,8 +127,8 @@ service cloud.firestore {
     }
 
     // ── Default: authenticated read, no write ─────────────────────────────────
-    // Any collection not explicitly matched above.
-    // The web app's Admin SDK still bypasses these rules for server-side writes.
+    // Catch-all for any collection not explicitly matched above.
+    // The web app's Admin SDK bypasses these rules for server-side writes.
     match /{document=**} {
       allow read: if isAuthenticated();
       allow write: if false;
