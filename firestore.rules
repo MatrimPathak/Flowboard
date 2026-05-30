@@ -36,11 +36,15 @@ service cloud.firestore {
     // Both the web client SDK (docs-firestore.ts) and the Flutter app write
     // directly to these subcollections. The web Admin SDK also writes here.
     match /workspaces/{workspaceId}/docs/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
     }
 
     match /workspaces/{workspaceId}/projects/{projectId}/docs/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
     }
 
     // ── Members (root collection) ─────────────────────────────────────────────
