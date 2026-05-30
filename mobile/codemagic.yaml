@@ -30,6 +30,46 @@ workflows:
           echo $GOOGLE_SERVICES_JSON | base64 --decode > \
             android/app/google-services.json
 
+      - name: Generate firebase_options.dart from google-services.json
+        script: |
+          API_KEY=$(jq -r '.client[0].api_key[0].current_key' android/app/google-services.json)
+          APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' android/app/google-services.json)
+          SENDER_ID=$(jq -r '.project_info.project_number' android/app/google-services.json)
+          PROJECT_ID=$(jq -r '.project_info.project_id' android/app/google-services.json)
+          STORAGE_BUCKET=$(jq -r '.project_info.storage_bucket' android/app/google-services.json)
+          cat > lib/firebase_options.dart << DART
+          // Generated from google-services.json — do not edit or commit.
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart'
+              show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web is not supported by this app.');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                default:
+                  throw UnsupportedError(
+                    'DefaultFirebaseOptions have not been configured for '
+                    '\${defaultTargetPlatform.name}. '
+                    'Run flutterfire configure to regenerate this file.',
+                  );
+              }
+            }
+
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: '$API_KEY',
+              appId: '$APP_ID',
+              messagingSenderId: '$SENDER_ID',
+              projectId: '$PROJECT_ID',
+              storageBucket: '$STORAGE_BUCKET',
+            );
+          }
+          DART
+
       - name: Set up Android keystore
         script: |
           echo $CM_KEYSTORE | base64 --decode > android/app/flowboard.keystore
@@ -93,6 +133,46 @@ workflows:
         script: |
           echo $GOOGLE_SERVICES_JSON | base64 --decode > \
             android/app/google-services.json
+
+      - name: Generate firebase_options.dart from google-services.json
+        script: |
+          API_KEY=$(jq -r '.client[0].api_key[0].current_key' android/app/google-services.json)
+          APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' android/app/google-services.json)
+          SENDER_ID=$(jq -r '.project_info.project_number' android/app/google-services.json)
+          PROJECT_ID=$(jq -r '.project_info.project_id' android/app/google-services.json)
+          STORAGE_BUCKET=$(jq -r '.project_info.storage_bucket' android/app/google-services.json)
+          cat > lib/firebase_options.dart << DART
+          // Generated from google-services.json — do not edit or commit.
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart'
+              show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web is not supported by this app.');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                default:
+                  throw UnsupportedError(
+                    'DefaultFirebaseOptions have not been configured for '
+                    '\${defaultTargetPlatform.name}. '
+                    'Run flutterfire configure to regenerate this file.',
+                  );
+              }
+            }
+
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: '$API_KEY',
+              appId: '$APP_ID',
+              messagingSenderId: '$SENDER_ID',
+              projectId: '$PROJECT_ID',
+              storageBucket: '$STORAGE_BUCKET',
+            );
+          }
+          DART
 
       - name: Install dependencies
         script: flutter pub get
