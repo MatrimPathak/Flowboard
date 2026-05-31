@@ -9,6 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { generateDocId } from "@/lib/docs-utils";
 
 export type ChronicleDocument = {
   id: string;
@@ -27,13 +28,6 @@ export type ChronicleDocument = {
 };
 
 type StoredFields = Omit<ChronicleDocument, "id" | "workspaceId" | "projectId">;
-
-function generateDocId(): string {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  const suffix = (10000000 + (buf[0] % 90000000)).toString();
-  return `DOC-${suffix}`;
-}
 
 const wsColl = (wid: string) => collection(db, "workspaces", wid, "docs");
 const projColl = (wid: string, pid: string) => collection(db, "workspaces", wid, "projects", pid, "docs");
