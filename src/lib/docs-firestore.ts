@@ -9,6 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { generateDocId, stripUndefinedFields } from "@/lib/docs-utils";
 
 export type ChronicleDocument = {
   id: string;
@@ -28,20 +29,9 @@ export type ChronicleDocument = {
 
 type StoredFields = Omit<ChronicleDocument, "id" | "workspaceId" | "projectId">;
 
-function generateDocId(): string {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  const suffix = (10000000 + (buf[0] % 90000000)).toString();
-  return `DOC-${suffix}`;
-}
-
 const wsColl = (wid: string) => collection(db, "workspaces", wid, "docs");
 const projColl = (wid: string, pid: string) => collection(db, "workspaces", wid, "projects", pid, "docs");
 const scopedColl = (wid: string, pid?: string) => pid ? projColl(wid, pid) : wsColl(wid);
-
-function stripUndefined<T extends object>(obj: T): T {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
-}
 
 function toDoc(raw: Record<string, unknown>, id: string, wid: string, pid: string | undefined): ChronicleDocument {
   const { workspaceId: _w, projectId: _p, ...rest } = raw as Partial<ChronicleDocument>;
@@ -96,7 +86,7 @@ export async function createDocument(
 ): Promise<string> {
   const id = generateDocId();
   const now = Date.now();
-  await setDoc(doc(scopedColl(workspaceId, projectId), id), stripUndefined({
+  await setDoc(doc(scopedColl(workspaceId, projectId), id), stripUndefinedFields({
     ...payload,
     createdAt: now,
     updatedAt: now,
@@ -112,7 +102,7 @@ export async function updateDocument(
   patch: Partial<ChronicleDocument>,
 ): Promise<void> {
   const { workspaceId: _w, projectId: _p, ...rest } = patch;
-  await updateDoc(doc(scopedColl(workspaceId, projectId), id), stripUndefined({ ...(rest as Partial<StoredFields>), updatedAt: Date.now() }));
+  await updateDoc(doc(scopedColl(workspaceId, projectId), id), stripUndefinedFields({ ...(rest as Partial<StoredFields>), updatedAt: Date.now() }));
 }
 
 export async function deleteDocument(
